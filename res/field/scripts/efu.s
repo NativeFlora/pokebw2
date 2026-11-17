@@ -89,6 +89,13 @@ Script_RaidDepart:
     WorkAdd EFU_WORK_RAID_COUNT, 1
     // Saves from before version 2 started without them
     GiveRunningShoes
+    // The scavs hide until the exploration has gone on a while (EventTrainerEye_EfuPursue brings them out), and the
+    // clock for that starts at the first step out
+    .irp i, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+    FlagSet EFU_FLAG_SCAV_FIRST + \i
+    .endr
+    WorkSetConst EFU_WORK_EXPLORE_START, 0
+    WorkSetConst EFU_WORK_SCAVS_OUT, 0
     WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010

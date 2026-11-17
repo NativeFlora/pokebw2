@@ -14,245 +14,245 @@
         "grass": [
             [
                 "SPECIES_PATRAT",
-                10,
-                14
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                10,
-                14
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                11,
+                2,
                 15
             ],
             [
                 "SPECIES_YANMA",
-                11,
+                2,
                 15
             ],
             [
                 "SPECIES_LILLIPUP",
-                12,
-                16
+                2,
+                15
             ],
             [
                 "SPECIES_PURRLOIN",
-                12,
-                16
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                13,
-                17
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                13,
-                17
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                14,
-                18
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                14,
-                18
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                15,
-                19
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                16,
-                20
+                2,
+                15
             ]
         ],
         "dark_grass": [
             [
                 "SPECIES_PATRAT",
-                10,
-                14
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                10,
-                14
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                11,
+                2,
                 15
             ],
             [
                 "SPECIES_YANMA",
-                11,
+                2,
                 15
             ],
             [
                 "SPECIES_LILLIPUP",
-                12,
-                16
+                2,
+                15
             ],
             [
                 "SPECIES_PURRLOIN",
-                12,
-                16
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                13,
-                17
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                13,
-                17
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                14,
-                18
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                14,
-                18
+                2,
+                15
             ],
             [
                 "SPECIES_BLITZLE",
-                15,
-                19
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                16,
-                20
+                2,
+                15
             ]
         ],
         "shaking_grass": [
             [
                 "SPECIES_AUDINO",
-                10,
-                14
-            ],
-            [
-                "SPECIES_AUDINO",
-                10,
-                14
-            ],
-            [
-                "SPECIES_AUDINO",
-                11,
+                2,
                 15
             ],
             [
                 "SPECIES_AUDINO",
-                11,
+                2,
                 15
             ],
             [
                 "SPECIES_AUDINO",
-                12,
-                16
+                2,
+                15
             ],
             [
                 "SPECIES_AUDINO",
-                12,
-                16
+                2,
+                15
             ],
             [
                 "SPECIES_AUDINO",
-                13,
-                17
+                2,
+                15
+            ],
+            [
+                "SPECIES_AUDINO",
+                2,
+                15
+            ],
+            [
+                "SPECIES_AUDINO",
+                2,
+                15
             ],
             [
                 "SPECIES_YANMA",
-                13,
-                17
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                14,
-                18
+                2,
+                15
             ],
             [
                 "SPECIES_LILLIPUP",
-                14,
-                18
+                2,
+                15
             ],
             [
                 "SPECIES_PIDOVE",
-                15,
-                19
+                2,
+                15
             ],
             [
-                "SPECIES_HERDIER",
-                16,
-                20
+                "SPECIES_LILLIPUP",
+                2,
+                15
             ]
         ],
         "surf": {
             "black2": [
                 [
                     "SPECIES_BASCULIN",
-                    10,
-                    14
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    11,
+                    2,
                     15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    13,
-                    17
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    14,
-                    18
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    16,
-                    20
+                    2,
+                    15
                 ]
             ],
             "white2": [
                 [
                     "SPECIES_BASCULIN",
-                    10,
-                    14,
+                    2,
+                    15,
                     1
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    11,
+                    2,
                     15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    13,
-                    17,
+                    2,
+                    15,
                     1
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    14,
-                    18,
+                    2,
+                    15,
                     1
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    16,
-                    20,
+                    2,
+                    15,
                     1
                 ]
             ]
@@ -261,57 +261,57 @@
             "black2": [
                 [
                     "SPECIES_CORPHISH",
-                    10,
-                    14,
+                    2,
+                    15,
                     1
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    11,
+                    2,
                     15,
                     1
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    13,
-                    17
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    14,
-                    18
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    16,
-                    20
+                    2,
+                    15
                 ]
             ],
             "white2": [
                 [
                     "SPECIES_CORPHISH",
-                    10,
-                    14
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    11,
+                    2,
                     15
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    13,
-                    17
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    14,
-                    18
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_CORPHISH",
-                    16,
-                    20
+                    2,
+                    15
                 ]
             ]
         },
@@ -319,56 +319,56 @@
             "black2": [
                 [
                     "SPECIES_GOLDEEN",
-                    10,
-                    14
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    11,
+                    2,
                     15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    13,
-                    17
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    14,
-                    18
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    16,
-                    20
+                    2,
+                    15
                 ]
             ],
             "white2": [
                 [
                     "SPECIES_GOLDEEN",
-                    10,
-                    14
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    11,
+                    2,
                     15,
                     1
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    13,
-                    17
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    14,
-                    18
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    16,
-                    20
+                    2,
+                    15
                 ]
             ]
         },
@@ -376,56 +376,56 @@
             "black2": [
                 [
                     "SPECIES_GOLDEEN",
-                    10,
-                    14
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    11,
+                    2,
                     15,
                     1
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    13,
-                    17
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    14,
-                    18
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    16,
-                    20
+                    2,
+                    15
                 ]
             ],
             "white2": [
                 [
                     "SPECIES_GOLDEEN",
-                    10,
-                    14
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_BASCULIN",
-                    11,
+                    2,
                     15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    13,
-                    17
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    14,
-                    18
+                    2,
+                    15
                 ],
                 [
                     "SPECIES_GOLDEEN",
-                    16,
-                    20
+                    2,
+                    15
                 ]
             ]
         }

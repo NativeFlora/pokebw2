@@ -1,12 +1,14 @@
 """Escape from Unova: the first raid zone, Route 3.
 
 Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) and writes
-- res/field/encounters/route_3.json: every wild Pokémon at levels 10 to 20, each species at the stage it has reached by
-  its level;
+- res/field/encounters/route_3.json: every wild Pokémon at a random level from 2 to 15, each species at the stage it
+  has reached by the lowest;
 - the route's Trainers (res/trainers/data): the scavs, single battles with their Pokémon at 40 to 60, evolved as far as
   that level takes them;
-- res/field/events/route_3.json: nobody but the scavs and the items; each scav wanders (MOVE_CODE_WALK_RANDOM) and
-  sees EFU_SCAV_SIGHT tiles, and the pursuit (event_trainer_eye.c) does the rest.
+- res/field/events/route_3.json: nobody but the scavs and the items; each scav, a Team Plasma Grunt to look at, is
+  hidden by its own flag from EFU_FLAG_SCAV_FIRST, wanders (MOVE_CODE_WALK_RANDOM) once it comes out and sees
+  EFU_SCAV_SIGHT tiles, and the pursuit (event_trainer_eye.c) does the rest;
+- the Grunts' Trainer classes, named Scav.
 """
 import json, os, re, subprocess
 
@@ -14,37 +16,45 @@ here = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(os.path.dirname(here))
 BASE_COMMIT = 'origin/main'
 
-WILD_LEVELS = (10, 20)
+WILD_LEVELS = (2, 15)
 SCAV_LEVELS = (40, 60)
-SCAV_SIGHT = int(re.search(r'#define EFU_SCAV_SIGHT (\d+)', open(os.path.join(root, 'include/efu.h')).read()).group(1))
+efu_h = open(os.path.join(root, 'include/efu.h')).read()
+SCAV_SIGHT = int(re.search(r'#define EFU_SCAV_SIGHT (\d+)', efu_h).group(1))
 # How far a scav wanders from where it starts, in tiles either way
 SCAV_WANDER = 3
 # A Pokémon that evolves by a stone, trading or friendship has done so by this level
 OTHER_EVOLUTION_LEVEL = 36
-# What each scav says: before the battle, on losing it, and if spoken to after. Their own lines were about the
-# old Route 3 (the school kids' lessons on Triple and Rotation Battles, a double-battle pair's cheering)
-SCAV_TEXT = {
-    'lass_shannon': ("Ooh, a straggler!\nWhat's in the bag?{be01}", "Ugh! Fine, keep your junk!",
+# Each scav, by its Trainer file: whether it shows as the female Team Plasma Grunt, and what it says before the battle,
+# on losing it, and if spoken to after. Their own lines were about the old Route 3 (the school kids' lessons on Triple
+# and Rotation Battles, a double-battle pair's cheering)
+SCAVS = {
+    'lass_shannon': (True, "Ooh, a straggler!\nWhat's in the bag?{be01}", "Ugh! Fine, keep your junk!",
                      "Everything out here belongs to\nwhoever's still standing."),
-    'fisherman_bruce': ("I don't fish for food anymore.\nI fish for stragglers.{be01}", "The one that got away...",
+    'fisherman_bruce': (False, "I don't fish for food anymore.\nI fish for stragglers.{be01}", "The one that got away...",
                         "Nobody's left to stop me taking\nwhatever I want. Except you, I guess."),
-    'fisherman_mack': ("You walked a long way from home.\nToo bad it ends here!{be01}", "You're tougher than you look.",
-                       "Keep your head down. There are\nworse than me on this route."),
-    'nursery_aide_autumn': ("The children are gone.\nAll I have left is my Pokémon!{be01}",
+    'fisherman_mack': (False, "You walked a long way from home.\nToo bad it ends here!{be01}",
+                       "You're tougher than you look.", "Keep your head down. There are\nworse than me on this route."),
+    'nursery_aide_autumn': (True, "This uniform was all I could find.\nThe Pokémon are all I have left!{be01}",
                             "No... Not again...", "Go home, if you still have one."),
-    'preschooler_buster': ("Finders keepers!\nHand it over!{be01}", "Waaah! No fair!",
-                           "Mom said to take anything\nthat isn't nailed down."),
-    'preschooler_eva': ("Found you!\nYou're it!{be01}", "You cheated!",
-                        "I've been hiding out here for\nages. Nobody ever finds me."),
-    'preschooler_tyrone': ("Gotcha!\nGimme everything you've got!{be01}", "Whoops...",
+    'preschooler_buster': (False, "Finders keepers!\nHand it over!{be01}", "Fine! Take it and go!",
+                           "I take anything that isn't\nnailed down. Then I take the nails."),
+    'preschooler_eva': (True, "Found you!\nYou can stop hiding now.{be01}", "You... You cheated!",
+                        "I've been out here for ages.\nNobody ever finds me."),
+    'preschooler_tyrone': (False, "Gotcha!\nEmpty your pockets!{be01}", "Whoops...",
                            "I'll get you next time.\nI always do."),
-    'school_kid_edgar': ("Scavenging is simple math.\nYou have things. I want them.{be01}",
+    'school_kid_edgar': (False, "Scavenging is simple math.\nYou have things. I want them.{be01}",
                          "I must have carried a one\nsomewhere...", "The numbers only add up for\nthe strong out here."),
-    'school_kid_marsha': ("Running? I saw you from across\nthe route!{be01}", "I should have studied harder...",
-                          "There's no class anymore.\nJust this."),
-    'backers_may_mal': ("No more cheering! Only taking!\nHand over your stuff!{be01}", "May: Boo! Mal: Hiss!",
-                        "We used to cheer on Trainers.\nNow we cheer when they drop things."),
+    'school_kid_marsha': (True, "Running? I've had my eye on you\nfor a while now!{be01}", "I should have been faster...",
+                          "There's nothing left out here.\nJust us, and whatever you're carrying."),
+    'backers_may_mal': (True, "No more cheering! Only taking!\nHand over your stuff!{be01}", "Boo! Hiss!",
+                        "I used to cheer on Trainers.\nNow I cheer when they drop things."),
 }
+# The scavs' Trainer class, whichever it was: Team Plasma's Grunts, renamed
+SCAV_CLASS = {False: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_M', True: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_F'}
+SCAV_MODEL = {False: 'OBJ_CODE_TEAM_PLASMA_GRUNT_M', True: 'OBJ_CODE_TEAM_PLASMA_GRUNT_F'}
+SCAV_CLASS_NAME = 'Scav'
+FLAG_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+SCAV_MAX = int(re.search(r'#define EFU_SCAV_MAX (\d+)', efu_h).group(1))
 
 
 def orig(path):
@@ -89,13 +99,8 @@ def build_encounters():
     lo, hi = WILD_LEVELS
 
     def slots(lst):
-        out = []
-        for i, slot in enumerate(lst):
-            # Spread the slots across the range, each over a few levels
-            a = lo + (i * (hi - lo - 4)) // max(1, len(lst) - 1)
-            b = min(hi, a + 4)
-            out.append([at_level(slot[0], a), a, b] + slot[3:])
-        return out
+        # Every slot over the whole range: the game picks the level at random between a slot's lowest and highest
+        return [[at_level(slot[0], lo), lo, hi] + slot[3:] for slot in lst]
 
     for season in e:
         if season.startswith('$'):
@@ -116,6 +121,19 @@ def trainer_file(trainer_id):
     return 'res/trainers/data/' + names[trainer_id][len('TRAINER_'):].lower() + '.json'
 
 
+def scav_key(trainer_id):
+    return os.path.basename(trainer_file(trainer_id))[:-len('.json')]
+
+
+def build_classes():
+    for female, cls in SCAV_CLASS.items():
+        path = 'res/trainers/classes/' + cls[len('TRAINER_CLASS_'):].lower() + '.json'
+        c = json.loads(orig(path))
+        c['name'] = SCAV_CLASS_NAME
+        c['name_with_article'] = 'a ' + SCAV_CLASS_NAME
+        write(path, c)
+
+
 def build_events():
     e = json.loads(orig('res/field/events/route_3.json'))
     npcs = []
@@ -126,13 +144,17 @@ def build_events():
             # fight alone
             if n['script'] >= 5000:
                 continue
-            n = dict(n, movement='MOVE_CODE_WALK_RANDOM', params=[SCAV_SIGHT, 0, 0],
+            # Hidden by their own flag until EventTrainerEye_EfuPursue brings them out
+            female = SCAVS[scav_key(n['script'] - 3000)][0]
+            n = dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_WALK_RANDOM', params=[SCAV_SIGHT, 0, 0],
+                     flag='EVENT_FLAG_0x%04x' % (FLAG_SCAV_FIRST + len(scavs)),
                      area={'width': SCAV_WANDER, 'height': SCAV_WANDER})
             scavs.append(n['script'] - 3000)
             npcs.append(n)
         elif n['flag']:
             # Item balls, which have their flag
             npcs.append(n)
+    assert len(scavs) <= SCAV_MAX
     e['npcs'] = npcs
     write('res/field/events/route_3.json', e)
     return scavs
@@ -145,7 +167,8 @@ def build_trainers(trainer_ids):
         t = json.loads(orig(path))
         level = lo + (i * (hi - lo)) // max(1, len(trainer_ids) - 1)
         t['battle_style'] = 'BTL_STYLE_SINGLE'
-        start, lose, after = SCAV_TEXT[os.path.basename(path)[:-len('.json')]]
+        female, start, lose, after = SCAVS[scav_key(tid)]
+        t['class'] = SCAV_CLASS[female]
         t['messages'] = [{'type': 'TRMSG_START', 'text': start}, {'type': 'TRMSG_LOSE', 'text': lose},
                          {'type': 2, 'text': after}]
         for j, mon in enumerate(t['party']):
@@ -157,4 +180,5 @@ def build_trainers(trainer_ids):
 
 if __name__ == '__main__':
     build_encounters()
+    build_classes()
     build_trainers(build_events())

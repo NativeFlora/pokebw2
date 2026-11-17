@@ -14,10 +14,12 @@
 #include "field/field_event.h"
 #include "field/field_script_event.h"
 #include "field/pair_sys.h"
+#include "field/player_state.h"
 #include "field/trainer_script.h"
 #include "field/zone.h"
 #include "gfl/heap.h"
 #include "save/event_work.h"
+#include "save/playtime.h"
 #include "save/save_control.h"
 #include "system/game_data.h"
 #include "system/game_event.h"
@@ -109,6 +111,7 @@ static void EfuScav_StopChase(Field *field, FieldActor *actor);
 static BOOL EfuScav_CanSee(FieldActor *actor, const GridPos *pos, const GridPos *playerPos);
 static u16 EfuScav_DirTo(const GridPos *from, const GridPos *to, int *dist);
 static BOOL EfuScav_CanStep(FieldActor *actor, const GridPos *pos, u16 dir);
+static void EfuScav_Spawn(Field *field, const GridPos *playerPos);
 
 static const TrainerLineOfSightFunc TRAINER_LOS_DIST_FUNCTIONS[4] = {
     EventTrainerEye_CalcLineOfSight_U,
@@ -704,6 +707,53 @@ static BOOL EfuScav_CanStep(FieldActor *actor, const GridPos *pos, u16 dir) {
             ~ACTOR_COLL_WALK_AREA) == 0;
 }
 
+// The scavs come out one at a time (EFU_SCAV_SPAWN_SECONDS): the hidden one furthest from the player, with its defeat
+// on an earlier exploration forgotten
+static void EfuScav_Spawn(Field *field, const GridPos *playerPos) {
+    GameData *gameData = GSYS_GetGameData(Field_GetGameSystem(field));
+    EventWork *eventWork = GameData_GetEventWork(gameData);
+    PlayTime *time = GameData_GetPlayTime(gameData);
+    u16 now = (PlayTime_GetHours(time) * 60 + PlayTime_GetMinutes(time)) * 60 + PlayTime_GetSeconds(time);
+    u16 *start = EventWork_GetWkPtr(eventWork, EFU_WORK_EXPLORE_START);
+    u16 *out = EventWork_GetWkPtr(eventWork, EFU_WORK_SCAVS_OUT);
+    EventData *eventData;
+    ZoneNPC *npc;
+    ZoneNPC *furthest;
+    u32 count;
+    int furthestDist;
+
+    if (*start == 0) {
+        *start = now + 1;
+    }
+    if ((u16)(now + 1 - *start) < (*out + 1) * EFU_SCAV_SPAWN_SECONDS) {
+        return;
+    }
+    eventData = GameData_GetEventData(gameData);
+    furthest = NULL;
+    furthestDist = -1;
+    for (npc = GetZoneNPCs(eventData), count = GetZoneNPCsCount(eventData); count != 0; npc++, count--) {
+        GridPos pos;
+        int dist;
+
+        pos.x = npc->pos.grid.x;
+        pos.z = npc->pos.grid.z;
+        EfuScav_DirTo(playerPos, &pos, &dist);
+        if (npc->spawnFlag >= EFU_FLAG_SCAV_FIRST && npc->spawnFlag < EFU_FLAG_SCAV_FIRST + EFU_SCAV_MAX &&
+            EventWork_FlagGet(eventWork, npc->spawnFlag) && dist > furthestDist) {
+            furthest = npc;
+            furthestDist = dist;
+        }
+    }
+    if (furthest != NULL) {
+        (*out)++;
+        EventWork_FlagReset(eventWork, furthest->spawnFlag);
+        clearTrainerBattleFlag(eventWork, GetNPCTrainerIDFromSCRID(furthest->scrId));
+        SpawnZoneNPCByUID(Field_GetActorSystem(field), GetZoneNPCs(eventData),
+                          PlayerState_GetZoneID(GameData_GetPlayerState(gameData)), GetZoneNPCsCount(eventData),
+                          eventWork, furthest->uid);
+    }
+}
+
 // Each step the player takes: a wandering scav may notice the player, every scav on the chase takes one step the most
 // direct way it can toward the tile the player stepped onto, and one within EFU_SCAV_CATCH tiles starts its battle. One
 // that hasn't seen the player for EFU_SCAV_LOSE_STEPS steps in a row gives up and goes back to wandering
@@ -721,6 +771,7 @@ GameEvent *EventTrainerEye_EfuPursue(Field *field) {
     player = FieldPlayer_GetActor(Field_GetPlayer(field));
     actorSys = Field_GetActorSystem(field);
     FldAct_GetGPos(player, &playerPos);
+    EfuScav_Spawn(field, &playerPos);
     actor = NULL;
     index = 0;
     while (NextActor(actorSys, &actor, &index) == TRUE) {
@@ -776,7 +827,7 @@ GameEvent *EventTrainerEye_EfuPursue(Field *field) {
                 }
             }
             if (dir != DIR_NONE) {
-                FldAct_SetAcmd(actor, GetAcmdForDir(dir, ACMD_WALK_4F));
+                FldAct_SetAcmd(actor, GetAcmdForDir(dir, ACMD_WALK_8F));
                 pos.x += GetDirectionVectorCompX(dir);
                 pos.z += GetDirectionVectorCompZ(dir);
             }

@@ -243,13 +243,14 @@ class Writer:
         for name, (verts, tris) in prims.by_material.items():
             image = name.split('_1')[0] if name == 'sea_mizu1_1' else name
             material = self.material(MATERIALS[name], f'../../textures/{IMAGE_SET[name]}/{image}.png')
-            # Just off white, so the writer keeps the vertex colors instead of lighting the shape
+            # Lit from straight above like the original ground (the writer turns light 0 on for shapes with normals),
+            # so the beach and the sea darken at night with the rest of the map
             for chunk_start in range(0, len(tris), 20000):
                 part = tris[chunk_start:chunk_start + 20000]
                 used = sorted({i for t in part for i in t})
                 remap = {old: new for new, old in enumerate(used)}
                 self.primitive(material, [verts[i][:3] for i in used], [verts[i][3:] for i in used],
-                               [(254, 254, 254)] * len(used), None,
+                               [(254, 254, 254)] * len(used), [(0.0, 1.0, 0.0)] * len(used),
                                [tuple(remap[i] for i in t) for t in part])
 
     def save(self, path):

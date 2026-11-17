@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Edgar",
-    "class": "TRAINER_CLASS_SCHOOL_KID_M",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [

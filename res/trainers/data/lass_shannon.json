@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Shannon",
-    "class": "TRAINER_CLASS_LASS",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [

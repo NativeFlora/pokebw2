@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Buster",
-    "class": "TRAINER_CLASS_PRESCHOOLER_M",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [],
@@ -33,11 +33,11 @@
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Waaah! No fair!"
+            "text": "Fine! Take it and go!"
         },
         {
             "type": 2,
-            "text": "Mom said to take anything\nthat isn't nailed down."
+            "text": "I take anything that isn't\nnailed down. Then I take the nails."
         }
     ]
 }

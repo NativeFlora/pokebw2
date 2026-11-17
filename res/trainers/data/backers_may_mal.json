@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "May & Mal",
-    "class": "TRAINER_CLASS_BACKERS_F",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [
@@ -36,11 +36,11 @@
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "May: Boo! Mal: Hiss!"
+            "text": "Boo! Hiss!"
         },
         {
             "type": 2,
-            "text": "We used to cheer on Trainers.\nNow we cheer when they drop things."
+            "text": "I used to cheer on Trainers.\nNow I cheer when they drop things."
         }
     ]
 }

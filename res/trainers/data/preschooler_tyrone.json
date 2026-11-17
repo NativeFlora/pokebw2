@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Tyrone",
-    "class": "TRAINER_CLASS_PRESCHOOLER_M",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [],
@@ -29,7 +29,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Gotcha!\nGimme everything you've got!{be01}"
+            "text": "Gotcha!\nEmpty your pockets!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

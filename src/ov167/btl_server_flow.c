@@ -1,3 +1,4 @@
+#include "efu.h"
 #include "types.h"
 #include "battle/btl_ability.h"
 #include "battle/btl_action.h"
@@ -195,6 +196,10 @@ u32 BtlServerFlow_RunTurn(BtlServerFlow *flow, BtlClientActions *clientActions) 
         BattleServer_ClearChangeRequests(flow->server);
         BattleEventVar_CheckReset();
         ServerControl_ClearRechargeFlags(flow);
+        // Escape from Unova: a failed escape only gets the player away at the end of its own turn
+        if (flow->escapeAttempts > EFU_ESCAPE_ATTEMPTS_MAX) {
+            flow->escapeAttempts = EFU_ESCAPE_ATTEMPTS_MAX;
+        }
         flow->actionOrderCount = ActionOrder_Build(flow, clientActions, flow->actionOrder, 6);
         flow->runStarted = 1;
     }
@@ -325,6 +330,17 @@ u32 ActionOrder_Run(BtlServerFlow *flow, u32 i) {
             func_ov167_021bc6ac(GetPokeParam(flow->pokeCon, 0));
             flow->result = BTL_FLOW_RESULT_CONTINUE;
             return i + 1;
+        }
+    }
+    // Escape from Unova: fleeing always works. When the player couldn't get away, every other action of the turn has
+    // happened (the wild Pokémon has had its attack), and now the player gets away, trapped or not
+    if (flow->result == BTL_FLOW_RESULT_NONE && flow->escapeAttempts == EFU_ESCAPE_PENDING) {
+        BattleMon *mon = PokeCon_GetClientPartyMon(flow->pokeCon, GetPlayerClientID(flow->mainModule), 0);
+
+        flow->escapeAttempts = EFU_ESCAPE_ATTEMPTS_MAX;
+        if (!IsFainted(mon) && ServerControl_EscapeCore(flow, mon, TRUE, FALSE)) {
+            flow->result = BTL_FLOW_RESULT_ESCAPE;
+            return flow->actionOrderCount;
         }
     }
     if (flow->result == BTL_FLOW_RESULT_NONE) {
@@ -1263,8 +1279,12 @@ BOOL ServerControl_Escape(BtlServerFlow *flow, BattleMon *mon) {
     }
     if (clientId == playerClientId) {
         flow->escapeAttempts++;
-        if (flow->escapeAttempts > 30) {
-            flow->escapeAttempts = 30;
+        if (flow->escapeAttempts > EFU_ESCAPE_ATTEMPTS_MAX) {
+            flow->escapeAttempts = EFU_ESCAPE_ATTEMPTS_MAX;
+        }
+        // Escape from Unova: the player gets away at the end of the turn (ActionOrder_Run)
+        if (GetRunMode(flow->mainModule) == BTL_RUN_MODE_ESCAPE) {
+            flow->escapeAttempts = EFU_ESCAPE_PENDING;
         }
     }
     return result;

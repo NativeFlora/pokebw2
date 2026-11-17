@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Marsha",
-    "class": "TRAINER_CLASS_SCHOOL_KID_F",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [
@@ -40,15 +40,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Running? I saw you from across\nthe route!{be01}"
+            "text": "Running? I've had my eye on you\nfor a while now!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "I should have studied harder..."
+            "text": "I should have been faster..."
         },
         {
             "type": 2,
-            "text": "There's no class anymore.\nJust this."
+            "text": "There's nothing left out here.\nJust us, and whatever you're carrying."
         }
     ]
 }

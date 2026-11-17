@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Bruce",
-    "class": "TRAINER_CLASS_FISHERMAN",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [

@@ -295,14 +295,14 @@
     "npcs": [
         {
             "id": 1,
-            "model": "OBJ_CODE_SCHOOL_KID_F",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a80",
             "script": 3394,
             "direction": "DIR_DOWN",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -318,14 +318,14 @@
         },
         {
             "id": 2,
-            "model": "OBJ_CODE_FISHERMAN",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a81",
             "script": 3399,
             "direction": "DIR_UP",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -341,14 +341,14 @@
         },
         {
             "id": 3,
-            "model": "OBJ_CODE_FISHERMAN",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a82",
             "script": 3400,
             "direction": "DIR_RIGHT",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -364,14 +364,14 @@
         },
         {
             "id": 4,
-            "model": "OBJ_CODE_PRESCHOOLER_M",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a83",
             "script": 3396,
             "direction": "DIR_DOWN",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -387,14 +387,14 @@
         },
         {
             "id": 5,
-            "model": "OBJ_CODE_PRESCHOOLER_M",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a84",
             "script": 3398,
             "direction": "DIR_DOWN",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -410,14 +410,14 @@
         },
         {
             "id": 6,
-            "model": "OBJ_CODE_PRESCHOOLER_F",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a85",
             "script": 3397,
             "direction": "DIR_UP",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -433,14 +433,14 @@
         },
         {
             "id": 7,
-            "model": "OBJ_CODE_NURSERY_AIDE",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a86",
             "script": 3395,
             "direction": "DIR_LEFT",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -456,14 +456,14 @@
         },
         {
             "id": 8,
-            "model": "OBJ_CODE_SCHOOL_KID_M",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a87",
             "script": 3393,
             "direction": "DIR_UP",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -617,14 +617,14 @@
         },
         {
             "id": 22,
-            "model": "OBJ_CODE_BACKERS_F",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a88",
             "script": 3753,
             "direction": "DIR_LEFT",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],
@@ -640,14 +640,14 @@
         },
         {
             "id": 24,
-            "model": "OBJ_CODE_LASS",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
             "movement": "MOVE_CODE_WALK_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a89",
             "script": 3337,
             "direction": "DIR_DOWN",
             "params": [
-                20,
+                7,
                 0,
                 0
             ],

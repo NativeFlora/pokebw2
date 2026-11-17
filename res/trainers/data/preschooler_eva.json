@@ -1,7 +1,7 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Eva",
-    "class": "TRAINER_CLASS_PRESCHOOLER_F",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
     "ai_flags": [],
@@ -29,15 +29,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Found you!\nYou're it!{be01}"
+            "text": "Found you!\nYou can stop hiding now.{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "You cheated!"
+            "text": "You... You cheated!"
         },
         {
             "type": 2,
-            "text": "I've been hiding out here for\nages. Nobody ever finds me."
+            "text": "I've been out here for ages.\nNobody ever finds me."
         }
     ]
 }
