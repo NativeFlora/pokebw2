@@ -1,3 +1,4 @@
+#include "efu.h"
 #include "types.h"
 #include "constants/arc.h"
 #include "constants/flags.h"
@@ -203,12 +204,10 @@ GameEventReturnCode EventGameOpening_Callback(GameEvent *event, u32 *state, void
     case OPENING_SET_SEASON:
         realSeason = Season_GetRealTime();
         Season_Set(gameData, realSeason);
-        season = GameData_GetSeason(gameData);
-        GameEvent_ChainNext(event, EventSeasonBanner_CreateStandalone(gsys, season, season));
+        // Escape from Unova: no season banner and no opening demo
         (*state)++;
         break;
     case OPENING_PLAY_DEMO:
-        GameEvent_ChainNext(event, Event3DDemo_Create(gsys, event, 5, 0, 1));
         (*state)++;
         break;
     case OPENING_START_FIELD:
@@ -273,7 +272,7 @@ GameEventReturnCode EventFieldFirst_Callback(GameEvent *event, u32 *state, void 
         break;
     case FIRST_RUN_OPEN_SCRIPT:
         SetActorFlag(FieldPlayer_GetActor(Field_GetPlayer(GSYS_GetField(gsys))), 4);
-        EventScriptCall_Start(event, 0x1d, NULL, 0, HEAPID_USER);
+        EventScriptCall_Start(event, EFU_SCRIPT_NEW_GAME_SETUP, NULL, 0, HEAPID_USER);
         (*state)++;
         break;
     case FIRST_FADE_IN:
@@ -282,7 +281,7 @@ GameEventReturnCode EventFieldFirst_Callback(GameEvent *event, u32 *state, void 
         (*state)++;
         break;
     case FIRST_RUN_POST_FADE_SCRIPT:
-        EventScriptCall_Start(event, 0x1e, NULL, 0, HEAPID_USER);
+        EventScriptCall_Start(event, EFU_SCRIPT_NEW_GAME_START, NULL, 0, HEAPID_USER);
         (*state)++;
         break;
     case FIRST_DONE:
@@ -297,7 +296,8 @@ GameEvent *EventFieldFirst_Create(GameSystem *gsys, GameSystemProcData *procData
 
     wk->gsys = gsys;
     wk->gameData = GSYS_GetGameData(gsys);
-    LoadAspertiaCitySpawnInfo(&wk->spawn);
+    // Escape from Unova: a new game starts in the player's warehouse in Nacrene
+    LoadZoneSpawnInfoCheckRail(&wk->spawn, ZONE_NACRENE_CITY_8);
 
     GFL_OvlLoad(OVERLAY_NEW_GAME);
     InitDreamRadarFlagSave(GSYS_GetGameData(gsys), HEAPID_USER);

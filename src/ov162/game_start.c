@@ -305,7 +305,15 @@ static BOOL NewGame_Main(GameProc *proc, u32 *state, void *param, void *work) {
         *state = NEW_GAME_AFTER_PLAYER_NAMED;
         break;
     case NEW_GAME_AFTER_PLAYER_NAMED:
-        if (wk->introParam.result == INTRO_RESULT_ENTER_RIVAL_NAME) {
+        // Escape from Unova: the intro ends after the player's name, and the rival keeps the default name
+        if (wk->introParam.result == INTRO_RESULT_DONE) {
+            msgData = GFL_MsgSysLoadData(FALSE, ARCID_SYSTEM_MESSAGE, TEXT_BANK_GAME_START, HEAPID_USER);
+            name = GFL_MsgDataLoadStrbufNew(msgData, 25);
+            GFL_StrBufStoreString(name, wk->rivalName, NELEMS(wk->rivalName));
+            GFL_StrBufFree(name);
+            GFL_MsgDataFree(msgData);
+            *state = NEW_GAME_END;
+        } else if (wk->introParam.result == INTRO_RESULT_ENTER_RIVAL_NAME) {
             *state = NEW_GAME_RIVAL_NAME_ENTRY;
         } else {
             *state = NEW_GAME_NAME_ENTRY;

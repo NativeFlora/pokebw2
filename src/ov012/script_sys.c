@@ -2,6 +2,7 @@
 // scripts and the opcode guard. Function and data names from swan (https://github.com/ds-pokemon-hacking/swan,
 // GPL-3.0)
 
+#include "efu.h"
 #include "types.h"
 #include "constants/arc.h"
 #include "constants/field_scripts.h"
@@ -44,7 +45,9 @@ struct OpcodePermissions {
 // The global scripts: each range of script IDs with its script file and text bank. FieldScript_ResolveSCRID takes
 // the first entry that starts at or below the ID, so the ranges come in descending order. Ranges that share a script
 // file or text bank share its constant, which the generated lists name after one of those ranges
-static const GlobalScriptEntry GLOBAL_SCRIPT_TABLE[60] = {
+static const GlobalScriptEntry GLOBAL_SCRIPT_TABLE[61] = {
+    // Escape from Unova
+    { EFU_SCRIPT_FIRST, EFU_SCRIPT_LAST, SCRIPTS_EFU, ARCID_SCRIPT_MESSAGE, SCRIPT_TEXT_EFU },
     { 10885, 10914, SCRIPTS_GLOBAL_10885, ARCID_SCRIPT_MESSAGE, SCRIPT_TEXT_GLOBAL_10885 },
     { 10865, 10884, SCRIPTS_GLOBAL_10865, ARCID_SCRIPT_MESSAGE, SCRIPT_TEXT_GLOBAL_10865 },
     { 10860, 10864, SCRIPTS_GLOBAL_10860, ARCID_SCRIPT_MESSAGE, SCRIPT_TEXT_GLOBAL_10860 },

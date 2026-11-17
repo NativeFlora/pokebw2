@@ -8,6 +8,9 @@
 #include "nitro/fx.h"
 #include "text/system/game_start.h"
 
+// Escape from Unova: how dark the intro stays, 0 (normal) to 16 (black)
+#define EFU_INTRO_DIM 6
+
 // The intro's scripts. The messages are those of the system message file 54, and the professor's sprite changes frames
 // while she talks. Word 0 is the player's name and word 1 the rival's.
 
@@ -21,21 +24,15 @@ static const IntroCmdEntry sScriptStart[] = {
     { INTRO_CMD_GOTO, { INTRO_SCRIPT_GREETING } },
 };
 
+// Escape from Unova: no professor and no music. A dim, silent screen goes straight to the gender choice
 static const IntroCmdEntry sScriptGreeting[] = {
     { INTRO_CMD_ADD_SPRITE, { INTRO_SPRITE_PROFESSOR, SPECIES_NONE, 0, FX32_CONST(5.628) }, TRUE },
-    { INTRO_CMD_ADD_SPRITE, { INTRO_SPRITE_POKEMON, SPECIES_CINCCINO, FX32_CONST(-5), FX32_CONST(-0.5) }, TRUE },
-    { INTRO_CMD_SET_SPRITE_VISIBLE, { INTRO_SPRITE_POKEMON, FALSE } },
+    { INTRO_CMD_SET_SPRITE_VISIBLE, { INTRO_SPRITE_PROFESSOR, FALSE } },
     { INTRO_CMD_SAVE_START },
     { INTRO_CMD_CLEAR_MESSAGE },
-    { INTRO_CMD_FADE, { FADE_ENGINE_A_BLACK | FADE_ENGINE_B_BLACK, 16, 0, 2 } },
-    { INTRO_CMD_BGM_PLAY, { SEQ_BGM_STARTING2 }, TRUE },
-    { INTRO_CMD_BGM_FADE_IN, { 90 }, TRUE },
-    { INTRO_CMD_WAIT, { 90 } },
-    // Hi there! Welcome to the world of Pokémon!
-    { INTRO_CMD_TALK, { GameStart_Text_HiThereWelcomeWorld, INTRO_SPRITE_PROFESSOR, TRUE } },
-    // My name is Professor Juniper. Everyone calls me the Pokémon Professor!
-    { INTRO_CMD_TALK, { GameStart_Text_NameProfessorJuniperEveryone, INTRO_SPRITE_PROFESSOR, TRUE } },
-    { INTRO_CMD_GOTO, { INTRO_SCRIPT_POKEMON } },
+    { INTRO_CMD_FADE, { FADE_ENGINE_A_BLACK | FADE_ENGINE_B_BLACK, 16, EFU_INTRO_DIM, 4 } },
+    { INTRO_CMD_WAIT, { 60 } },
+    { INTRO_CMD_GOTO, { INTRO_SCRIPT_GENDER } },
 };
 
 static const IntroCmdEntry sScriptPokemon[] = {
@@ -107,8 +104,9 @@ static const IntroCmdEntry sScriptPlayerNamed[] = {
     { INTRO_CMD_LOAD_GRAPHICS, { TRUE }, TRUE },
     { INTRO_CMD_CREATE_OBJ },
     { INTRO_CMD_ADD_SPRITE, { INTRO_SPRITE_PROFESSOR, SPECIES_NONE, 0, FX32_CONST(5.628) }, TRUE },
+    { INTRO_CMD_SET_SPRITE_VISIBLE, { INTRO_SPRITE_PROFESSOR, FALSE } },
     { INTRO_CMD_SAVE_RESUME },
-    { INTRO_CMD_FADE, { FADE_ENGINE_A_BLACK | FADE_ENGINE_B_BLACK, 16, 0, 2 } },
+    { INTRO_CMD_FADE, { FADE_ENGINE_A_BLACK | FADE_ENGINE_B_BLACK, 16, EFU_INTRO_DIM, 2 } },
     { INTRO_CMD_SET_WORD, { INTRO_WORD_PLAYER_NAME, 0 }, TRUE },
     { INTRO_CMD_IF, { INTRO_COND_PLAYER_IS_MALE } },
     // Your name is {WORD 0}?
@@ -118,7 +116,7 @@ static const IntroCmdEntry sScriptPlayerNamed[] = {
     { INTRO_CMD_WAIT, { 1 } },
     // YES / NO
     { INTRO_CMD_YES_NO, { GameStart_Text_Yes, GameStart_Text_No, TRUE } },
-    { INTRO_CMD_GOTO, { INTRO_SCRIPT_ASK_RIVAL_NAME } },
+    { INTRO_CMD_GOTO, { INTRO_SCRIPT_FAREWELL } },
     { INTRO_CMD_GOTO, { INTRO_SCRIPT_RENAME_PLAYER } },
 };
 
@@ -171,23 +169,16 @@ static const IntroCmdEntry sScriptRenameRival[] = {
     { INTRO_CMD_END },
 };
 
+// Escape from Unova: no rival to name, so the intro ends here, without the professor
 static const IntroCmdEntry sScriptFarewell[] = {
     { INTRO_CMD_SET_RESULT, { INTRO_RESULT_DONE } },
-    { INTRO_CMD_OBJ_FADE_OUT },
-    { INTRO_CMD_CLOSE_BAND },
-    { INTRO_CMD_FADE_SPRITE, { INTRO_SPRITE_PROFESSOR, TRUE } },
     { INTRO_CMD_SAVE_NOP },
     { INTRO_CMD_SAVE_WAIT },
     { INTRO_CMD_SET_WORD, { INTRO_WORD_PLAYER_NAME, 0 }, TRUE },
-    // {WORD 0}! I'm going to entrust you with a Pokémon. I'm sure you will be great partners!
+    // {WORD 0}. Unova is gone.
     { INTRO_CMD_TALK, { GameStart_Text_ImGoingEntrustPokemon, INTRO_SPRITE_PROFESSOR, TRUE } },
-    // The moment you choose the Pokémon that will accompany you on your journey, your story will truly begin. During
-    // your journey, you will meet many Pokémon and people with different personalities and points of view. I really
-    // hope you learn what is important to you as a result of your travels... That's right! Befriend new people and
-    // Pokémon and grow as a person! That's the most important goal of your journey! Let's go visit the world of
-    // Pokémon!
+    // What's left of Nacrene is yours now. One Pokémon stayed by your side when everything fell. Keep it alive.
     { INTRO_CMD_TALK, { GameStart_Text_MomentChoosePokemonWill, INTRO_SPRITE_PROFESSOR, TRUE } },
-    { INTRO_CMD_FADE_SPRITE, { INTRO_SPRITE_PROFESSOR, FALSE } },
     { INTRO_CMD_GOTO, { INTRO_SCRIPT_FINISH } },
 };
 

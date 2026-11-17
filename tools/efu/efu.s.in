@@ -1,0 +1,46 @@
+#include "asm/field_script.inc"
+#include "text/script/efu.h"
+// Escape from Unova's own scripts, global IDs from 11000 (EFU_SCRIPT_* in include/efu.h)
+    ScriptEntry Script_NewGameSetup
+    ScriptEntry Script_NewGameStart
+    ScriptEntriesEnd
+
+// Runs before the first fade-in of a new game
+Script_NewGameSetup:
+    ActorsPauseAll
+    FinishAllEvents
+    ActorsUnpauseAll
+    VMHalt
+
+// Runs after the first fade-in of a new game: the player picks the Pokémon they were left with
+Script_NewGameStart:
+    ActorsPauseAll
+    SystemMsg Efu_Text_Wake, 2
+    LastKeyWait
+    VMCall L_ChooseStarter
+    SystemMsgClose
+    FinishAllEvents
+    ActorsUnpauseAll
+    VMHalt
+
+@STARTER_MENUS@
+// 0x8020 is the species, or 0 (Back) or more than any species (B)
+L_ConfirmStarter:
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_ChooseStarter
+    WorkCmpConst 0x8020, 650
+    VMJumpIf CMP_GE, L_ChooseStarter
+    WorkSet 0x8025, 0x8020
+    WordSetPokeSpecies 1, 0x8025
+    SystemMsg Efu_Text_ThisOne, 2
+    YesNoWin 0x8010
+    WorkCmpConst 0x8010, 1
+    VMJumpIf CMP_EQ, L_ChooseStarter
+    PokePartyAdd 0x8010, 0x8025, 0, 5
+    FlagSet EVENT_FLAG_0x0961
+    MEPlay SEQ_ME_POKEGET
+    SystemMsg Efu_Text_StayedWithYou, 2
+    MEWait
+    LastKeyWait
+    VMReturn
+    .balign 4, 0

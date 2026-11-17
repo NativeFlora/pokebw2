@@ -1,0 +1,6 @@
+Efu_Text_Wake = Cold concrete.\nThe smell of smoke and rust.{be01}\nSomething stirs beside you.{be01}
+Efu_Text_WhichType = Which Pokémon stayed with you?
+Efu_Text_WhichOne = Which one?
+Efu_Text_ThisOne = {0101:1}...\nIs that the one?
+Efu_Text_StayedWithYou = {0101:1} stayed with you.
+Efu_Text_Back = Back
