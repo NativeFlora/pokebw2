@@ -271,7 +271,9 @@ GameEventReturnCode EventFieldFirst_Callback(GameEvent *event, u32 *state, void 
         (*state)++;
         break;
     case FIRST_RUN_OPEN_SCRIPT:
-        SetActorFlag(FieldPlayer_GetActor(Field_GetPlayer(GSYS_GetField(gsys))), 4);
+        // Escape from Unova: the player isn't hidden for an opening scene. The call stays, with no flag, so that
+        // ARM9 main's code keeps its size (see docs/efu.md)
+        SetActorFlag(FieldPlayer_GetActor(Field_GetPlayer(GSYS_GetField(gsys))), 0);
         EventScriptCall_Start(event, EFU_SCRIPT_NEW_GAME_SETUP, NULL, 0, HEAPID_USER);
         (*state)++;
         break;

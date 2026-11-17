@@ -1,8 +1,16 @@
 #include "asm/field_script.inc"
 #include "text/script/efu.h"
+
+// Escape from Unova's own script commands (EVCMD_TABLE in src/ov012/scrcmd_vm.c, from 0x2f3; each also needs
+// a row of EVCMD_PERM_TABLE in src/ov012/script_sys.c)
+    .macro EfuPokePartyRecoverHalf
+    FieldCommand 0x2f3
+    .endm
 // Escape from Unova's own scripts, global IDs from 11000 (EFU_SCRIPT_* in include/efu.h)
     ScriptEntry Script_NewGameSetup
     ScriptEntry Script_NewGameStart
+    ScriptEntry Script_BoardedDoor
+    ScriptEntry Script_Bed
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -20,6 +28,37 @@ Script_NewGameStart:
     VMCall L_ChooseStarter
     SystemMsgClose
     FinishAllEvents
+    ActorsUnpauseAll
+    VMHalt
+
+// A boarded-up door of a closed building
+Script_BoardedDoor:
+    ActorsPauseAll
+    SystemMsg Efu_Text_BoardedDoor, 2
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+// The player's bed: a poor Pokémon Center that brings the party up to half HP and PP
+Script_Bed:
+    ActorsPauseAll
+    SystemMsg Efu_Text_BedRest, 2
+    YesNoWin 0x8010
+    WorkCmpConst 0x8010, 1
+    VMJumpIf CMP_EQ, L_BedNo
+    SystemMsgClose
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    EfuPokePartyRecoverHalf
+    MEPlay SEQ_ME_ASA
+    MEWait
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    SystemMsg Efu_Text_BedRested, 2
+    LastKeyWait
+L_BedNo:
+    SystemMsgClose
     ActorsUnpauseAll
     VMHalt
 

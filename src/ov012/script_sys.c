@@ -208,7 +208,9 @@ static const struct OpcodePermissions EVCMD_PERM_TABLE[] = {
     { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, // 0x2d8
     { 0, 0, 0 }, { 1, 0, 0 }, { 0, 0, 0 }, { 1, 1, 1 }, { 0, 0, 0 }, { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 0 }, // 0x2e0
     { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 }, // 0x2e8
-    { 0, 0, 0 }, { 1, 1, 1 }, { 1, 1, 1 },                                                                  // 0x2f0
+    { 0, 0, 0 }, { 1, 1, 1 }, { 1, 1, 1 },
+    // Escape from Unova's commands, from 0x2f3: one entry each, or FieldScript_OpcodeGuard reads past the table
+    { 1, 0, 0 }, // 0x2f3
 };
 
 struct EventScriptCallData {

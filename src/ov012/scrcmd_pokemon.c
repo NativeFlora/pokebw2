@@ -14,6 +14,7 @@
 #include "gfl/str.h"
 #include "pml/item.h"
 #include "pml/met_data.h"
+#include "pml/move.h"
 #include "pml/personal.h"
 #include "pml/poke_party.h"
 #include "pml/species_names.h"
@@ -1020,5 +1021,41 @@ BOOL Scrcmd_Pokemon_MoneyCheck(VM *vm, FieldScriptEnv *env) {
     GameData_GetPlayerState(gameData);
     TrainerGameInfoSave *info = getTrainerCardDataBlkAddress(gameData);
     *result = amount <= getCash(info);
+    return FALSE;
+}
+
+// Escape from Unova: the player's bed, a poor Pokémon Center. Each Pokémon in the party gets back up to half of its
+// HP and of each move's PP, and its status is cured; a fainted one gets up again at half HP
+BOOL Scrcmd_Efu_PokePartyRecoverHalf(VM *vm, FieldScriptEnv *env) {
+    PokeParty *party = GameData_GetParty(FieldScriptEnv_GetGameData(env));
+    int count = PokeParty_GetPkmCount(party);
+    int i;
+    int slot;
+
+    for (i = 0; i < count; i++) {
+        PartyPkm *pkm = PokeParty_GetPkm(party, i);
+        u32 maxHp;
+
+        if (!PokeParty_GetParam(pkm, PKM_PARAM_SPECIES_VALID, NULL)) {
+            continue;
+        }
+        maxHp = PokeParty_GetParam(pkm, PKM_PARAM_MAX_HP, NULL);
+        if (PokeParty_GetParam(pkm, PKM_PARAM_HP, NULL) < (maxHp + 1) / 2) {
+            PokeParty_SetParam(pkm, PKM_PARAM_HP, (maxHp + 1) / 2);
+        }
+        PokeParty_SetParam(pkm, PKM_PARAM_STATUS, 0);
+        for (slot = 0; slot < 4; slot++) {
+            u16 move = PokeParty_GetParam(pkm, PKM_PARAM_MOVE1 + slot, NULL);
+            u8 halfPP;
+
+            if (move == 0) {
+                continue;
+            }
+            halfPP = (PML_MoveGetMaxPP(move, PokeParty_GetParam(pkm, PKM_PARAM_MOVE1_PP_UP + slot, NULL)) + 1) / 2;
+            if (PokeParty_GetParam(pkm, PKM_PARAM_MOVE1_PP + slot, NULL) < halfPP) {
+                PokeParty_SetParam(pkm, PKM_PARAM_MOVE1_PP + slot, halfPP);
+            }
+        }
+    }
     return FALSE;
 }

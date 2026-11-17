@@ -851,6 +851,8 @@ const FieldScriptCommand EVCMD_TABLE[] = {
     NULL,                                               // 0x2f0
     Scrcmd_GameState_SetOneShotDRObtained,              // 0x2f1
     Scrcmd_GameState_IsOneShotDRObtained_02F2,          // 0x2f2
+    // Escape from Unova's commands, from 0x2f3 (their macros are in res/field/scripts/efu.s)
+    Scrcmd_Efu_PokePartyRecoverHalf,                    // 0x2f3
 };
 
 // MWCC lays the file's data out by size, so the count comes first in the ROM, ahead of the tables

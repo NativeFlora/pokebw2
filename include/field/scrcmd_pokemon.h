@@ -53,6 +53,8 @@ u32 GetScrPokeStat(FieldScriptEnv *env, u32 index, u32 param);
 BOOL CheckPokeMoveLearned_NonEgg(PartyPkm *pkm, u16 move);
 BOOL Scrcmd_Pokemon_PokePartyGetTypes(VM *vm, FieldScriptEnv *env);
 BOOL Scrcmd_Pokemon_PokePartyRecoverAll(VM *vm, FieldScriptEnv *env);
+// Escape from Unova
+BOOL Scrcmd_Efu_PokePartyRecoverHalf(VM *vm, FieldScriptEnv *env);
 BOOL Scrcmd_Pokemon_PokePartyGetEVTotal(VM *vm, FieldScriptEnv *env);
 BOOL Scrcmd_Pokemon_PokePartyIsFullHP(VM *vm, FieldScriptEnv *env);
 BOOL Scrcmd_Pokemon_PokePartyIsFullPP(VM *vm, FieldScriptEnv *env);

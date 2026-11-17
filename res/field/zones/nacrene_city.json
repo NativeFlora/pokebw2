@@ -3,7 +3,7 @@
     "map_type": 0,
     "npc_cache": 2,
     "area": "AREA_NACRENE_CITY",
-    "matrix": "MAP_MATRIX_OVERWORLD",
+    "matrix": "MAP_MATRIX_EFU_NACRENE",
     "scripts": "SCRIPTS_NACRENE_CITY",
     "text": "SCRIPT_TEXT_NACRENE_CITY",
     "bgm": "SEQ_BGM_C_02",
@@ -26,8 +26,8 @@
     "name_icon": 11,
     "easy_level": 5,
     "fly": {
-        "x": 637,
+        "x": 61,
         "y": 0,
-        "z": 599
+        "z": 55
     }
 }
