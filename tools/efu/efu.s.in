@@ -7,6 +7,10 @@
     .macro EfuPokePartyRecoverHalf
     FieldCommand 0x2f3
     .endm
+// Empties the party (0x2db, which was UnityTowerSetFloor; Scrcmd_Efu_PokePartyClear in src/ov036/scrcmd_leaves.c)
+    .macro EfuPokePartyClear
+    FieldCommand 0x2db
+    .endm
 // Escape from Unova's own scripts, global IDs from 11000 (EFU_SCRIPT_* in include/efu.h)
     ScriptEntry Script_NewGameSetup
     ScriptEntry Script_NewGameStart
@@ -15,22 +19,24 @@
     ScriptEntry Script_RaidDepart
     ScriptEntry Script_RaidReturn
     ScriptEntry Script_RaidLost
+    ScriptEntry Script_Blackout
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
 Script_NewGameSetup:
     ActorsPauseAll
     WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
+    GiveRunningShoes
     FinishAllEvents
     ActorsUnpauseAll
     VMHalt
 
-// Runs after the first fade-in of a new game: the player picks the Pokémon they were left with
+// Runs after the first fade-in of a new game: a lost Pokémon finds the player
 Script_NewGameStart:
     ActorsPauseAll
     SystemMsg Efu_Text_Wake, 2
     LastKeyWait
-    VMCall L_ChooseStarter
+    VMCall L_LostSoul
     SystemMsgClose
     FinishAllEvents
     ActorsUnpauseAll
@@ -79,6 +85,11 @@ Script_RaidDepart:
     WorkCmpConst 0x8011, 1
     VMJumpIf CMP_EQ, L_RaidStay
     WorkSetConst EFU_WORK_RAID, 1
+    // The season moves on with each raid (EFU_SEASON), when the player steps out onto the route
+    WorkAdd EFU_WORK_RAID_COUNT, 1
+    // Saves from before version 2 started without them
+    GiveRunningShoes
+    WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
     SystemMsgClose
@@ -117,14 +128,46 @@ Script_RaidReturn:
 Script_RaidLost:
     ActorsPauseAll
     WorkSetConst EFU_WORK_RAID, 0
+    EfuPokePartyClear
     SystemMsg Efu_Text_RaidLost, 2
     LastKeyWait
+    VMCall L_LostSoul
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
     SystemMsgClose
     ActorsUnpauseAll
     MapChangeWarp ZONE_NACRENE_CITY_8, 3, 3, 1
     VMHalt
+
+// Blacking out, once FieldMapControl_LoadBlackoutZone has brought the player home: the team is gone, the raid is
+// over, a new Pokémon turns up, and the game saves
+Script_Blackout:
+    ActorsPauseAll
+    WorkSetConst EFU_WORK_RAID, 0
+    EfuPokePartyClear
+    // The battle lost left the screen black (event_battle_lose.c), and the field shows nothing until it fades in
+    FadeInBlackQ
+    FadeWait
+    SystemMsg Efu_Text_Blackout, 2
+    LastKeyWait
+    VMCall L_LostSoul
+    SystemMsg Efu_Text_Saving, 2
+    SaveDataWrite 0x8010
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+// With the party empty: a random Pokémon from the starter pool (tools/efu/starters.py), as lost as the player, joins
+@LOST_SOUL@
+L_LostSoulFound:
+    WordSetPokeSpecies 1, 0x8025
+    PokePartyAdd 0x8010, 0x8025, 0, EFU_LOST_SOUL_LEVEL
+    FlagSet EVENT_FLAG_0x0961
+    MEPlay SEQ_ME_POKEGET
+    SystemMsg Efu_Text_LostSoul, 2
+    MEWait
+    LastKeyWait
+    VMReturn
 
 @STARTER_MENUS@
 // 0x8020 is the species, or 0 (Back) or more than any species (B)

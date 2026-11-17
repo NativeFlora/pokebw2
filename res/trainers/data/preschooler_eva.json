@@ -10,17 +10,17 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_KIRLIA",
+            "species": "SPECIES_GARDEVOIR",
             "form": 0,
-            "level": 61,
+            "level": 51,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_PIKACHU",
+            "species": "SPECIES_RAICHU",
             "form": 0,
-            "level": 61,
+            "level": 52,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -29,15 +29,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Trainer!\nI wanna play with you.{be01}"
+            "text": "Found you!\nYou're it!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Trainer!\nYou too strong!"
+            "text": "You cheated!"
         },
         {
             "type": 2,
-            "text": "Guess what! Guess what! When I grow up,\nI'm gonna ride on Reshiram or Zekrom!"
+            "text": "I've been hiding out here for\nages. Nobody ever finds me."
         }
     ]
 }

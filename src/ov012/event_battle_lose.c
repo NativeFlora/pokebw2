@@ -1,3 +1,4 @@
+#include "efu.h"
 #include "types.h"
 #include "field/event_battle_lose.h"
 #include "field/event_game_clear.h"
@@ -37,11 +38,8 @@ GameEventReturnCode EventBattleLose_Callback(GameEvent *event, u32 *state, void 
         (*state)++;
         break;
     case BATTLE_LOSE_STEP_SCRIPT:
-        if (!work->returnNonLeague) {
-            EventScriptCall_Start(event, 2, NULL, 0, HEAPID_FIELDMAP);
-        } else {
-            EventScriptCall_Start(event, 0x7d1, NULL, 0, HEAPID_FIELDMAP);
-        }
+        // Escape from Unova: always the hack's own script, which ends the raid (returnNonLeague no longer matters)
+        EventScriptCall_Start(event, EFU_SCRIPT_BLACKOUT, NULL, 0, HEAPID_FIELDMAP);
         (*state)++;
         break;
     case BATTLE_LOSE_STEP_END:

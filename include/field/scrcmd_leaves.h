@@ -49,4 +49,7 @@ void LeavesEffect_UpdateTCB(TCB *tcb, void *data);
 u8 GetPWTSeason(const WbtSystem *wbt);
 BOOL CheckHabitatList(const HabitatList *list, PokeDexSave *pokedex, u8 time, u32 caught);
 
+// Escape from Unova
+BOOL Scrcmd_Efu_PokePartyClear(VM *vm, FieldScriptEnv *env);
+
 #endif // POKEBW2_FIELD_SCRCMD_LEAVES_H

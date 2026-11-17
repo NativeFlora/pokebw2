@@ -2,17 +2,21 @@
     "$schema": "trainer.schema.json",
     "name": "Edgar",
     "class": "TRAINER_CLASS_SCHOOL_KID_M",
-    "battle_style": "BTL_STYLE_TRIPLE",
+    "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC", "AI_FLAG_EXPERT", "AI_FLAG_TAG_STRATEGY" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC",
+        "AI_FLAG_EXPERT",
+        "AI_FLAG_TAG_STRATEGY"
+    ],
     "heals": false,
     "money": 5,
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_NATU",
+            "species": "SPECIES_XATU",
             "form": 0,
-            "level": 61,
+            "level": 42,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,7 +24,7 @@
         {
             "species": "SPECIES_XATU",
             "form": 0,
-            "level": 61,
+            "level": 43,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -28,7 +32,7 @@
         {
             "species": "SPECIES_FEAROW",
             "form": 0,
-            "level": 61,
+            "level": 42,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -36,20 +40,16 @@
     ],
     "messages": [
         {
-            "type": 24,
-            "text": "A Triple Battle is a special battle you\ncan hold using three Pokémon!"
-        },
-        {
             "type": "TRMSG_START",
-            "text": "Behold the strength I have perfected\nthrough Triple Battle!{be01}"
+            "text": "Scavenging is simple math.\nYou have things. I want them.{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "How could this be...\nI thought I'd perfected it..."
+            "text": "I must have carried a one\nsomewhere..."
         },
         {
             "type": 2,
-            "text": "If you want to be the best, you need to\nknow the best moves and tricks for{be00}\nTriple Battles!"
+            "text": "The numbers only add up for\nthe strong out here."
         }
     ]
 }

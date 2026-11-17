@@ -1,4 +1,4 @@
-Efu_Text_Wake = Cold concrete.\nThe smell of smoke and rust.{be01}\nSomething stirs beside you.{be01}
+Efu_Text_Wake = Cold concrete.\nThe smell of smoke and rust.{be01}\nSomething stirs in the dark.{be01}
 Efu_Text_WhichType = Which Pokémon stayed with you?
 Efu_Text_WhichOne = Which one?
 Efu_Text_ThisOne = {0101:1}...\nIs that the one?
@@ -12,3 +12,5 @@ Efu_Text_RaidNoTeam = You won't last a minute out there\nwithout a Pokémon that
 Efu_Text_Saving = Saving...\nDon't turn off the power.
 Efu_Text_RaidReturn = You made it back.{be01}
 Efu_Text_RaidLost = You never made it back.{be01}\nEvery Pokémon you took\nout there is gone.{be01}
+Efu_Text_LostSoul = A {0101:1} crept out of the dark,\nas lost as you are.{be01}\nIt stays close to you.{be01}
+Efu_Text_Blackout = Everything went black.{be01}\nYou woke up at home, alone.\nYour Pokémon are gone.{be01}

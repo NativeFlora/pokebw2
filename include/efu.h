@@ -1,6 +1,12 @@
 #ifndef POKEBW2_EFU_H
 #define POKEBW2_EFU_H
 
+// The scripts include this file too, so the C headers are only for C
+#ifndef __ASSEMBLER__
+#include "types.h"
+#include "system/season.h"
+#endif
+
 // Escape from Unova: the hack's own constants
 
 // The global scripts of res/field/scripts/efu.s, from 11000 in its order (GLOBAL_SCRIPT_TABLE in script_sys.c)
@@ -12,6 +18,7 @@
 #define EFU_SCRIPT_RAID_DEPART (EFU_SCRIPT_FIRST + 4)
 #define EFU_SCRIPT_RAID_RETURN (EFU_SCRIPT_FIRST + 5)
 #define EFU_SCRIPT_RAID_LOST (EFU_SCRIPT_FIRST + 6)
+#define EFU_SCRIPT_BLACKOUT (EFU_SCRIPT_FIRST + 7)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -22,6 +29,20 @@
 // The save format's version, set on a new game. A later build that changes what the hack keeps in the save checks it
 // on continuing and upgrades the old save
 #define EFU_WORK_SAVE_VERSION 0x41ad
-#define EFU_SAVE_VERSION 1
+#define EFU_SAVE_VERSION 2
+// How many raids the player has set out on (from save version 2). The season moves on one with each raid, from winter
+#define EFU_WORK_RAID_COUNT 0x41ab
+// The level of the Pokémon that joins a player with none
+#define EFU_LOST_SOUL_LEVEL 10
+#define EFU_SEASON(raids) ((SEASON_WINTER + (raids)) % SEASON_COUNT)
+
+// The scavs' pursuit (event_trainer_eye.c): how far they see, the distance at which they notice the player whichever
+// way they face and a chase becomes a battle, and the steps out of sight before they give up
+#define EFU_SCAV_SIGHT 20
+#define EFU_SCAV_CATCH 3
+#define EFU_SCAV_LOSE_STEPS 6
+// The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
+#define EFU_SCAV_PARAM_CHASE 1
+#define EFU_SCAV_PARAM_MOVE_CODE 2
 
 #endif // POKEBW2_EFU_H

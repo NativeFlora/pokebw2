@@ -1,0 +1,13 @@
+{
+    "$schema": "../texture_imports.schema.json",
+    "textures": [
+        {
+            "texture": "sea_jimen",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_59"
+        },
+        {
+            "texture": "sea_zanami",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_59"
+        }
+    ]
+}

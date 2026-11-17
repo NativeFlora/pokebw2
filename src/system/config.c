@@ -27,10 +27,11 @@ void initConfig(const Config *config, Config *dest) {
 // The original clears each option after the memset
 void Config_Init(Config *config) {
     MI_CpuFill8(config, 0, sizeof(Config));
-    config->textSpeed = 1;
+    // Escape from Unova: fast text, the Set battle style and no battle animations
+    config->textSpeed = 2;
     config->soundFlags = 0;
-    config->battleStyle = 0;
-    config->battleScene = 0;
+    config->battleStyle = 1;
+    config->battleScene = 1;
     config->kanji = 0;
     config->saveBeforeIR = 1;
     config->cgearOn = 0;

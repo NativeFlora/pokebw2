@@ -10,17 +10,17 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_BELDUM",
+            "species": "SPECIES_METAGROSS",
             "form": 0,
-            "level": 61,
+            "level": 53,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_DEINO",
+            "species": "SPECIES_ZWEILOUS",
             "form": 0,
-            "level": 61,
+            "level": 54,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -29,7 +29,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Take this!\nHyper Beam!{be01}"
+            "text": "Gotcha!\nGimme everything you've got!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
@@ -37,7 +37,7 @@
         },
         {
             "type": 2,
-            "text": "A Hyper Beam? Hmm...no.\nMaybe I want to do a Giga Impact now?"
+            "text": "I'll get you next time.\nI always do."
         }
     ]
 }

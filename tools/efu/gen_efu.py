@@ -44,7 +44,20 @@ for i, (label, l) in enumerate(pages):
             text.append(f'{k} = {n}')
         s.append(f'    ListMenuAdd {k}, 65535, {num[c]}\n')
     s.append('    ListMenuAdd Efu_Text_Back, 65535, 0\n    ListMenuShow\n    VMJump L_ConfirmStarter\n')
+# The lost soul: Random picks an index of the whole pool, and a binary search of comparisons turns it into a species
+pool = [num[c] for c, n, t in st]
+ls = [f'L_LostSoul:\n    Random 0x8020, {len(pool)}\n']
+def tree(lo, hi, label):
+    if hi - lo == 1:
+        ls.append(f'{label}:\n    WorkSetConst 0x8025, {pool[lo]}\n    VMJump L_LostSoulFound\n')
+        return
+    mid = (lo + hi) // 2
+    ls.append(f'{label}:\n    WorkCmpConst 0x8020, {mid}\n    VMJumpIf CMP_GE, {label}_H\n')
+    tree(lo, mid, label + '_L')
+    tree(mid, hi, label + '_H')
+tree(0, len(pool), 'L_LostSoulPick')
 tmpl = open(os.path.join(here, 'efu.s.in')).read()
+tmpl = tmpl.replace('@LOST_SOUL@\n', ''.join(ls))
 open(root + '/res/field/scripts/efu.s', 'w').write(tmpl.replace('@STARTER_MENUS@\n', ''.join(s)))
 hand = open(os.path.join(here, 'efu.txt.in'), encoding='utf-8').read()
 open(root + '/res/text/script/efu.txt', 'w', encoding='utf-8').write(hand + '\n'.join(text) + '\n')

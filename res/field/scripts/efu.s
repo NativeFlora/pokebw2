@@ -7,6 +7,10 @@
     .macro EfuPokePartyRecoverHalf
     FieldCommand 0x2f3
     .endm
+// Empties the party (0x2db, which was UnityTowerSetFloor; Scrcmd_Efu_PokePartyClear in src/ov036/scrcmd_leaves.c)
+    .macro EfuPokePartyClear
+    FieldCommand 0x2db
+    .endm
 // Escape from Unova's own scripts, global IDs from 11000 (EFU_SCRIPT_* in include/efu.h)
     ScriptEntry Script_NewGameSetup
     ScriptEntry Script_NewGameStart
@@ -15,22 +19,24 @@
     ScriptEntry Script_RaidDepart
     ScriptEntry Script_RaidReturn
     ScriptEntry Script_RaidLost
+    ScriptEntry Script_Blackout
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
 Script_NewGameSetup:
     ActorsPauseAll
     WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
+    GiveRunningShoes
     FinishAllEvents
     ActorsUnpauseAll
     VMHalt
 
-// Runs after the first fade-in of a new game: the player picks the Pokémon they were left with
+// Runs after the first fade-in of a new game: a lost Pokémon finds the player
 Script_NewGameStart:
     ActorsPauseAll
     SystemMsg Efu_Text_Wake, 2
     LastKeyWait
-    VMCall L_ChooseStarter
+    VMCall L_LostSoul
     SystemMsgClose
     FinishAllEvents
     ActorsUnpauseAll
@@ -79,6 +85,11 @@ Script_RaidDepart:
     WorkCmpConst 0x8011, 1
     VMJumpIf CMP_EQ, L_RaidStay
     WorkSetConst EFU_WORK_RAID, 1
+    // The season moves on with each raid (EFU_SEASON), when the player steps out onto the route
+    WorkAdd EFU_WORK_RAID_COUNT, 1
+    // Saves from before version 2 started without them
+    GiveRunningShoes
+    WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
     SystemMsgClose
@@ -117,14 +128,1304 @@ Script_RaidReturn:
 Script_RaidLost:
     ActorsPauseAll
     WorkSetConst EFU_WORK_RAID, 0
+    EfuPokePartyClear
     SystemMsg Efu_Text_RaidLost, 2
     LastKeyWait
+    VMCall L_LostSoul
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
     SystemMsgClose
     ActorsUnpauseAll
     MapChangeWarp ZONE_NACRENE_CITY_8, 3, 3, 1
     VMHalt
+
+// Blacking out, once FieldMapControl_LoadBlackoutZone has brought the player home: the team is gone, the raid is
+// over, a new Pokémon turns up, and the game saves
+Script_Blackout:
+    ActorsPauseAll
+    WorkSetConst EFU_WORK_RAID, 0
+    EfuPokePartyClear
+    // The battle lost left the screen black (event_battle_lose.c), and the field shows nothing until it fades in
+    FadeInBlackQ
+    FadeWait
+    SystemMsg Efu_Text_Blackout, 2
+    LastKeyWait
+    VMCall L_LostSoul
+    SystemMsg Efu_Text_Saving, 2
+    SaveDataWrite 0x8010
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+// With the party empty: a random Pokémon from the starter pool (tools/efu/starters.py), as lost as the player, joins
+L_LostSoul:
+    Random 0x8020, 210
+L_LostSoulPick:
+    WorkCmpConst 0x8020, 105
+    VMJumpIf CMP_GE, L_LostSoulPick_H
+L_LostSoulPick_L:
+    WorkCmpConst 0x8020, 52
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H
+L_LostSoulPick_L_L:
+    WorkCmpConst 0x8020, 26
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H
+L_LostSoulPick_L_L_L:
+    WorkCmpConst 0x8020, 13
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H
+L_LostSoulPick_L_L_L_L:
+    WorkCmpConst 0x8020, 6
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_H
+L_LostSoulPick_L_L_L_L_L:
+    WorkCmpConst 0x8020, 3
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_L_H
+L_LostSoulPick_L_L_L_L_L_L:
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_L_L_H
+L_LostSoulPick_L_L_L_L_L_L_L:
+    WorkSetConst 0x8025, 1
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_L_L_H:
+    WorkCmpConst 0x8020, 2
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_L_L_H_H
+L_LostSoulPick_L_L_L_L_L_L_H_L:
+    WorkSetConst 0x8025, 4
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_L_L_H_H:
+    WorkSetConst 0x8025, 7
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_L_H:
+    WorkCmpConst 0x8020, 4
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_L_H_H
+L_LostSoulPick_L_L_L_L_L_H_L:
+    WorkSetConst 0x8025, 10
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_L_H_H:
+    WorkCmpConst 0x8020, 5
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_L_H_H_H
+L_LostSoulPick_L_L_L_L_L_H_H_L:
+    WorkSetConst 0x8025, 13
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_L_H_H_H:
+    WorkSetConst 0x8025, 16
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_H:
+    WorkCmpConst 0x8020, 9
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_H_H
+L_LostSoulPick_L_L_L_L_H_L:
+    WorkCmpConst 0x8020, 7
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_H_L_H
+L_LostSoulPick_L_L_L_L_H_L_L:
+    WorkSetConst 0x8025, 19
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_H_L_H:
+    WorkCmpConst 0x8020, 8
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_H_L_H_H
+L_LostSoulPick_L_L_L_L_H_L_H_L:
+    WorkSetConst 0x8025, 21
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_H_L_H_H:
+    WorkSetConst 0x8025, 23
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_H_H:
+    WorkCmpConst 0x8020, 11
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_H_H_H
+L_LostSoulPick_L_L_L_L_H_H_L:
+    WorkCmpConst 0x8020, 10
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_H_H_L_H
+L_LostSoulPick_L_L_L_L_H_H_L_L:
+    WorkSetConst 0x8025, 25
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_H_H_L_H:
+    WorkSetConst 0x8025, 27
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_H_H_H:
+    WorkCmpConst 0x8020, 12
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_L_H_H_H_H
+L_LostSoulPick_L_L_L_L_H_H_H_L:
+    WorkSetConst 0x8025, 29
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_L_H_H_H_H:
+    WorkSetConst 0x8025, 32
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H:
+    WorkCmpConst 0x8020, 19
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_H
+L_LostSoulPick_L_L_L_H_L:
+    WorkCmpConst 0x8020, 16
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_L_H
+L_LostSoulPick_L_L_L_H_L_L:
+    WorkCmpConst 0x8020, 14
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_L_L_H
+L_LostSoulPick_L_L_L_H_L_L_L:
+    WorkSetConst 0x8025, 35
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_L_L_H:
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_L_L_H_H
+L_LostSoulPick_L_L_L_H_L_L_H_L:
+    WorkSetConst 0x8025, 37
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_L_L_H_H:
+    WorkSetConst 0x8025, 39
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_L_H:
+    WorkCmpConst 0x8020, 17
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_L_H_H
+L_LostSoulPick_L_L_L_H_L_H_L:
+    WorkSetConst 0x8025, 41
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_L_H_H:
+    WorkCmpConst 0x8020, 18
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_L_H_H_H
+L_LostSoulPick_L_L_L_H_L_H_H_L:
+    WorkSetConst 0x8025, 43
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_L_H_H_H:
+    WorkSetConst 0x8025, 46
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_H:
+    WorkCmpConst 0x8020, 22
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_H_H
+L_LostSoulPick_L_L_L_H_H_L:
+    WorkCmpConst 0x8020, 20
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_H_L_H
+L_LostSoulPick_L_L_L_H_H_L_L:
+    WorkSetConst 0x8025, 48
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_H_L_H:
+    WorkCmpConst 0x8020, 21
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_H_L_H_H
+L_LostSoulPick_L_L_L_H_H_L_H_L:
+    WorkSetConst 0x8025, 50
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_H_L_H_H:
+    WorkSetConst 0x8025, 52
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_H_H:
+    WorkCmpConst 0x8020, 24
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_H_H_H
+L_LostSoulPick_L_L_L_H_H_H_L:
+    WorkCmpConst 0x8020, 23
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_H_H_L_H
+L_LostSoulPick_L_L_L_H_H_H_L_L:
+    WorkSetConst 0x8025, 54
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_H_H_L_H:
+    WorkSetConst 0x8025, 56
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_H_H_H:
+    WorkCmpConst 0x8020, 25
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_L_H_H_H_H_H
+L_LostSoulPick_L_L_L_H_H_H_H_L:
+    WorkSetConst 0x8025, 58
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_L_H_H_H_H_H:
+    WorkSetConst 0x8025, 60
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H:
+    WorkCmpConst 0x8020, 39
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H
+L_LostSoulPick_L_L_H_L:
+    WorkCmpConst 0x8020, 32
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_H
+L_LostSoulPick_L_L_H_L_L:
+    WorkCmpConst 0x8020, 29
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_L_H
+L_LostSoulPick_L_L_H_L_L_L:
+    WorkCmpConst 0x8020, 27
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_L_L_H
+L_LostSoulPick_L_L_H_L_L_L_L:
+    WorkSetConst 0x8025, 63
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_L_L_H:
+    WorkCmpConst 0x8020, 28
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_L_L_H_H
+L_LostSoulPick_L_L_H_L_L_L_H_L:
+    WorkSetConst 0x8025, 66
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_L_L_H_H:
+    WorkSetConst 0x8025, 69
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_L_H:
+    WorkCmpConst 0x8020, 30
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_L_H_H
+L_LostSoulPick_L_L_H_L_L_H_L:
+    WorkSetConst 0x8025, 72
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_L_H_H:
+    WorkCmpConst 0x8020, 31
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_L_H_H_H
+L_LostSoulPick_L_L_H_L_L_H_H_L:
+    WorkSetConst 0x8025, 74
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_L_H_H_H:
+    WorkSetConst 0x8025, 77
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_H:
+    WorkCmpConst 0x8020, 35
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_H_H
+L_LostSoulPick_L_L_H_L_H_L:
+    WorkCmpConst 0x8020, 33
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_H_L_H
+L_LostSoulPick_L_L_H_L_H_L_L:
+    WorkSetConst 0x8025, 79
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_H_L_H:
+    WorkCmpConst 0x8020, 34
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_H_L_H_H
+L_LostSoulPick_L_L_H_L_H_L_H_L:
+    WorkSetConst 0x8025, 81
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_H_L_H_H:
+    WorkSetConst 0x8025, 84
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_H_H:
+    WorkCmpConst 0x8020, 37
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_H_H_H
+L_LostSoulPick_L_L_H_L_H_H_L:
+    WorkCmpConst 0x8020, 36
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_H_H_L_H
+L_LostSoulPick_L_L_H_L_H_H_L_L:
+    WorkSetConst 0x8025, 86
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_H_H_L_H:
+    WorkSetConst 0x8025, 88
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_H_H_H:
+    WorkCmpConst 0x8020, 38
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_L_H_H_H_H
+L_LostSoulPick_L_L_H_L_H_H_H_L:
+    WorkSetConst 0x8025, 90
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_L_H_H_H_H:
+    WorkSetConst 0x8025, 92
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H:
+    WorkCmpConst 0x8020, 45
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_H
+L_LostSoulPick_L_L_H_H_L:
+    WorkCmpConst 0x8020, 42
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_L_H
+L_LostSoulPick_L_L_H_H_L_L:
+    WorkCmpConst 0x8020, 40
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_L_L_H
+L_LostSoulPick_L_L_H_H_L_L_L:
+    WorkSetConst 0x8025, 95
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_L_L_H:
+    WorkCmpConst 0x8020, 41
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_L_L_H_H
+L_LostSoulPick_L_L_H_H_L_L_H_L:
+    WorkSetConst 0x8025, 96
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_L_L_H_H:
+    WorkSetConst 0x8025, 98
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_L_H:
+    WorkCmpConst 0x8020, 43
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_L_H_H
+L_LostSoulPick_L_L_H_H_L_H_L:
+    WorkSetConst 0x8025, 100
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_L_H_H:
+    WorkCmpConst 0x8020, 44
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_L_H_H_H
+L_LostSoulPick_L_L_H_H_L_H_H_L:
+    WorkSetConst 0x8025, 102
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_L_H_H_H:
+    WorkSetConst 0x8025, 104
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_H:
+    WorkCmpConst 0x8020, 48
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_H_H
+L_LostSoulPick_L_L_H_H_H_L:
+    WorkCmpConst 0x8020, 46
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_H_L_H
+L_LostSoulPick_L_L_H_H_H_L_L:
+    WorkSetConst 0x8025, 108
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_H_L_H:
+    WorkCmpConst 0x8020, 47
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_H_L_H_H
+L_LostSoulPick_L_L_H_H_H_L_H_L:
+    WorkSetConst 0x8025, 109
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_H_L_H_H:
+    WorkSetConst 0x8025, 111
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_H_H:
+    WorkCmpConst 0x8020, 50
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_H_H_H
+L_LostSoulPick_L_L_H_H_H_H_L:
+    WorkCmpConst 0x8020, 49
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_H_H_L_H
+L_LostSoulPick_L_L_H_H_H_H_L_L:
+    WorkSetConst 0x8025, 113
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_H_H_L_H:
+    WorkSetConst 0x8025, 114
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_H_H_H:
+    WorkCmpConst 0x8020, 51
+    VMJumpIf CMP_GE, L_LostSoulPick_L_L_H_H_H_H_H_H
+L_LostSoulPick_L_L_H_H_H_H_H_L:
+    WorkSetConst 0x8025, 116
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_L_H_H_H_H_H_H:
+    WorkSetConst 0x8025, 118
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H:
+    WorkCmpConst 0x8020, 78
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H
+L_LostSoulPick_L_H_L:
+    WorkCmpConst 0x8020, 65
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H
+L_LostSoulPick_L_H_L_L:
+    WorkCmpConst 0x8020, 58
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_H
+L_LostSoulPick_L_H_L_L_L:
+    WorkCmpConst 0x8020, 55
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_L_H
+L_LostSoulPick_L_H_L_L_L_L:
+    WorkCmpConst 0x8020, 53
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_L_L_H
+L_LostSoulPick_L_H_L_L_L_L_L:
+    WorkSetConst 0x8025, 120
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_L_L_H:
+    WorkCmpConst 0x8020, 54
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_L_L_H_H
+L_LostSoulPick_L_H_L_L_L_L_H_L:
+    WorkSetConst 0x8025, 123
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_L_L_H_H:
+    WorkSetConst 0x8025, 125
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_L_H:
+    WorkCmpConst 0x8020, 56
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_L_H_H
+L_LostSoulPick_L_H_L_L_L_H_L:
+    WorkSetConst 0x8025, 126
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_L_H_H:
+    WorkCmpConst 0x8020, 57
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_L_H_H_H
+L_LostSoulPick_L_H_L_L_L_H_H_L:
+    WorkSetConst 0x8025, 129
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_L_H_H_H:
+    WorkSetConst 0x8025, 133
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_H:
+    WorkCmpConst 0x8020, 61
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_H_H
+L_LostSoulPick_L_H_L_L_H_L:
+    WorkCmpConst 0x8020, 59
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_H_L_H
+L_LostSoulPick_L_H_L_L_H_L_L:
+    WorkSetConst 0x8025, 137
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_H_L_H:
+    WorkCmpConst 0x8020, 60
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_H_L_H_H
+L_LostSoulPick_L_H_L_L_H_L_H_L:
+    WorkSetConst 0x8025, 138
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_H_L_H_H:
+    WorkSetConst 0x8025, 140
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_H_H:
+    WorkCmpConst 0x8020, 63
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_H_H_H
+L_LostSoulPick_L_H_L_L_H_H_L:
+    WorkCmpConst 0x8020, 62
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_H_H_L_H
+L_LostSoulPick_L_H_L_L_H_H_L_L:
+    WorkSetConst 0x8025, 152
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_H_H_L_H:
+    WorkSetConst 0x8025, 155
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_H_H_H:
+    WorkCmpConst 0x8020, 64
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_L_H_H_H_H
+L_LostSoulPick_L_H_L_L_H_H_H_L:
+    WorkSetConst 0x8025, 158
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_L_H_H_H_H:
+    WorkSetConst 0x8025, 161
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H:
+    WorkCmpConst 0x8020, 71
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_H
+L_LostSoulPick_L_H_L_H_L:
+    WorkCmpConst 0x8020, 68
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_L_H
+L_LostSoulPick_L_H_L_H_L_L:
+    WorkCmpConst 0x8020, 66
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_L_L_H
+L_LostSoulPick_L_H_L_H_L_L_L:
+    WorkSetConst 0x8025, 163
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_L_L_H:
+    WorkCmpConst 0x8020, 67
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_L_L_H_H
+L_LostSoulPick_L_H_L_H_L_L_H_L:
+    WorkSetConst 0x8025, 165
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_L_L_H_H:
+    WorkSetConst 0x8025, 167
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_L_H:
+    WorkCmpConst 0x8020, 69
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_L_H_H
+L_LostSoulPick_L_H_L_H_L_H_L:
+    WorkSetConst 0x8025, 170
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_L_H_H:
+    WorkCmpConst 0x8020, 70
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_L_H_H_H
+L_LostSoulPick_L_H_L_H_L_H_H_L:
+    WorkSetConst 0x8025, 176
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_L_H_H_H:
+    WorkSetConst 0x8025, 177
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_H:
+    WorkCmpConst 0x8020, 74
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_H_H
+L_LostSoulPick_L_H_L_H_H_L:
+    WorkCmpConst 0x8020, 72
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_H_L_H
+L_LostSoulPick_L_H_L_H_H_L_L:
+    WorkSetConst 0x8025, 179
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_H_L_H:
+    WorkCmpConst 0x8020, 73
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_H_L_H_H
+L_LostSoulPick_L_H_L_H_H_L_H_L:
+    WorkSetConst 0x8025, 183
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_H_L_H_H:
+    WorkSetConst 0x8025, 187
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_H_H:
+    WorkCmpConst 0x8020, 76
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_H_H_H
+L_LostSoulPick_L_H_L_H_H_H_L:
+    WorkCmpConst 0x8020, 75
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_H_H_L_H
+L_LostSoulPick_L_H_L_H_H_H_L_L:
+    WorkSetConst 0x8025, 190
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_H_H_L_H:
+    WorkSetConst 0x8025, 191
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_H_H_H:
+    WorkCmpConst 0x8020, 77
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_L_H_H_H_H_H
+L_LostSoulPick_L_H_L_H_H_H_H_L:
+    WorkSetConst 0x8025, 193
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_L_H_H_H_H_H:
+    WorkSetConst 0x8025, 194
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H:
+    WorkCmpConst 0x8020, 91
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H
+L_LostSoulPick_L_H_H_L:
+    WorkCmpConst 0x8020, 84
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_H
+L_LostSoulPick_L_H_H_L_L:
+    WorkCmpConst 0x8020, 81
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_L_H
+L_LostSoulPick_L_H_H_L_L_L:
+    WorkCmpConst 0x8020, 79
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_L_L_H
+L_LostSoulPick_L_H_H_L_L_L_L:
+    WorkSetConst 0x8025, 198
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_L_L_H:
+    WorkCmpConst 0x8020, 80
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_L_L_H_H
+L_LostSoulPick_L_H_H_L_L_L_H_L:
+    WorkSetConst 0x8025, 200
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_L_L_H_H:
+    WorkSetConst 0x8025, 204
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_L_H:
+    WorkCmpConst 0x8020, 82
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_L_H_H
+L_LostSoulPick_L_H_H_L_L_H_L:
+    WorkSetConst 0x8025, 207
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_L_H_H:
+    WorkCmpConst 0x8020, 83
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_L_H_H_H
+L_LostSoulPick_L_H_H_L_L_H_H_L:
+    WorkSetConst 0x8025, 209
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_L_H_H_H:
+    WorkSetConst 0x8025, 215
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_H:
+    WorkCmpConst 0x8020, 87
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_H_H
+L_LostSoulPick_L_H_H_L_H_L:
+    WorkCmpConst 0x8020, 85
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_H_L_H
+L_LostSoulPick_L_H_H_L_H_L_L:
+    WorkSetConst 0x8025, 216
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_H_L_H:
+    WorkCmpConst 0x8020, 86
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_H_L_H_H
+L_LostSoulPick_L_H_H_L_H_L_H_L:
+    WorkSetConst 0x8025, 218
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_H_L_H_H:
+    WorkSetConst 0x8025, 220
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_H_H:
+    WorkCmpConst 0x8020, 89
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_H_H_H
+L_LostSoulPick_L_H_H_L_H_H_L:
+    WorkCmpConst 0x8020, 88
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_H_H_L_H
+L_LostSoulPick_L_H_H_L_H_H_L_L:
+    WorkSetConst 0x8025, 223
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_H_H_L_H:
+    WorkSetConst 0x8025, 228
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_H_H_H:
+    WorkCmpConst 0x8020, 90
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_L_H_H_H_H
+L_LostSoulPick_L_H_H_L_H_H_H_L:
+    WorkSetConst 0x8025, 231
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_L_H_H_H_H:
+    WorkSetConst 0x8025, 252
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H:
+    WorkCmpConst 0x8020, 98
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_H
+L_LostSoulPick_L_H_H_H_L:
+    WorkCmpConst 0x8020, 94
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_L_H
+L_LostSoulPick_L_H_H_H_L_L:
+    WorkCmpConst 0x8020, 92
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_L_L_H
+L_LostSoulPick_L_H_H_H_L_L_L:
+    WorkSetConst 0x8025, 255
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_L_L_H:
+    WorkCmpConst 0x8020, 93
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_L_L_H_H
+L_LostSoulPick_L_H_H_H_L_L_H_L:
+    WorkSetConst 0x8025, 258
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_L_L_H_H:
+    WorkSetConst 0x8025, 261
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_L_H:
+    WorkCmpConst 0x8020, 96
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_L_H_H
+L_LostSoulPick_L_H_H_H_L_H_L:
+    WorkCmpConst 0x8020, 95
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_L_H_L_H
+L_LostSoulPick_L_H_H_H_L_H_L_L:
+    WorkSetConst 0x8025, 263
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_L_H_L_H:
+    WorkSetConst 0x8025, 265
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_L_H_H:
+    WorkCmpConst 0x8020, 97
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_L_H_H_H
+L_LostSoulPick_L_H_H_H_L_H_H_L:
+    WorkSetConst 0x8025, 270
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_L_H_H_H:
+    WorkSetConst 0x8025, 273
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_H:
+    WorkCmpConst 0x8020, 101
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_H_H
+L_LostSoulPick_L_H_H_H_H_L:
+    WorkCmpConst 0x8020, 99
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_H_L_H
+L_LostSoulPick_L_H_H_H_H_L_L:
+    WorkSetConst 0x8025, 276
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_H_L_H:
+    WorkCmpConst 0x8020, 100
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_H_L_H_H
+L_LostSoulPick_L_H_H_H_H_L_H_L:
+    WorkSetConst 0x8025, 278
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_H_L_H_H:
+    WorkSetConst 0x8025, 280
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_H_H:
+    WorkCmpConst 0x8020, 103
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_H_H_H
+L_LostSoulPick_L_H_H_H_H_H_L:
+    WorkCmpConst 0x8020, 102
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_H_H_L_H
+L_LostSoulPick_L_H_H_H_H_H_L_L:
+    WorkSetConst 0x8025, 283
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_H_H_L_H:
+    WorkSetConst 0x8025, 285
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_H_H_H:
+    WorkCmpConst 0x8020, 104
+    VMJumpIf CMP_GE, L_LostSoulPick_L_H_H_H_H_H_H_H
+L_LostSoulPick_L_H_H_H_H_H_H_L:
+    WorkSetConst 0x8025, 287
+    VMJump L_LostSoulFound
+L_LostSoulPick_L_H_H_H_H_H_H_H:
+    WorkSetConst 0x8025, 290
+    VMJump L_LostSoulFound
+L_LostSoulPick_H:
+    WorkCmpConst 0x8020, 157
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H
+L_LostSoulPick_H_L:
+    WorkCmpConst 0x8020, 131
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H
+L_LostSoulPick_H_L_L:
+    WorkCmpConst 0x8020, 118
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H
+L_LostSoulPick_H_L_L_L:
+    WorkCmpConst 0x8020, 111
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_H
+L_LostSoulPick_H_L_L_L_L:
+    WorkCmpConst 0x8020, 108
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_L_H
+L_LostSoulPick_H_L_L_L_L_L:
+    WorkCmpConst 0x8020, 106
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_L_L_H
+L_LostSoulPick_H_L_L_L_L_L_L:
+    WorkSetConst 0x8025, 293
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_L_L_H:
+    WorkCmpConst 0x8020, 107
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_L_L_H_H
+L_LostSoulPick_H_L_L_L_L_L_H_L:
+    WorkSetConst 0x8025, 296
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_L_L_H_H:
+    WorkSetConst 0x8025, 299
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_L_H:
+    WorkCmpConst 0x8020, 109
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_L_H_H
+L_LostSoulPick_H_L_L_L_L_H_L:
+    WorkSetConst 0x8025, 300
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_L_H_H:
+    WorkCmpConst 0x8020, 110
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_L_H_H_H
+L_LostSoulPick_H_L_L_L_L_H_H_L:
+    WorkSetConst 0x8025, 304
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_L_H_H_H:
+    WorkSetConst 0x8025, 307
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_H:
+    WorkCmpConst 0x8020, 114
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_H_H
+L_LostSoulPick_H_L_L_L_H_L:
+    WorkCmpConst 0x8020, 112
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_H_L_H
+L_LostSoulPick_H_L_L_L_H_L_L:
+    WorkSetConst 0x8025, 309
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_H_L_H:
+    WorkCmpConst 0x8020, 113
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_H_L_H_H
+L_LostSoulPick_H_L_L_L_H_L_H_L:
+    WorkSetConst 0x8025, 315
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_H_L_H_H:
+    WorkSetConst 0x8025, 316
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_H_H:
+    WorkCmpConst 0x8020, 116
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_H_H_H
+L_LostSoulPick_H_L_L_L_H_H_L:
+    WorkCmpConst 0x8020, 115
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_H_H_L_H
+L_LostSoulPick_H_L_L_L_H_H_L_L:
+    WorkSetConst 0x8025, 318
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_H_H_L_H:
+    WorkSetConst 0x8025, 320
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_H_H_H:
+    WorkCmpConst 0x8020, 117
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_L_H_H_H_H
+L_LostSoulPick_H_L_L_L_H_H_H_L:
+    WorkSetConst 0x8025, 322
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_L_H_H_H_H:
+    WorkSetConst 0x8025, 325
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H:
+    WorkCmpConst 0x8020, 124
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_H
+L_LostSoulPick_H_L_L_H_L:
+    WorkCmpConst 0x8020, 121
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_L_H
+L_LostSoulPick_H_L_L_H_L_L:
+    WorkCmpConst 0x8020, 119
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_L_L_H
+L_LostSoulPick_H_L_L_H_L_L_L:
+    WorkSetConst 0x8025, 328
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_L_L_H:
+    WorkCmpConst 0x8020, 120
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_L_L_H_H
+L_LostSoulPick_H_L_L_H_L_L_H_L:
+    WorkSetConst 0x8025, 331
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_L_L_H_H:
+    WorkSetConst 0x8025, 333
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_L_H:
+    WorkCmpConst 0x8020, 122
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_L_H_H
+L_LostSoulPick_H_L_L_H_L_H_L:
+    WorkSetConst 0x8025, 339
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_L_H_H:
+    WorkCmpConst 0x8020, 123
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_L_H_H_H
+L_LostSoulPick_H_L_L_H_L_H_H_L:
+    WorkSetConst 0x8025, 341
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_L_H_H_H:
+    WorkSetConst 0x8025, 343
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_H:
+    WorkCmpConst 0x8020, 127
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_H_H
+L_LostSoulPick_H_L_L_H_H_L:
+    WorkCmpConst 0x8020, 125
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_H_L_H
+L_LostSoulPick_H_L_L_H_H_L_L:
+    WorkSetConst 0x8025, 345
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_H_L_H:
+    WorkCmpConst 0x8020, 126
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_H_L_H_H
+L_LostSoulPick_H_L_L_H_H_L_H_L:
+    WorkSetConst 0x8025, 347
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_H_L_H_H:
+    WorkSetConst 0x8025, 349
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_H_H:
+    WorkCmpConst 0x8020, 129
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_H_H_H
+L_LostSoulPick_H_L_L_H_H_H_L:
+    WorkCmpConst 0x8020, 128
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_H_H_L_H
+L_LostSoulPick_H_L_L_H_H_H_L_L:
+    WorkSetConst 0x8025, 353
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_H_H_L_H:
+    WorkSetConst 0x8025, 355
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_H_H_H:
+    WorkCmpConst 0x8020, 130
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_L_H_H_H_H_H
+L_LostSoulPick_H_L_L_H_H_H_H_L:
+    WorkSetConst 0x8025, 361
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_L_H_H_H_H_H:
+    WorkSetConst 0x8025, 363
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H:
+    WorkCmpConst 0x8020, 144
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H
+L_LostSoulPick_H_L_H_L:
+    WorkCmpConst 0x8020, 137
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_H
+L_LostSoulPick_H_L_H_L_L:
+    WorkCmpConst 0x8020, 134
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_L_H
+L_LostSoulPick_H_L_H_L_L_L:
+    WorkCmpConst 0x8020, 132
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_L_L_H
+L_LostSoulPick_H_L_H_L_L_L_L:
+    WorkSetConst 0x8025, 366
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_L_L_H:
+    WorkCmpConst 0x8020, 133
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_L_L_H_H
+L_LostSoulPick_H_L_H_L_L_L_H_L:
+    WorkSetConst 0x8025, 387
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_L_L_H_H:
+    WorkSetConst 0x8025, 390
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_L_H:
+    WorkCmpConst 0x8020, 135
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_L_H_H
+L_LostSoulPick_H_L_H_L_L_H_L:
+    WorkSetConst 0x8025, 393
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_L_H_H:
+    WorkCmpConst 0x8020, 136
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_L_H_H_H
+L_LostSoulPick_H_L_H_L_L_H_H_L:
+    WorkSetConst 0x8025, 396
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_L_H_H_H:
+    WorkSetConst 0x8025, 399
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_H:
+    WorkCmpConst 0x8020, 140
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_H_H
+L_LostSoulPick_H_L_H_L_H_L:
+    WorkCmpConst 0x8020, 138
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_H_L_H
+L_LostSoulPick_H_L_H_L_H_L_L:
+    WorkSetConst 0x8025, 401
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_H_L_H:
+    WorkCmpConst 0x8020, 139
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_H_L_H_H
+L_LostSoulPick_H_L_H_L_H_L_H_L:
+    WorkSetConst 0x8025, 403
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_H_L_H_H:
+    WorkSetConst 0x8025, 408
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_H_H:
+    WorkCmpConst 0x8020, 142
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_H_H_H
+L_LostSoulPick_H_L_H_L_H_H_L:
+    WorkCmpConst 0x8020, 141
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_H_H_L_H
+L_LostSoulPick_H_L_H_L_H_H_L_L:
+    WorkSetConst 0x8025, 410
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_H_H_L_H:
+    WorkSetConst 0x8025, 412
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_H_H_H:
+    WorkCmpConst 0x8020, 143
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_L_H_H_H_H
+L_LostSoulPick_H_L_H_L_H_H_H_L:
+    WorkSetConst 0x8025, 415
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_L_H_H_H_H:
+    WorkSetConst 0x8025, 418
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H:
+    WorkCmpConst 0x8020, 150
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_H
+L_LostSoulPick_H_L_H_H_L:
+    WorkCmpConst 0x8020, 147
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_L_H
+L_LostSoulPick_H_L_H_H_L_L:
+    WorkCmpConst 0x8020, 145
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_L_L_H
+L_LostSoulPick_H_L_H_H_L_L_L:
+    WorkSetConst 0x8025, 420
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_L_L_H:
+    WorkCmpConst 0x8020, 146
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_L_L_H_H
+L_LostSoulPick_H_L_H_H_L_L_H_L:
+    WorkSetConst 0x8025, 422
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_L_L_H_H:
+    WorkSetConst 0x8025, 425
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_L_H:
+    WorkCmpConst 0x8020, 148
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_L_H_H
+L_LostSoulPick_H_L_H_H_L_H_L:
+    WorkSetConst 0x8025, 427
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_L_H_H:
+    WorkCmpConst 0x8020, 149
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_L_H_H_H
+L_LostSoulPick_H_L_H_H_L_H_H_L:
+    WorkSetConst 0x8025, 431
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_L_H_H_H:
+    WorkSetConst 0x8025, 434
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_H:
+    WorkCmpConst 0x8020, 153
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_H_H
+L_LostSoulPick_H_L_H_H_H_L:
+    WorkCmpConst 0x8020, 151
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_H_L_H
+L_LostSoulPick_H_L_H_H_H_L_L:
+    WorkSetConst 0x8025, 436
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_H_L_H:
+    WorkCmpConst 0x8020, 152
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_H_L_H_H
+L_LostSoulPick_H_L_H_H_H_L_H_L:
+    WorkSetConst 0x8025, 449
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_H_L_H_H:
+    WorkSetConst 0x8025, 451
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_H_H:
+    WorkCmpConst 0x8020, 155
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_H_H_H
+L_LostSoulPick_H_L_H_H_H_H_L:
+    WorkCmpConst 0x8020, 154
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_H_H_L_H
+L_LostSoulPick_H_L_H_H_H_H_L_L:
+    WorkSetConst 0x8025, 453
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_H_H_L_H:
+    WorkSetConst 0x8025, 456
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_H_H_H:
+    WorkCmpConst 0x8020, 156
+    VMJumpIf CMP_GE, L_LostSoulPick_H_L_H_H_H_H_H_H
+L_LostSoulPick_H_L_H_H_H_H_H_L:
+    WorkSetConst 0x8025, 459
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_L_H_H_H_H_H_H:
+    WorkSetConst 0x8025, 495
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H:
+    WorkCmpConst 0x8020, 183
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H
+L_LostSoulPick_H_H_L:
+    WorkCmpConst 0x8020, 170
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H
+L_LostSoulPick_H_H_L_L:
+    WorkCmpConst 0x8020, 163
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_H
+L_LostSoulPick_H_H_L_L_L:
+    WorkCmpConst 0x8020, 160
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_L_H
+L_LostSoulPick_H_H_L_L_L_L:
+    WorkCmpConst 0x8020, 158
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_L_L_H
+L_LostSoulPick_H_H_L_L_L_L_L:
+    WorkSetConst 0x8025, 498
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_L_L_H:
+    WorkCmpConst 0x8020, 159
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_L_L_H_H
+L_LostSoulPick_H_H_L_L_L_L_H_L:
+    WorkSetConst 0x8025, 501
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_L_L_H_H:
+    WorkSetConst 0x8025, 504
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_L_H:
+    WorkCmpConst 0x8020, 161
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_L_H_H
+L_LostSoulPick_H_H_L_L_L_H_L:
+    WorkSetConst 0x8025, 506
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_L_H_H:
+    WorkCmpConst 0x8020, 162
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_L_H_H_H
+L_LostSoulPick_H_H_L_L_L_H_H_L:
+    WorkSetConst 0x8025, 509
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_L_H_H_H:
+    WorkSetConst 0x8025, 511
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_H:
+    WorkCmpConst 0x8020, 166
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_H_H
+L_LostSoulPick_H_H_L_L_H_L:
+    WorkCmpConst 0x8020, 164
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_H_L_H
+L_LostSoulPick_H_H_L_L_H_L_L:
+    WorkSetConst 0x8025, 513
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_H_L_H:
+    WorkCmpConst 0x8020, 165
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_H_L_H_H
+L_LostSoulPick_H_H_L_L_H_L_H_L:
+    WorkSetConst 0x8025, 515
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_H_L_H_H:
+    WorkSetConst 0x8025, 517
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_H_H:
+    WorkCmpConst 0x8020, 168
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_H_H_H
+L_LostSoulPick_H_H_L_L_H_H_L:
+    WorkCmpConst 0x8020, 167
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_H_H_L_H
+L_LostSoulPick_H_H_L_L_H_H_L_L:
+    WorkSetConst 0x8025, 519
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_H_H_L_H:
+    WorkSetConst 0x8025, 522
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_H_H_H:
+    WorkCmpConst 0x8020, 169
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_L_H_H_H_H
+L_LostSoulPick_H_H_L_L_H_H_H_L:
+    WorkSetConst 0x8025, 524
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_L_H_H_H_H:
+    WorkSetConst 0x8025, 527
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H:
+    WorkCmpConst 0x8020, 176
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_H
+L_LostSoulPick_H_H_L_H_L:
+    WorkCmpConst 0x8020, 173
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_L_H
+L_LostSoulPick_H_H_L_H_L_L:
+    WorkCmpConst 0x8020, 171
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_L_L_H
+L_LostSoulPick_H_H_L_H_L_L_L:
+    WorkSetConst 0x8025, 529
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_L_L_H:
+    WorkCmpConst 0x8020, 172
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_L_L_H_H
+L_LostSoulPick_H_H_L_H_L_L_H_L:
+    WorkSetConst 0x8025, 532
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_L_L_H_H:
+    WorkSetConst 0x8025, 535
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_L_H:
+    WorkCmpConst 0x8020, 174
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_L_H_H
+L_LostSoulPick_H_H_L_H_L_H_L:
+    WorkSetConst 0x8025, 540
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_L_H_H:
+    WorkCmpConst 0x8020, 175
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_L_H_H_H
+L_LostSoulPick_H_H_L_H_L_H_H_L:
+    WorkSetConst 0x8025, 543
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_L_H_H_H:
+    WorkSetConst 0x8025, 546
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_H:
+    WorkCmpConst 0x8020, 179
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_H_H
+L_LostSoulPick_H_H_L_H_H_L:
+    WorkCmpConst 0x8020, 177
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_H_L_H
+L_LostSoulPick_H_H_L_H_H_L_L:
+    WorkSetConst 0x8025, 548
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_H_L_H:
+    WorkCmpConst 0x8020, 178
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_H_L_H_H
+L_LostSoulPick_H_H_L_H_H_L_H_L:
+    WorkSetConst 0x8025, 551
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_H_L_H_H:
+    WorkSetConst 0x8025, 554
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_H_H:
+    WorkCmpConst 0x8020, 181
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_H_H_H
+L_LostSoulPick_H_H_L_H_H_H_L:
+    WorkCmpConst 0x8020, 180
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_H_H_L_H
+L_LostSoulPick_H_H_L_H_H_H_L_L:
+    WorkSetConst 0x8025, 557
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_H_H_L_H:
+    WorkSetConst 0x8025, 559
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_H_H_H:
+    WorkCmpConst 0x8020, 182
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_L_H_H_H_H_H
+L_LostSoulPick_H_H_L_H_H_H_H_L:
+    WorkSetConst 0x8025, 562
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_L_H_H_H_H_H:
+    WorkSetConst 0x8025, 564
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H:
+    WorkCmpConst 0x8020, 196
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H
+L_LostSoulPick_H_H_H_L:
+    WorkCmpConst 0x8020, 189
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_H
+L_LostSoulPick_H_H_H_L_L:
+    WorkCmpConst 0x8020, 186
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_L_H
+L_LostSoulPick_H_H_H_L_L_L:
+    WorkCmpConst 0x8020, 184
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_L_L_H
+L_LostSoulPick_H_H_H_L_L_L_L:
+    WorkSetConst 0x8025, 566
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_L_L_H:
+    WorkCmpConst 0x8020, 185
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_L_L_H_H
+L_LostSoulPick_H_H_H_L_L_L_H_L:
+    WorkSetConst 0x8025, 568
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_L_L_H_H:
+    WorkSetConst 0x8025, 570
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_L_H:
+    WorkCmpConst 0x8020, 187
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_L_H_H
+L_LostSoulPick_H_H_H_L_L_H_L:
+    WorkSetConst 0x8025, 572
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_L_H_H:
+    WorkCmpConst 0x8020, 188
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_L_H_H_H
+L_LostSoulPick_H_H_H_L_L_H_H_L:
+    WorkSetConst 0x8025, 574
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_L_H_H_H:
+    WorkSetConst 0x8025, 577
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_H:
+    WorkCmpConst 0x8020, 192
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_H_H
+L_LostSoulPick_H_H_H_L_H_L:
+    WorkCmpConst 0x8020, 190
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_H_L_H
+L_LostSoulPick_H_H_H_L_H_L_L:
+    WorkSetConst 0x8025, 580
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_H_L_H:
+    WorkCmpConst 0x8020, 191
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_H_L_H_H
+L_LostSoulPick_H_H_H_L_H_L_H_L:
+    WorkSetConst 0x8025, 582
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_H_L_H_H:
+    WorkSetConst 0x8025, 585
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_H_H:
+    WorkCmpConst 0x8020, 194
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_H_H_H
+L_LostSoulPick_H_H_H_L_H_H_L:
+    WorkCmpConst 0x8020, 193
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_H_H_L_H
+L_LostSoulPick_H_H_H_L_H_H_L_L:
+    WorkSetConst 0x8025, 588
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_H_H_L_H:
+    WorkSetConst 0x8025, 590
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_H_H_H:
+    WorkCmpConst 0x8020, 195
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_L_H_H_H_H
+L_LostSoulPick_H_H_H_L_H_H_H_L:
+    WorkSetConst 0x8025, 592
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_L_H_H_H_H:
+    WorkSetConst 0x8025, 595
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H:
+    WorkCmpConst 0x8020, 203
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_H
+L_LostSoulPick_H_H_H_H_L:
+    WorkCmpConst 0x8020, 199
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_L_H
+L_LostSoulPick_H_H_H_H_L_L:
+    WorkCmpConst 0x8020, 197
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_L_L_H
+L_LostSoulPick_H_H_H_H_L_L_L:
+    WorkSetConst 0x8025, 597
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_L_L_H:
+    WorkCmpConst 0x8020, 198
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_L_L_H_H
+L_LostSoulPick_H_H_H_H_L_L_H_L:
+    WorkSetConst 0x8025, 599
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_L_L_H_H:
+    WorkSetConst 0x8025, 602
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_L_H:
+    WorkCmpConst 0x8020, 201
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_L_H_H
+L_LostSoulPick_H_H_H_H_L_H_L:
+    WorkCmpConst 0x8020, 200
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_L_H_L_H
+L_LostSoulPick_H_H_H_H_L_H_L_L:
+    WorkSetConst 0x8025, 605
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_L_H_L_H:
+    WorkSetConst 0x8025, 607
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_L_H_H:
+    WorkCmpConst 0x8020, 202
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_L_H_H_H
+L_LostSoulPick_H_H_H_H_L_H_H_L:
+    WorkSetConst 0x8025, 610
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_L_H_H_H:
+    WorkSetConst 0x8025, 613
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_H:
+    WorkCmpConst 0x8020, 206
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_H_H
+L_LostSoulPick_H_H_H_H_H_L:
+    WorkCmpConst 0x8020, 204
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_H_L_H
+L_LostSoulPick_H_H_H_H_H_L_L:
+    WorkSetConst 0x8025, 616
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_H_L_H:
+    WorkCmpConst 0x8020, 205
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_H_L_H_H
+L_LostSoulPick_H_H_H_H_H_L_H_L:
+    WorkSetConst 0x8025, 619
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_H_L_H_H:
+    WorkSetConst 0x8025, 622
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_H_H:
+    WorkCmpConst 0x8020, 208
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_H_H_H
+L_LostSoulPick_H_H_H_H_H_H_L:
+    WorkCmpConst 0x8020, 207
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_H_H_L_H
+L_LostSoulPick_H_H_H_H_H_H_L_L:
+    WorkSetConst 0x8025, 624
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_H_H_L_H:
+    WorkSetConst 0x8025, 627
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_H_H_H:
+    WorkCmpConst 0x8020, 209
+    VMJumpIf CMP_GE, L_LostSoulPick_H_H_H_H_H_H_H_H
+L_LostSoulPick_H_H_H_H_H_H_H_L:
+    WorkSetConst 0x8025, 629
+    VMJump L_LostSoulFound
+L_LostSoulPick_H_H_H_H_H_H_H_H:
+    WorkSetConst 0x8025, 636
+    VMJump L_LostSoulFound
+L_LostSoulFound:
+    WordSetPokeSpecies 1, 0x8025
+    PokePartyAdd 0x8010, 0x8025, 0, EFU_LOST_SOUL_LEVEL
+    FlagSet EVENT_FLAG_0x0961
+    MEPlay SEQ_ME_POKEGET
+    SystemMsg Efu_Text_LostSoul, 2
+    MEWait
+    LastKeyWait
+    VMReturn
 
 L_ChooseStarter:
     SystemMsg Efu_Text_WhichType, 2

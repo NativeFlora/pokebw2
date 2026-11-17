@@ -2,17 +2,20 @@
     "$schema": "trainer.schema.json",
     "name": "Marsha",
     "class": "TRAINER_CLASS_SCHOOL_KID_F",
-    "battle_style": "BTL_STYLE_ROTATION",
+    "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC", "AI_FLAG_EXPERT" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC",
+        "AI_FLAG_EXPERT"
+    ],
     "heals": false,
     "money": 5,
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_SKIPLOOM",
+            "species": "SPECIES_JUMPLUFF",
             "form": 0,
-            "level": 61,
+            "level": 44,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,7 +23,7 @@
         {
             "species": "SPECIES_JUMPLUFF",
             "form": 0,
-            "level": 61,
+            "level": 45,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -28,7 +31,7 @@
         {
             "species": "SPECIES_BELLOSSOM",
             "form": 0,
-            "level": 61,
+            "level": 44,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -36,20 +39,16 @@
     ],
     "messages": [
         {
-            "type": 24,
-            "text": "In a Rotation Battle, you will battle\nusing three Pokémon!"
-        },
-        {
             "type": "TRMSG_START",
-            "text": "It's a Rotation Battle!\nWill you go right? Will you go left?{be01}"
+            "text": "Running? I saw you from across\nthe route!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Is it just a lack of experience that makes\nme unsure which way to rotate?"
+            "text": "I should have studied harder..."
         },
         {
             "type": 2,
-            "text": "You have to make up for your lack of\nexperience with intellect and reasoning.{be01}\nIf you don't, you will never be able to\nwin against more experienced Trainers."
+            "text": "There's no class anymore.\nJust this."
         }
     ]
 }

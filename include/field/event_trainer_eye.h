@@ -23,5 +23,8 @@ GameEvent *EventTrainerEye_Create(GameSystem *gsys, EventTrainerEyeWork *eye1, E
 EventTrainerEyeWork *EventTrainerEye_CreateData(HeapID heapId, Field *field, const TrainerClashData *data, BOOL isPair);
 // The Trainer ID of a Trainer actor
 u16 GetNPCTrainerID(FieldActor *actor);
+// Escape from Unova: the raid scavs' pursuit, a step for each step the player takes; the battle of one that catches
+// up, or NULL
+GameEvent *EventTrainerEye_EfuPursue(Field *field);
 
 #endif // POKEBW2_FIELD_EVENT_TRAINER_EYE_H

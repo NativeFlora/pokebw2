@@ -189,12 +189,15 @@ enum {
     OPENING_START_FIELD = 3,
 };
 
+// Escape from Unova: the season, which moves on with each raid from winter instead of following the clock
+static u16 Efu_GetSeason(GameData *gameData) {
+    return EFU_SEASON(*EventWork_GetWkPtr(GameData_GetEventWork(gameData), EFU_WORK_RAID_COUNT));
+}
+
 GameEventReturnCode EventGameOpening_Callback(GameEvent *event, u32 *state, void *data) {
     EventGameOpening *wk = data;
     GameSystem *gsys = wk->gsys;
     GameData *gameData = GSYS_GetGameData(gsys);
-    u32 realSeason;
-    u8 season;
 
     switch (*state) {
     case OPENING_CLEAR_VRAM:
@@ -202,8 +205,8 @@ GameEventReturnCode EventGameOpening_Callback(GameEvent *event, u32 *state, void
         (*state)++;
         break;
     case OPENING_SET_SEASON:
-        realSeason = Season_GetRealTime();
-        Season_Set(gameData, realSeason);
+        // Escape from Unova: the season doesn't follow the clock; it moves on with each raid, from winter
+        Season_Set(gameData, Efu_GetSeason(gameData));
         // Escape from Unova: no season banner and no opening demo
         (*state)++;
         break;
@@ -383,17 +386,6 @@ GameEventReturnCode EventFieldContinue_Callback(GameEvent *event, u32 *state, vo
         (*state)++;
         break;
     case CONTINUE_RESUME_SCRIPT:
-        // Escape from Unova: a save left mid-raid means the game was switched off out there, which loses the raid:
-        // every Pokémon taken out is gone, with what it holds. The field fades in as usual and the place name waits
-        // for Script_RaidLost (res/field/scripts/efu.s), which says so, clears EFU_WORK_RAID, saves and sends the
-        // player home. The party is emptied here, not by a script command, because ov012 can't grow (docs/efu.md)
-        if (*EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) != 0) {
-            PokeParty *party = GameData_GetParty(gameData);
-
-            while (PokeParty_GetPkmCount(party) > 0) {
-                PokeParty_RemovePkm(party, PokeParty_GetPkmCount(party) - 1);
-            }
-        }
         if (wk->continueFromSave && *EventWork_GetWkPtr(eventWork, EVENT_WORK_CONTINUE_SCRIPT) != 0) {
             EventScriptCall_Start(event, 0x83b, NULL, 0, HEAPID_FIELDMAP);
         } else {
@@ -406,6 +398,9 @@ GameEventReturnCode EventFieldContinue_Callback(GameEvent *event, u32 *state, vo
     case CONTINUE_SHOW_PLACE_NAME: {
         Field *field = GSYS_GetField(gsys);
 
+        // Escape from Unova: a save left mid-raid means the game was switched off out there, which loses the raid.
+        // The field fades in as usual and the place name waits for Script_RaidLost (res/field/scripts/efu.s), which
+        // takes the team, says so, clears EFU_WORK_RAID, sends a new Pokémon, saves and sends the player home
         if (*EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) != 0) {
             // Comes back to this state once the script has cleared the raid
             EventScriptCall_Start(event, EFU_SCRIPT_RAID_LOST, NULL, 0, HEAPID_FIELDMAP);
@@ -462,6 +457,8 @@ void EventMapChange_LoadSeasons(EventMapChange *wk) {
     BOOL isExterior;
 
     GameData_GetSeasons(wk->gameData, &prevSeason, &season);
+    // Escape from Unova: the season of the raid count, not of the date
+    season = Efu_GetSeason(wk->gameData);
     heapId = Field_GetHeapID(wk->field);
     areaData = AreaData_Create(heapId, ZoneData_GetAreaID(wk->spawn.zoneId), 0);
     isExterior = FALSE;
@@ -1494,6 +1491,9 @@ void FieldMapControl_LoadBlackoutZone(GameSystem *gsys) {
     SetupTeleportZoneChange(GetReturnLocationIdx(gameData), &spawn);
     LoadZoneSpawnInfoCheckRail(&escapeRopeSpawn, GetRespawnZoneMainZone(GetReturnLocationIdx(gameData)));
     GameData_SetEscapeRopeZone(gameData, &escapeRopeSpawn);
+    // Escape from Unova: the player comes to beside the bed at home. Script_Blackout (res/field/scripts/efu.s), which
+    // EventBattleLose_Callback runs next, takes the team, ends the raid, sends a new Pokémon and saves
+    LoadZoneSpawnInfoCheckRail(&spawn, ZONE_NACRENE_CITY_8);
     FieldMapControl_DeleteAllActors(gsys);
     FieldMapControl_LoadZone(gsys, spawn.zoneId);
     FieldMapControl_InitSpawn(gsys, &spawn);

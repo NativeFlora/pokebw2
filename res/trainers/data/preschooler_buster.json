@@ -10,9 +10,9 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_RIOLU",
+            "species": "SPECIES_LUCARIO",
             "form": 0,
-            "level": 61,
+            "level": 48,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,7 +20,7 @@
         {
             "species": "SPECIES_LEDIAN",
             "form": 0,
-            "level": 61,
+            "level": 49,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -29,15 +29,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Hey! Trainer!\nHave a battle with me!{be01}"
+            "text": "Finders keepers!\nHand it over!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Oops. I have no healthy Pokémon\nleft to fight..."
+            "text": "Waaah! No fair!"
         },
         {
             "type": 2,
-            "text": "Argh! You went all out against a kid!\n...Actually, that's a good thing. Thanks!"
+            "text": "Mom said to take anything\nthat isn't nailed down."
         }
     ]
 }

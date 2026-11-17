@@ -51,6 +51,7 @@
 #include "field/scrcmd_pep_quiz.h"
 #include "field/scrcmd_place_name.h"
 #include "field/scrcmd_poke_disp.h"
+#include "field/scrcmd_leaves.h"
 #include "field/scrcmd_pokemon.h"
 #include "field/scrcmd_pokemon_misc.h"
 #include "field/scrcmd_proc.h"
@@ -827,7 +828,7 @@ const FieldScriptCommand EVCMD_TABLE[] = {
     Scrcmd_Leaves_MarkPartnerCandidate,                 // 0x2d8
     Scrcmd_Leaves_UnityTowerGetVisitorParam,            // 0x2d9
     Scrcmd_Leaves_UnityTowerSetRatingLevel,             // 0x2da
-    Scrcmd_Leaves_UnityTowerSetFloor,                   // 0x2db
+    Scrcmd_Efu_PokePartyClear,                          // 0x2db, Escape from Unova's (once UnityTowerSetFloor)
     Scrcmd_Leaves_UnityTowerInitVisitorMessage,         // 0x2dc
     Scrcmd_Leaves_UnityTowerGetVisitorCount,            // 0x2dd
     Scrcmd_Leaves_UnityTowerSetHobby,                   // 0x2de

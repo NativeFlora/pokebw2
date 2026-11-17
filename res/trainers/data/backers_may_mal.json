@@ -2,9 +2,12 @@
     "$schema": "trainer.schema.json",
     "name": "May & Mal",
     "class": "TRAINER_CLASS_BACKERS_F",
-    "battle_style": "BTL_STYLE_DOUBLE",
+    "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC", "AI_FLAG_TAG_STRATEGY" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC",
+        "AI_FLAG_TAG_STRATEGY"
+    ],
     "heals": false,
     "money": 12,
     "reward": "ITEM_NONE",
@@ -12,7 +15,7 @@
         {
             "species": "SPECIES_PACHIRISU",
             "form": 0,
-            "level": 62,
+            "level": 60,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,7 +23,7 @@
         {
             "species": "SPECIES_EMOLGA",
             "form": 0,
-            "level": 62,
+            "level": 61,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -28,32 +31,16 @@
     ],
     "messages": [
         {
-            "type": 3,
-            "text": "L-E-T-S-G-O! Let's go! Let's go!{be01}\nWe cheer on any Trainer who tries\nhis or her best!{be01}"
+            "type": "TRMSG_START",
+            "text": "No more cheering! Only taking!\nHand over your stuff!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "May: Go, go, Pokémon!\nMal: Fight, fight, Trainer!"
+            "text": "May: Boo! Mal: Hiss!"
         },
         {
-            "type": 5,
-            "text": "The Trainer's commands call out!\nThe Pokémon's moves are decided!"
-        },
-        {
-            "type": 6,
-            "text": "There're two of us, right?\nSo we wanna fight with two Pokémon!"
-        },
-        {
-            "type": 7,
-            "text": "Let's go! Let's go! L-E-T-S-G-O!{be01}\nWe cheer on every Pokémon that fights!{be01}"
-        },
-        {
-            "type": 9,
-            "text": "If the Pokémon and the Trainer don't\nboth do their best, they won't win!"
-        },
-        {
-            "type": 10,
-            "text": "We love Double Battles! Understand?"
+            "type": 2,
+            "text": "We used to cheer on Trainers.\nNow we cheer when they drop things."
         }
     ]
 }

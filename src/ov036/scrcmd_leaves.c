@@ -425,3 +425,15 @@ void CheckResetKeldeoOrdinaryForme(GameSystem *gsys) {
         index++;
     }
 }
+
+// Escape from Unova: empties the party, for a lost raid or a blackout; every Pokémon is gone, with what it holds. The
+// script command table points 0x2db (once UnityTowerSetFloor, which nothing reachable uses) here, so ov012 keeps its
+// size (docs/efu.md)
+BOOL Scrcmd_Efu_PokePartyClear(VM *vm, FieldScriptEnv *env) {
+    PokeParty *party = GameData_GetParty(GSYS_GetGameData(FieldScriptEnv_GetGameSystem(env)));
+
+    while (PokeParty_GetPkmCount(party) > 0) {
+        PokeParty_RemovePkm(party, PokeParty_GetPkmCount(party) - 1);
+    }
+    return FALSE;
+}

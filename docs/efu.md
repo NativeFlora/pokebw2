@@ -13,8 +13,14 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   is why `EventFieldFirst_Callback` still calls `SetActorFlag` with flag 0.
 - **ov012 can barely grow.** Its end sets the arena start that main holds, so a few more bytes of code or data in
   ov012 also trips the secure area check. It had room for `Scrcmd_Efu_PokePartyRecoverHalf` and one row of each table,
-  and no more. Put new logic in another overlay (as the raid wipe is, in ov035's `EventFieldContinue_Callback`) or in
-  script and data files, which aren't in the overlays.
+  and no more. Put new logic in another overlay or in script and data files, which aren't in the overlays. The party
+  wipe is script command 0x2db (`Scrcmd_Efu_PokePartyClear` in ov036), which took over `UnityTowerSetFloor`'s row
+  (Unity Tower can't be reached) so the table didn't grow.
+- **ov035 and ov036 grow at a risk.** Main points into ov036's later code and into the overlays after it (ov037 on
+  start where ov036's code and BSS end), so growing either moves those pointers, and main's compressed size, kept in
+  the secure area, may change with them. It is luck: some sizes pass and some don't, so build after every change to
+  them and, if the check fails, change the size a little (natural code, never padding) and try again. ov035 has stayed
+  at its v1 size (11520 bytes); ov036 is 353728 bytes now (the original's 352672).
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
 
 ## Where things are
@@ -27,10 +33,16 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | Starter list (first stages that evolve, no legendaries, babies or pseudo-legendaries) | `tools/efu/starters.py` |
 | Nacrene base: matrix, zone, doors, rubble, interiors, gate | `tools/efu/build_base.py` (reads the originals from `origin/main`) |
 | Grim intro | `src/ov294/intro_script.c`, `res/text/system/game_start.txt`, `src/ov162/game_start.c` |
-| New game start and the lost-raid check on continue | `src/ov035/event_mapchange.c` |
+| New game start, the lost-raid check on continue, and the seasons (one per raid from winter, not the clock) | `src/ov035/event_mapchange.c` (`Efu_GetSeason`) |
+| Blacking out: home, the team gone, a new Pokémon, a save | `src/ov012/event_battle_lose.c`, `FieldMapControl_LoadBlackoutZone` in `src/ov035/event_mapchange.c`, `Script_Blackout` |
+| Options on a new game (fastest text, Set battle style, no battle animations) | `Config_Init` in `src/system/config.c` |
+| The base's beach and sea (Undella's sand and surf textures) | `tools/efu/build_coast.py`, run by `build_base.py` |
+| Route 3, the first raid zone: wild Pokémon at 10 to 20, the scavs at 40 to 60 and their lines | `tools/efu/build_raid.py` |
+| The scavs' pursuit | `EventTrainerEye_EfuPursue` in `src/ov036/event_trainer_eye.c`, called each step from `src/ov036/fieldmap_event.c` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs) |
 
-Edit the templates, then run `python3 tools/efu/gen_efu.py` and `python3 tools/efu/build_base.py`. Never edit
+Edit the templates, then run `python3 tools/efu/gen_efu.py`, and from `tools/efu`, `python3 build_base.py` and
+`python3 build_raid.py`. Never edit
 `efu.s` or `efu.txt` by hand.
 
 Script gotchas: `VMJumpIf CMP_STACK` jumps when the comparison is false, so use `WorkCmpConst` with
@@ -58,10 +70,11 @@ Taken so far:
 | Value | Meaning |
 | --- | --- |
 | `EVENT_WORK_0x41ac` (`EFU_WORK_RAID`) | 1 while out on a raid. Set and saved on leaving through the east gate, cleared and saved on coming back. Continuing a save with it set loses the raid. |
-| `EVENT_WORK_0x41ad` (`EFU_WORK_SAVE_VERSION`) | The save format's version, set on a new game (now 1). |
+| `EVENT_WORK_0x41ad` (`EFU_WORK_SAVE_VERSION`) | The save format's version, set on a new game and on heading out on a raid (now 2). |
+| `EVENT_WORK_0x41ab` (`EFU_WORK_RAID_COUNT`) | Raids set out on, which picks the season (`EFU_SEASON`). Version 2; a version 1 save has 0, so winter. |
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415f, 0x4163, 0x4169, 0x4177, 0x4180, 0x418b, 0x4193, 0x4197 to 0x419e, 0x41a0 to 0x41ab. Take the next
+0x4156 to 0x415f, 0x4163, 0x4169, 0x4177, 0x4180, 0x418b, 0x4193, 0x4197 to 0x419e, 0x41a0 to 0x41aa. Take the next
 from the top of the list down, and move it into the table above.
 
 ## Raids and saving
@@ -69,8 +82,25 @@ from the top of the list down, and move it into the table above.
 - The east gate (`ZONE_NACRENE_GATE`) has two triggers. Column 14, by Route 3's door, is live while home
   (`EFU_WORK_RAID` 0): it asks to head out, refuses without a Pokémon that can fight, and on yes sets the raid and
   saves. Column 2, by Nacrene's door, is live while out (`EFU_WORK_RAID` 1): it clears the raid and saves.
+  Heading out also counts the raid (the season moves on) and gives the running shoes, for saves from version 1.
 - Continuing a save with the raid set (the game was switched off before coming back, or saved from the menu while
-  out) empties the party, then `Script_RaidLost` says so, clears the raid, saves and sends the player home.
+  out) runs `Script_RaidLost`: it empties the party, says so, clears the raid, gives a new Pokémon, saves and sends
+  the player home.
+- Blacking out sends the player home (`FieldMapControl_LoadBlackoutZone`), and `Script_Blackout` fades in, clears the
+  raid, empties the party, gives a new Pokémon and saves.
+- The new Pokémon, on a new game and after every loss, is a random one from the starter list at level
+  `EFU_LOST_SOUL_LEVEL` (`L_LostSoul`, generated by `gen_efu.py`), "as lost as you are".
+
+## The scavs
+
+Route 3's Trainers, made single battles and evolved to their levels by `build_raid.py`, wander (`MOVE_CODE_WALK_RANDOM`).
+Each step the player takes, `EventTrainerEye_EfuPursue` runs before the original sight check: a wandering scav that
+sees the player (nothing in the way on the straight line between them) within `EFU_SCAV_CATCH` tiles whichever way it
+faces, or up to `EFU_SCAV_SIGHT` tiles away in the quarter it faces, shows a "!" and gives chase. A chasing scav
+takes one step toward the tile the player stepped onto, the longer way first, the other if that's blocked, or to the
+side when the player is straight ahead and the way is blocked; within `EFU_SCAV_CATCH` tiles it starts its battle,
+and after `EFU_SCAV_LOSE_STEPS` steps in a row out of sight it shows a "?" and goes back to wandering. The chase lives
+in the actor's user parameters 1 and 2, which the event data leaves 0.
 
 ## Testing
 

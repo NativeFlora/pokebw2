@@ -30,10 +30,12 @@ def write(path, text):
 CHUNKS = {(19, 18): (1, 1), (20, 18): (2, 1), (21, 18): (3, 1)}
 DX, DZ = (1 - 19) * 32, (1 - 18) * 32  # tiles from overworld to the new matrix
 T, S = 'MAP_MODEL_OVERWORLD_2_MAP_OUTTREE', 'MAP_MODEL_OVERWORLD_2_MAP_OUTSEA'
+# The sea comes in north of the base and west of it, with a beach where it meets the land (build_coast.py)
 MATRIX = [
-    [S, T, T, T, T],
-    [S, 'MAP_MODEL_OVERWORLD_2_MAP19_18', 'MAP_MODEL_OVERWORLD_2_MAP20_18', 'MAP_MODEL_OVERWORLD_2_MAP21_18', T],
-    [S, T, T, T, T],
+    [S, S, 'MAP_MODEL_EFU_COAST_N2', T, T],
+    ['MAP_MODEL_EFU_COAST_W1', 'MAP_MODEL_OVERWORLD_2_MAP19_18', 'MAP_MODEL_OVERWORLD_2_MAP20_18',
+     'MAP_MODEL_OVERWORLD_2_MAP21_18', T],
+    ['MAP_MODEL_EFU_COAST_W2', T, T, T, T],
 ]
 MATRIX_CONST = 'MAP_MATRIX_EFU_NACRENE'
 
@@ -42,14 +44,16 @@ OPEN_ZONES = {'ZONE_NACRENE_CITY_8', 'ZONE_NACRENE_CITY_POKEMON_CENTER', 'ZONE_N
 SCRIPT_BOARDED = 11002  # EFU_SCRIPT_BOARDED_DOOR
 
 # Tiles (overworld chunk 19_18 and 20_18 local x, z) to block, and the rubble props to put there (resource IDs of the
-# area's bundle FIELD_PROPS_EXTERIOR_SHARED_PC_01_3: 21 rock_01, 258 rock_02, 134 cart_01, 156 out_dust01)
+# area's bundle FIELD_PROPS_EXTERIOR_SHARED_PC_01_3: 21 rock_01, 258 rock_02, 134 cart_01, 156 out_dust01). The rubble
+# stands on row 17, the first row of the streets north between the buildings, and both it and row 16 behind it are
+# blocked: on row 16 alone the carts drew over the walkable row in front, so the player seemed to walk into them
 BLOCK = {
-    'overworld_2_map19_18': [(x, 16) for x in range(21, 26)],
-    'overworld_2_map20_18': [(x, 16) for x in range(11, 16)],
+    'overworld_2_map19_18': [(x, z) for x in range(21, 26) for z in (16, 17)],
+    'overworld_2_map20_18': [(x, z) for x in range(11, 16) for z in (16, 17)],
 }
 RUBBLE = {
-    'overworld_2_map19_18': [(21, 16, 21), (22.5, 16, 134), (24, 16, 258), (25, 16, 21)],
-    'overworld_2_map20_18': [(11, 16, 258), (12.5, 16, 156), (14, 16, 21), (15, 16, 134)],
+    'overworld_2_map19_18': [(21, 17, 21), (22.5, 17, 134), (24, 17, 258), (25, 17, 21)],
+    'overworld_2_map20_18': [(11, 17, 258), (12.5, 17, 156), (14, 17, 21), (15, 17, 134)],
 }
 BLOCKED_TILE = 0x810001
 
@@ -163,7 +167,16 @@ def build_interiors():
     write('res/field/events/nacrene_gate.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
 
 
+def build_gate_board():
+    # The electric noticeboard in the east gate is switched off
+    text = orig('res/field/gate_boards/gates.json').decode()
+    start = text.index('"zone": "ZONE_NACRENE_GATE"')
+    at = text.index('"enabled": true', start)
+    write('res/field/gate_boards/gates.json', text[:at] + '"enabled": false' + text[at + len('"enabled": true'):])
+
+
 if __name__ == '__main__':
+    build_gate_board()
     build_spawn()
     build_interiors()
     build_matrix()
@@ -172,3 +185,5 @@ if __name__ == '__main__':
     for m in BLOCK:
         edit_terrain(m)
         edit_props(m)
+    import build_coast
+    build_coast.build_coast()

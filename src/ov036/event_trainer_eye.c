@@ -1,6 +1,7 @@
 // The Trainers who see the player: finding them, and the event that walks them up to the player for the battle. The
 // name is the ROM's own, from GFL_HeapAllocate's file argument. Function names from swan
 // (https://github.com/ds-pokemon-hacking/swan, GPL-3.0)
+#include "efu.h"
 #include "types.h"
 #include "constants/battle.h"
 #include "field/encounter.h"
@@ -16,6 +17,7 @@
 #include "field/trainer_script.h"
 #include "field/zone.h"
 #include "gfl/heap.h"
+#include "save/event_work.h"
 #include "save/save_control.h"
 #include "system/game_data.h"
 #include "system/game_event.h"
@@ -101,6 +103,12 @@ static BOOL CheckTrainerAlreadyDefeated(Field *field, FieldActor *actor);
 static void InitFieldScriptTrainerSetup(TrainerClashData *data, FieldActor *actor, int range, u16 dir);
 static FieldActor *EventTrainerEye_FindPairedTrainer(FieldActor *trainer, u16 trainerId);
 static GameEvent *CreateTrainerClashEvent(Field *field, FieldActor *actor);
+static BOOL Efu_IsOnRaid(Field *field);
+static void EfuScav_StartChase(Field *field, FieldActor *actor);
+static void EfuScav_StopChase(Field *field, FieldActor *actor);
+static BOOL EfuScav_CanSee(FieldActor *actor, const GridPos *pos, const GridPos *playerPos);
+static u16 EfuScav_DirTo(const GridPos *from, const GridPos *to, int *dist);
+static BOOL EfuScav_CanStep(FieldActor *actor, const GridPos *pos, u16 dir);
 
 static const TrainerLineOfSightFunc TRAINER_LOS_DIST_FUNCTIONS[4] = {
     EventTrainerEye_CalcLineOfSight_U,
@@ -220,6 +228,10 @@ static BOOL EventTrainerEye_FindClashActor(Field *field, FieldActor *exclude, Tr
     index = 0;
     while (NextActor(actorSys, &actor, &index) == TRUE) {
         if (actor == player || (exclude != NULL && exclude == actor)) {
+            continue;
+        }
+        // Escape from Unova: on a raid, a scav already on the player's trail is EventTrainerEye_EfuPursue's
+        if (GetActorUserParam(actor, EFU_SCAV_PARAM_CHASE) != 0 && Efu_IsOnRaid(field)) {
             continue;
         }
         dist = EventTrainerEye_CheckActorClash(encounter, actor, player, &dir);
@@ -617,4 +629,170 @@ static GameEvent *CreateTrainerClashEvent(Field *field, FieldActor *actor) {
         return EventScriptCall_Create(gsys, SCRID_TRAINER_CLASH, actor, 1);
     }
     return EventScriptCall_Create(gsys, SCRID_SPECIAL_TRAINER_CLASH, actor, 1);
+}
+
+// Escape from Unova: the scavs' pursuit. A raid's Trainers wander, and their sight range (user parameter 0) is
+// EFU_SCAV_SIGHT. A wandering scav notices the player with nothing in between, within EFU_SCAV_CATCH tiles whichever way
+// it faces or up to EFU_SCAV_SIGHT tiles away in the quarter it faces, and gives chase. While it chases, its user
+// parameter EFU_SCAV_PARAM_CHASE is 1 more than the steps the player has been out of its sight, and
+// EFU_SCAV_PARAM_MOVE_CODE keeps the move code it goes back to once it loses the player
+
+static BOOL Efu_IsOnRaid(Field *field) {
+    EventWork *eventWork = GameData_GetEventWork(GSYS_GetGameData(Field_GetGameSystem(field)));
+
+    return *EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) != 0;
+}
+
+// A "!" over the scav, with its sound, so the player knows it is coming
+static void EfuScav_StartChase(Field *field, FieldActor *actor) {
+    SetActorUserParam(actor, GetActorMoveCode(actor), EFU_SCAV_PARAM_MOVE_CODE);
+    ChangeActorMoveCodeSeq(actor, MOVE_CODE_NONE);
+    FldeffEmotionBubble_StartHeld(Field_GetFieldEffects(field), actor, EMOTION_BUBBLE_EXCLAMATION, TRUE);
+}
+
+// And a "?" once it has lost the player
+static void EfuScav_StopChase(Field *field, FieldActor *actor) {
+    SetActorUserParam(actor, 0, EFU_SCAV_PARAM_CHASE);
+    ChangeActorMoveCodeSeq(actor, GetActorUserParam(actor, EFU_SCAV_PARAM_MOVE_CODE));
+    FldeffEmotionBubble_StartHeld(Field_GetFieldEffects(field), actor, EMOTION_BUBBLE_QUESTION, TRUE);
+}
+
+// The direction of the longer way from one tile to another (across on a tie), and the steps between them with diagonal
+// ones allowed
+static u16 EfuScav_DirTo(const GridPos *from, const GridPos *to, int *dist) {
+    int dx = to->x - from->x;
+    int dz = to->z - from->z;
+    int adx = dx < 0 ? -dx : dx;
+    int adz = dz < 0 ? -dz : dz;
+
+    if (adx >= adz) {
+        *dist = adx;
+        return dx < 0 ? DIR_LEFT : DIR_RIGHT;
+    }
+    *dist = adz;
+    return dz < 0 ? DIR_UP : DIR_DOWN;
+}
+
+// Whether the scav sees the player: no more than EFU_SCAV_SIGHT tiles away, with no wall, water, ledge or edge of the
+// map on the straight line between them
+static BOOL EfuScav_CanSee(FieldActor *actor, const GridPos *pos, const GridPos *playerPos) {
+    int dx = playerPos->x - pos->x;
+    int dz = playerPos->z - pos->z;
+    int steps;
+    u16 dir = EfuScav_DirTo(pos, playerPos, &steps);
+    int i;
+
+    if (steps > EFU_SCAV_SIGHT) {
+        return FALSE;
+    }
+    for (i = 1; i < steps; i++) {
+        s16 x = pos->x + (dx * i + (dx < 0 ? -steps : steps) / 2) / steps;
+        s16 z = pos->z + (dz * i + (dz < 0 ? -steps : steps) / 2) / steps;
+
+        if (ActorRouteCollCheck(actor, x, pos->y, z, dir) &
+            (ACTOR_COLL_BLOCKED | ACTOR_COLL_HEIGHT | ACTOR_COLL_OUT_OF_BOUNDS)) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+// Whether the scav can take a step in the direction; other actors and its own walking area don't stop it
+static BOOL EfuScav_CanStep(FieldActor *actor, const GridPos *pos, u16 dir) {
+    return (ActorRouteCollCheck(actor, pos->x + GetDirectionVectorCompX(dir), pos->y,
+                                pos->z + GetDirectionVectorCompZ(dir), dir) &
+            ~ACTOR_COLL_WALK_AREA) == 0;
+}
+
+// Each step the player takes: a wandering scav may notice the player, every scav on the chase takes one step the most
+// direct way it can toward the tile the player stepped onto, and one within EFU_SCAV_CATCH tiles starts its battle. One
+// that hasn't seen the player for EFU_SCAV_LOSE_STEPS steps in a row gives up and goes back to wandering
+GameEvent *EventTrainerEye_EfuPursue(Field *field) {
+    FieldActor *player;
+    MMSys *actorSys;
+    FieldActor *actor;
+    u32 index;
+    GridPos pos;
+    GridPos playerPos;
+
+    if (!Efu_IsOnRaid(field)) {
+        return NULL;
+    }
+    player = FieldPlayer_GetActor(Field_GetPlayer(field));
+    actorSys = Field_GetActorSystem(field);
+    FldAct_GetGPos(player, &playerPos);
+    actor = NULL;
+    index = 0;
+    while (NextActor(actorSys, &actor, &index) == TRUE) {
+        u16 sight;
+        u16 chase;
+        u16 dir;
+        int dist;
+
+        sight = EventTrainerEye_GetSightType(actor);
+        if (actor == player || (sight != TRAINER_SIGHT_FACING && sight != TRAINER_SIGHT_ALL_DIRS) ||
+            CheckTrainerAlreadyDefeated(field, actor)) {
+            continue;
+        }
+        FldAct_GetGPos(actor, &pos);
+        chase = GetActorUserParam(actor, EFU_SCAV_PARAM_CHASE);
+        dir = EfuScav_DirTo(&pos, &playerPos, &dist);
+        if (EfuScav_CanSee(actor, &pos, &playerPos)) {
+            if (chase == 0) {
+                if (dist > EFU_SCAV_CATCH && dir != GetActorFaceDir(actor)) {
+                    continue;
+                }
+                EfuScav_StartChase(field, actor);
+            }
+            chase = 1;
+        } else if (chase == 0) {
+            continue;
+        } else if (++chase > EFU_SCAV_LOSE_STEPS) {
+            EfuScav_StopChase(field, actor);
+            continue;
+        }
+        SetActorUserParam(actor, chase, EFU_SCAV_PARAM_CHASE);
+        if (dist > EFU_SCAV_CATCH && IsAllActorAcmdFinished(actor) == TRUE) {
+            // The longer way first, then the other way if that's blocked, or if the player is straight ahead, a step to
+            // either side to get around what's in the way
+            GridPos side = playerPos;
+            BOOL across = dir == DIR_LEFT || dir == DIR_RIGHT;
+
+            if (across) {
+                side.x = pos.x;
+            } else {
+                side.z = pos.z;
+            }
+            if (!EfuScav_CanStep(actor, &pos, dir)) {
+                dir = EfuScav_DirTo(&pos, &side, &dist);
+                if (dist == 0) {
+                    dir = across ? DIR_UP : DIR_LEFT;
+                    if (!EfuScav_CanStep(actor, &pos, dir)) {
+                        dir = GetInverseDirection(dir);
+                    }
+                }
+                if (!EfuScav_CanStep(actor, &pos, dir)) {
+                    dir = DIR_NONE;
+                }
+            }
+            if (dir != DIR_NONE) {
+                FldAct_SetAcmd(actor, GetAcmdForDir(dir, ACMD_WALK_4F));
+                pos.x += GetDirectionVectorCompX(dir);
+                pos.z += GetDirectionVectorCompZ(dir);
+            }
+            dir = EfuScav_DirTo(&pos, &playerPos, &dist);
+        }
+        if (dist <= EFU_SCAV_CATCH) {
+            TrainerClashData data;
+            GameEvent *event;
+
+            SetActorUserParam(actor, 0, EFU_SCAV_PARAM_CHASE);
+            InitFieldScriptTrainerSetup(&data, actor, 1, dir);
+            event = CreateTrainerClashEvent(field, actor);
+            data.kind = TRAINER_CLASH_SINGLE;
+            SetupTrainerClashSlot(event, 0, &data);
+            return event;
+        }
+    }
+    return NULL;
 }

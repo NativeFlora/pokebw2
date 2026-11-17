@@ -4,15 +4,17 @@
     "class": "TRAINER_CLASS_NURSERY_AIDE",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 10,
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_JIGGLYPUFF",
+            "species": "SPECIES_WIGGLYTUFF",
             "form": 0,
-            "level": 61,
+            "level": 46,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,15 +22,15 @@
         {
             "species": "SPECIES_PURUGLY",
             "form": 0,
-            "level": 61,
+            "level": 47,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_LICKITUNG",
+            "species": "SPECIES_LICKILICKY",
             "form": 0,
-            "level": 61,
+            "level": 46,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -37,15 +39,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "I feel invincible because I am surrounded\nby the smiles of children and Pokémon!{be01}"
+            "text": "The children are gone.\nAll I have left is my Pokémon!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Wow! Great, great!\nYou are very strong!"
+            "text": "No... Not again..."
         },
         {
             "type": 2,
-            "text": "Speak while making eye contact, and\nexpress your feelings to each other...{be00}\nIt's the same for people and Pokémon."
+            "text": "Go home, if you still have one."
         }
     ]
 }

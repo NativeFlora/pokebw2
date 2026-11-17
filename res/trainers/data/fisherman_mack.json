@@ -4,13 +4,23 @@
     "class": "TRAINER_CLASS_FISHERMAN",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 8,
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_MAGIKARP",
+            "species": "SPECIES_GYARADOS",
+            "form": 0,
+            "level": 57,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_GYARADOS",
             "form": 0,
             "level": 58,
             "difficulty": 0,
@@ -18,7 +28,15 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_MAGIKARP",
+            "species": "SPECIES_GYARADOS",
+            "form": 0,
+            "level": 57,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_GYARADOS",
             "form": 0,
             "level": 58,
             "difficulty": 0,
@@ -26,31 +44,15 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_MAGIKARP",
+            "species": "SPECIES_GYARADOS",
             "form": 0,
-            "level": 58,
+            "level": 57,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_MAGIKARP",
-            "form": 0,
-            "level": 58,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_MAGIKARP",
-            "form": 0,
-            "level": 58,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_MAGIKARP",
+            "species": "SPECIES_GYARADOS",
             "form": 0,
             "level": 58,
             "difficulty": 0,
@@ -61,15 +63,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "If I don't live with my Pokémon, a\nFisherman like me won't be able to fish.{be00}\nI won't be able to battle either!{be01}"
+            "text": "You walked a long way from home.\nToo bad it ends here!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Right now I just feel like we're so lucky to\nhave Pokémon!"
+            "text": "You're tougher than you look."
         },
         {
             "type": 2,
-            "text": "Team Plasma...{be01}\nThey reminded me how important the\ntime is that I have with my Pokémon.{be00}\nI'd almost begun to take it for granted."
+            "text": "Keep your head down. There are\nworse than me on this route."
         }
     ]
 }
