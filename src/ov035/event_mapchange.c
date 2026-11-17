@@ -383,6 +383,17 @@ GameEventReturnCode EventFieldContinue_Callback(GameEvent *event, u32 *state, vo
         (*state)++;
         break;
     case CONTINUE_RESUME_SCRIPT:
+        // Escape from Unova: a save left mid-raid means the game was switched off out there, which loses the raid:
+        // every Pokémon taken out is gone, with what it holds. The field fades in as usual and the place name waits
+        // for Script_RaidLost (res/field/scripts/efu.s), which says so, clears EFU_WORK_RAID, saves and sends the
+        // player home. The party is emptied here, not by a script command, because ov012 can't grow (docs/efu.md)
+        if (*EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) != 0) {
+            PokeParty *party = GameData_GetParty(gameData);
+
+            while (PokeParty_GetPkmCount(party) > 0) {
+                PokeParty_RemovePkm(party, PokeParty_GetPkmCount(party) - 1);
+            }
+        }
         if (wk->continueFromSave && *EventWork_GetWkPtr(eventWork, EVENT_WORK_CONTINUE_SCRIPT) != 0) {
             EventScriptCall_Start(event, 0x83b, NULL, 0, HEAPID_FIELDMAP);
         } else {
@@ -395,6 +406,11 @@ GameEventReturnCode EventFieldContinue_Callback(GameEvent *event, u32 *state, vo
     case CONTINUE_SHOW_PLACE_NAME: {
         Field *field = GSYS_GetField(gsys);
 
+        if (*EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) != 0) {
+            // Comes back to this state once the script has cleared the raid
+            EventScriptCall_Start(event, EFU_SCRIPT_RAID_LOST, NULL, 0, HEAPID_FIELDMAP);
+            break;
+        }
         if (Field_GetPlaceName(field) != NULL) {
             BeginContinuePlaceNameDisp(Field_GetPlaceName(field), wk->zoneId);
         }

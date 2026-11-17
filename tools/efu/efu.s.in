@@ -1,5 +1,6 @@
 #include "asm/field_script.inc"
 #include "text/script/efu.h"
+#include "efu.h"
 
 // Escape from Unova's own script commands (EVCMD_TABLE in src/ov012/scrcmd_vm.c, from 0x2f3; each also needs
 // a row of EVCMD_PERM_TABLE in src/ov012/script_sys.c)
@@ -11,11 +12,15 @@
     ScriptEntry Script_NewGameStart
     ScriptEntry Script_BoardedDoor
     ScriptEntry Script_Bed
+    ScriptEntry Script_RaidDepart
+    ScriptEntry Script_RaidReturn
+    ScriptEntry Script_RaidLost
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
 Script_NewGameSetup:
     ActorsPauseAll
+    WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     FinishAllEvents
     ActorsUnpauseAll
     VMHalt
@@ -60,6 +65,65 @@ Script_Bed:
 L_BedNo:
     SystemMsgClose
     ActorsUnpauseAll
+    VMHalt
+
+// Stepping up to Route 3's door in the east gate, while not out on a raid. Leaving saves first, with the raid marked, so
+// switching the game off before coming back loses the raid (Script_RaidLost)
+Script_RaidDepart:
+    ActorsPauseAll
+    PokePartyGetCount 0x8010, 2
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_RaidNoTeam
+    SystemMsg Efu_Text_RaidDepart, 2
+    YesNoWin 0x8011
+    WorkCmpConst 0x8011, 1
+    VMJumpIf CMP_EQ, L_RaidStay
+    WorkSetConst EFU_WORK_RAID, 1
+    SystemMsg Efu_Text_Saving, 2
+    SaveDataWrite 0x8010
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_RaidNoTeam:
+    SystemMsg Efu_Text_RaidNoTeam, 2
+    LastKeyWait
+L_RaidStay:
+    SystemMsgClose
+    ActorCmdExec 255, Movement_StepBackWest
+    ActorCmdWait
+    ActorsUnpauseAll
+    VMHalt
+
+    // Movement data is read as aligned halfwords
+    .balign 4, 0
+Movement_StepBackWest:
+    Move 14, 1
+    MoveEnd
+
+// Stepping up to Nacrene's door in the east gate while out on a raid: home, and saved
+Script_RaidReturn:
+    ActorsPauseAll
+    WorkSetConst EFU_WORK_RAID, 0
+    SystemMsg Efu_Text_RaidReturn, 2
+    SystemMsg Efu_Text_Saving, 2
+    SaveDataWrite 0x8010
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+// Continuing a save left mid-raid: the raid is lost, and the party with it (emptied by EventFieldContinue_Callback
+// before this runs), once the field has faded in
+Script_RaidLost:
+    ActorsPauseAll
+    WorkSetConst EFU_WORK_RAID, 0
+    SystemMsg Efu_Text_RaidLost, 2
+    LastKeyWait
+    SystemMsg Efu_Text_Saving, 2
+    SaveDataWrite 0x8010
+    SystemMsgClose
+    ActorsUnpauseAll
+    MapChangeWarp ZONE_NACRENE_CITY_8, 3, 3, 1
     VMHalt
 
 @STARTER_MENUS@

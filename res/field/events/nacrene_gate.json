@@ -12,84 +12,7 @@
             }
         }
     ],
-    "npcs": [
-        {
-            "id": 0,
-            "model": "OBJ_CODE_76",
-            "movement": "MOVE_CODE_FACE_DOWN",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 2,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 13,
-                "z": 2,
-                "y": 0
-            }
-        },
-        {
-            "id": 1,
-            "model": "OBJ_CODE_DANCER",
-            "movement": "MOVE_CODE_FACE_DOWN",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 4,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 4,
-                "z": 4,
-                "y": 0
-            }
-        },
-        {
-            "id": 2,
-            "model": "OBJ_CODE_LASS",
-            "movement": "MOVE_CODE_WALK_RANDOM",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 3,
-            "direction": "DIR_LEFT",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 1,
-                "height": 1
-            },
-            "grid": {
-                "x": 11,
-                "z": 7,
-                "y": 0
-            }
-        },
-        {
-            "id": 3,
-            "model": "OBJ_CODE_PKMN_BREEDER_F",
-            "movement": "MOVE_CODE_TURN_RANDOM",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 5,
-            "direction": "DIR_UP",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 6,
-                "z": 7,
-                "y": 0
-            }
-        }
-    ],
+    "npcs": [],
     "warps": [
         {
             "zone": "ZONE_ROUTE_3",
@@ -120,6 +43,35 @@
             }
         }
     ],
-    "triggers": [],
+    "triggers": [
+        {
+            "script": 11004,
+            "var": "EVENT_WORK_0x41ac",
+            "value": 0,
+            "type": 0,
+            "grid": {
+                "x": 14,
+                "z": 4,
+                "width": 1,
+                "height": 3,
+                "y": 0
+            },
+            "unk14": 0
+        },
+        {
+            "script": 11005,
+            "var": "EVENT_WORK_0x41ac",
+            "value": 1,
+            "type": 0,
+            "grid": {
+                "x": 2,
+                "z": 4,
+                "width": 1,
+                "height": 3,
+                "y": 0
+            },
+            "unk14": 0
+        }
+    ],
     "init_scripts": []
 }

@@ -149,6 +149,18 @@ def build_interiors():
     e['init_scripts'] = []
     e['bg_events'] = [b for b in e['bg_events'] if b['script'] == 2108]
     write('res/field/events/nacrene_city_pokemon_center.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
+    # The east gate, where raids start: nobody there. The hall runs from Nacrene's door (x 1) to Route 3's (x 15) over
+    # rows 4 to 6. Stepping onto column 14, by Route 3's door, while home asks to leave (and saves); stepping onto
+    # column 2, by Nacrene's, while out comes home (and saves). EFU_WORK_RAID (include/efu.h) picks which is live
+    e = json.loads(orig('res/field/events/nacrene_gate.json'))
+    e['npcs'] = []
+    e['triggers'] = [
+        {'script': 11004, 'var': 'EVENT_WORK_0x41ac', 'value': 0, 'type': 0,
+         'grid': {'x': 14, 'z': 4, 'width': 1, 'height': 3, 'y': 0}, 'unk14': 0},
+        {'script': 11005, 'var': 'EVENT_WORK_0x41ac', 'value': 1, 'type': 0,
+         'grid': {'x': 2, 'z': 4, 'width': 1, 'height': 3, 'y': 0}, 'unk14': 0},
+    ]
+    write('res/field/events/nacrene_gate.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
 
 
 if __name__ == '__main__':
