@@ -81,9 +81,11 @@ def build_events():
         g['z'] += DZ * 16
         if w['zone'] not in OPEN_ZONES:
             if g['y'] == 0:
-                # A boarded door: a sign on the door's tile
-                out['bg_events'].append({'script': SCRIPT_BOARDED, 'condition': 0, 'direction': 4,
-                                         'grid': {'x': g['x'] // 16, 'y': g['z'] // 16, 'z': 0}})
+                # A boarded door: a sign on the door's tile and the tiles beside it, since the doors are drawn wider
+                # than their one-tile warp
+                for dx in (-1, 0, 1):
+                    out['bg_events'].append({'script': SCRIPT_BOARDED, 'condition': 0, 'direction': 4,
+                                             'grid': {'x': g['x'] // 16 + dx, 'y': g['z'] // 16, 'z': 0}})
             # The interiors' doors name Nacrene's warps by number, so a closed door's warp stays in the list, moved to
             # a corner of the sea where nobody can step on it
             g['x'], g['z'] = 8, 8
