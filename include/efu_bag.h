@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "constants/bag.h"
+#include "constants/items.h"
 #include "save/bag.h"
 
 // Escape from Unova's one-item bag: of the items a Pokémon can hold (those of the Items, Medicine and Berries pockets,
@@ -37,6 +38,22 @@ static inline u32 Efu_BagItemPocket(BagSave *bag) {
         return BAG_POCKET_BERRIES;
     }
     return BAG_POCKET_ITEMS;
+}
+
+// The bag's one holdable item, or ITEM_NONE
+static inline u16 Efu_BagHoldableItem(BagSave *bag) {
+    u32 pocket;
+    BagItem *slot;
+
+    for (pocket = BAG_POCKET_ITEMS; pocket <= BAG_POCKET_BERRIES; pocket++) {
+        if (pocket != BAG_POCKET_TMS_HMS) {
+            slot = BagSave_GetItemIndexHandle(bag, pocket, 0);
+            if (slot != NULL && slot->item != ITEM_NONE && slot->count != 0) {
+                return slot->item;
+            }
+        }
+    }
+    return ITEM_NONE;
 }
 
 // The pocket whose name and tab the bag shows for one of its pockets

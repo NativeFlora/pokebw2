@@ -7,7 +7,9 @@
 #include "constants/items.h"
 #include "constants/sound.h"
 #include "constants/text_banks.h"
+#include "efu.h"
 #include "efu_bag.h"
+#include "field/field_status.h"
 #include "field/player_action.h"
 #include "gfl/arc.h"
 #include "gfl/bg_sys.h"
@@ -31,6 +33,7 @@
 #include "pml/item.h"
 #include "save/bag.h"
 #include "save/encounter.h"
+#include "save/event_work.h"
 #include "save/save_control.h"
 #include "system/app_keycursor.h"
 #include "system/app_taskmenu.h"
@@ -1267,6 +1270,11 @@ static void ItemMenu_StateTossConfirm(ItemMenuWork *work) {
         if (pos == ITEMMENU_CONFIRM_YES) {
             GFL_SndSEPlay(SEQ_SE_SYS_08);
             ItemMenu_SubItem(work, work->quantity);
+            // Escape from Unova: from the field, the item lands on the ground once the bag closes (EFU_SCRIPT_TOSS)
+            if (work->mode == BAG_MODE_NORMAL) {
+                *EventWork_GetWkPtr(GameData_GetEventWork(work->gameData), EFU_WORK_TOSSED_ITEM) = work->item;
+                FieldStatus_ReserveScript(GameData_GetFieldStatus(work->gameData), EFU_SCRIPT_TOSS);
+            }
             GFL_MsgDataLoadStrbuf(work->msgData, BagMenu_Text_ThrewAway, work->strbuf);
             ItemMenu_SetItemText(work, 0, work->item, work->quantity > 1, FALSE);
             WordSetNumber(work->wordSet, 1, work->quantity, 3, 0, TRUE);

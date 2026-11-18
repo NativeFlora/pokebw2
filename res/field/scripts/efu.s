@@ -11,6 +11,16 @@
     .macro EfuPokePartyClear
     FieldCommand 0x2db
     .endm
+// Items on the ground (0x15f, which was Nop; Scrcmd_Efu_Ground in src/ov036/scrcmd_field_actor.c): op is
+// EFU_GROUND_DROP or EFU_GROUND_BAG_ITEM (include/efu.h)
+    .macro EfuGround op, item, x, z, result
+    FieldCommand 0x15f
+    .2byte \op
+    .2byte \item
+    .2byte \x
+    .2byte \z
+    .2byte \result
+    .endm
 // Escape from Unova's own scripts, global IDs from 11000 (EFU_SCRIPT_* in include/efu.h)
     ScriptEntry Script_NewGameSetup
     ScriptEntry Script_NewGameStart
@@ -25,6 +35,8 @@
     ScriptEntry Script_LootTarget
     ScriptEntry Script_ScavDrop
     ScriptEntry Script_ChildcareEnter
+    ScriptEntry Script_GroundItem
+    ScriptEntry Script_Toss
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -1861,25 +1873,34 @@ L_ConfirmStarter:
 // of the original (global 7400, which the original balls call with their item) gives it and hides the ball by its flag
 Script_LootRoute:
     ActorsPauseAll
+    WorkSetConst 0x8013, 0
     ItemCheckSpace 4, 1, 0x800c
     WorkCmpConst 0x800c, 0
-    VMJumpIf CMP_EQ, L_LootNoRoom
+    VMCallIf CMP_EQ, L_LootNoRoom
+    WorkCmpConst 0x8013, 1
+    VMJumpIf CMP_EQ, L_LootKeep
     VMCall L_LootPickRoute
     VMJump L_LootGive
 
 Script_LootCave:
     ActorsPauseAll
+    WorkSetConst 0x8013, 0
     ItemCheckSpace 4, 1, 0x800c
     WorkCmpConst 0x800c, 0
-    VMJumpIf CMP_EQ, L_LootNoRoom
+    VMCallIf CMP_EQ, L_LootNoRoom
+    WorkCmpConst 0x8013, 1
+    VMJumpIf CMP_EQ, L_LootKeep
     VMCall L_LootPickCave
     VMJump L_LootGive
 
 Script_LootTarget:
     ActorsPauseAll
+    WorkSetConst 0x8013, 0
     ItemCheckSpace 4, 1, 0x800c
     WorkCmpConst 0x800c, 0
-    VMJumpIf CMP_EQ, L_LootNoRoom
+    VMCallIf CMP_EQ, L_LootNoRoom
+    WorkCmpConst 0x8013, 1
+    VMJumpIf CMP_EQ, L_LootKeep
     VMCall L_LootPickTarget
 L_LootGive:
     WorkSetConst 0x800d, 1
@@ -1888,12 +1909,25 @@ L_LootGive:
     ActorsUnpauseAll
     VMHalt
 
-// The one-item bag (include/efu_bag.h): each loot script asks first, and with the bag's item already carried, the
-// ball stays shut, so what it holds is rolled only when it can be taken (every loot item can be held, so a Poke Ball
-// stands for them all)
+// The one-item bag (include/efu_bag.h): each loot script asks first, and with the bag's item already carried, it offers
+// to swap it for what's in the ball, unseen, so what a ball holds is rolled only when it is taken and can't be peeked
+// at and rolled again (every loot item can be held, so a Poke Ball stands for them all). On yes the bag's item is left
+// on the ball's tile, and the loot script goes on to roll and give the ball's item; on no (0x8013 is 1) it stops
 L_LootNoRoom:
-    SystemMsg Efu_Text_LootNoRoom, 2
-    LastKeyWait
+    EfuGround EFU_GROUND_BAG_ITEM, 0, 0, 0, 0x8012
+    WordSetItemNameEx 0, 0x8012, 1, 0
+    SystemMsg Efu_Text_LootSwap, 2
+    YesNoWin 0x8013
+    WorkCmpConst 0x8013, 1
+    VMJumpIf CMP_EQ, L_LootNoSwap
+    SystemMsgClose
+    ActorGetGPos 0x8011, 0x8014, 0x8015
+    ItemSub 0x8012, 1, 0x8016
+    EfuGround EFU_GROUND_DROP, 0x8012, 0x8014, 0x8015, 0x8016
+L_LootNoSwap:
+    VMReturn
+
+L_LootKeep:
     SystemMsgClose
     ActorsUnpauseAll
     VMHalt
@@ -1915,8 +1949,19 @@ Script_ScavDrop:
     RTEndGlobal
     VMHalt
 
+// With the bag's item carried, the drop lands beside the player, or is lost with nowhere to put it
 L_ScavDropFull:
+    EfuGround EFU_GROUND_DROP, 0x800c, EFU_GROUND_BESIDE_PLAYER, 0, 0x8010
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_ScavDropLost
     SystemMsg Efu_Text_ScavDropFull, 2
+    LastKeyWait
+    SystemMsgClose
+    RTEndGlobal
+    VMHalt
+
+L_ScavDropLost:
+    SystemMsg Efu_Text_ScavDropLost, 2
     LastKeyWait
     SystemMsgClose
     RTEndGlobal
@@ -1933,6 +1978,63 @@ Script_ChildcareEnter:
 L_ChildcareScav:
     FlagReset EFU_FLAG_CHILDCARE_SCAV
     TrainerFlagReset 401
+    VMHalt
+
+// An item on the ground (EfuGround), its item in the actor's user parameter 0: taken if the bag has room, or else
+// offered in a swap for the bag's item, which is left in its place
+Script_GroundItem:
+    ActorsPauseAll
+    ActorGetUserParam 0x8011, 0, 0x800c
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    ItemCheckSpace 0x800c, 1, 0x8010
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_GroundSwap
+    ActorDelete 0x8011
+    ItemAdd 0x800c, 1, 0x8010
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_GroundTake, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_GroundSwap:
+    EfuGround EFU_GROUND_BAG_ITEM, 0, 0, 0, 0x8012
+    WordSetItemNameEx 1, 0x8012, 1, 0
+    SystemMsg Efu_Text_GroundSwap, 2
+    YesNoWin 0x8013
+    WorkCmpConst 0x8013, 1
+    VMJumpIf CMP_EQ, L_LootKeep
+    ActorGetGPos 0x8011, 0x8014, 0x8015
+    ActorDelete 0x8011
+    ItemSub 0x8012, 1, 0x8016
+    ItemAdd 0x800c, 1, 0x8016
+    EfuGround EFU_GROUND_DROP, 0x8012, 0x8014, 0x8015, 0x8016
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_GroundSwapped, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+// Reserved by the bag after a toss (itemmenu.c): the item lands beside the player, or is lost with nowhere to put it
+Script_Toss:
+    WorkGet 0x800c, EFU_WORK_TOSSED_ITEM
+    WorkSetConst EFU_WORK_TOSSED_ITEM, 0
+    WorkCmpConst 0x800c, 0
+    VMJumpIf CMP_EQ, L_TossDone
+    EfuGround EFU_GROUND_DROP, 0x800c, EFU_GROUND_BESIDE_PLAYER, 0, 0x8010
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_NE, L_TossDone
+    ActorsPauseAll
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    SystemMsg Efu_Text_TossLost, 2
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+L_TossDone:
     VMHalt
 
 L_LootPickRoute:

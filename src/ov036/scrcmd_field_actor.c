@@ -6,7 +6,11 @@
 // Additional helper and table names are our descriptive guesses.
 #include "types.h"
 #include "constants/directions.h"
+#include "constants/move_codes.h"
+#include "constants/obj_codes.h"
 #include "constants/sound.h"
+#include "efu.h"
+#include "efu_bag.h"
 #include "field/event_action_call.h"
 #include "field/event_actor_move.h"
 #include "field/event_dive.h"
@@ -1079,5 +1083,61 @@ BOOL Scrcmd_FieldActor_ActorFallDownToXZ(VM *vm, FieldScriptEnv *env) {
         SetActorWPosOffset(actor, &offset);
     }
     FieldTaskManager_AddTask(taskManager, FieldActorFallTask_Create(field, actor, 40, 250), 0);
+    return FALSE;
+}
+
+// Escape from Unova: EfuGround, where the unused Nop was in the command table (0x15f), so ov012 keeps its size. With
+// EFU_GROUND_DROP, it puts an item ball holding the item on a tile, or with x EFU_GROUND_BESIDE_PLAYER on the first
+// free tile around the player, and sets result to whether it did (with no free tile, or every ground item's ID taken,
+// the item is lost); with EFU_GROUND_BAG_ITEM, it sets result to the bag's holdable item
+BOOL Scrcmd_Efu_Ground(VM *vm, FieldScriptEnv *env) {
+    static const s8 sAround[8][2] = { { 0, 1 },  { -1, 0 }, { 1, 0 },   { 0, -1 },
+                                      { -1, 1 }, { 1, 1 },  { -1, -1 }, { 1, -1 } };
+    ScriptFieldWork *fieldWork = ScriptWork_GetFieldWork(FieldScriptEnv_GetScriptWork(env));
+    u16 op = ScriptReadAny(vm, env);
+    u16 item = ScriptReadAny(vm, env);
+    u16 x = ScriptReadAny(vm, env);
+    u16 z = ScriptReadAny(vm, env);
+    u16 *result = ScriptReadVar(vm, env);
+    MMSys *mmSys = Field_GetActorSystem(fieldWork->field);
+    FieldActor *player = FieldPlayer_GetActor(Field_GetPlayer(fieldWork->field));
+    FieldActor *ball;
+    GridPos pos;
+    u16 id;
+    int i;
+
+    if (op == EFU_GROUND_BAG_ITEM) {
+        *result = Efu_BagHoldableItem(GameData_GetBag(FieldScriptEnv_GetGameData(env)));
+        return FALSE;
+    }
+    *result = FALSE;
+    if (x == EFU_GROUND_BESIDE_PLAYER) {
+        FldAct_GetGPos(player, &pos);
+        for (i = 0; i < 8; i++) {
+            x = pos.x + sAround[i][0];
+            z = pos.z + sAround[i][1];
+            if ((ActorRouteCollCheck(player, x, pos.y, z, DIR_DOWN) & ~ACTOR_COLL_WALK_AREA) == 0) {
+                break;
+            }
+        }
+        if (i == 8) {
+            return FALSE;
+        }
+    }
+    for (id = EFU_GROUND_ID_FIRST; id < EFU_GROUND_ID_FIRST + EFU_GROUND_MAX; id++) {
+        if (FindFieldActor(mmSys, id) == NULL) {
+            break;
+        }
+    }
+    if (id == EFU_GROUND_ID_FIRST + EFU_GROUND_MAX) {
+        return FALSE;
+    }
+    ball = CreateNewActorByParam(mmSys, x, z, DIR_DOWN, id, OBJ_CODE_110, MOVE_CODE_NONE,
+                                 Field_GetPlayerStateZoneID(fieldWork->field));
+    if (ball != NULL) {
+        SetActorSCRID(ball, EFU_SCRIPT_GROUND_ITEM);
+        SetActorUserParam(ball, item, 0);
+        *result = TRUE;
+    }
     return FALSE;
 }

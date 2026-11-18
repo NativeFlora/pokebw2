@@ -27,6 +27,10 @@
 #define EFU_SCRIPT_SCAV_DROP (EFU_SCRIPT_FIRST + 11)
 // The Route 3 childcare centre's init script: a scav there on 30% of entries
 #define EFU_SCRIPT_CHILDCARE (EFU_SCRIPT_FIRST + 12)
+// The script of an item on the ground (EfuGround): picking it up, or swapping the bag's item for it
+#define EFU_SCRIPT_GROUND_ITEM (EFU_SCRIPT_FIRST + 13)
+// Reserved by the bag (itemmenu.c) when it tosses an item, to put it on the ground back in the field
+#define EFU_SCRIPT_TOSS (EFU_SCRIPT_FIRST + 14)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -44,6 +48,8 @@
 #define EFU_WORK_EXPLORE_START 0x41aa
 // How many scavs have come out on this exploration
 #define EFU_WORK_SCAVS_OUT 0x41a9
+// The item the bag tossed last, for EFU_SCRIPT_TOSS to put on the ground; 0 once it has
+#define EFU_WORK_TOSSED_ITEM 0x41a8
 // The level of the Pokémon that joins a player with none
 #define EFU_LOST_SOUL_LEVEL 5
 #define EFU_SEASON(raids) ((SEASON_WINTER + (raids)) % SEASON_COUNT)
@@ -68,6 +74,17 @@
 #define EFU_FLAG_LOOT_FIRST 0xa90
 // The hide flag of the scav in Route 3's childcare centre, rolled on each entry (Script_ChildcareEnter)
 #define EFU_FLAG_CHILDCARE_SCAV 0xa93
+
+// Items on the ground (EfuGround, Scrcmd_Efu_Ground in scrcmd_field_actor.c): item ball actors made where an item
+// was tossed or swapped, each holding its item in its user parameter 0, with actor IDs from EFU_GROUND_ID_FIRST. They
+// belong to the zone, and are gone once the player leaves it. EfuGround's operations: put an item on the ground (on a
+// tile, or with EFU_GROUND_BESIDE_PLAYER as its x on a free one of the eight around the player), or read the bag's
+// holdable item (efu_bag.h)
+#define EFU_GROUND_DROP 0
+#define EFU_GROUND_BAG_ITEM 1
+#define EFU_GROUND_BESIDE_PLAYER 0xffff
+#define EFU_GROUND_ID_FIRST 0xc0
+#define EFU_GROUND_MAX 16
 
 // Fleeing (btl_server_flow.c): the original's cap on the escape attempts it counts, and the count that means the
 // player failed to get away this turn and gets away at its end
