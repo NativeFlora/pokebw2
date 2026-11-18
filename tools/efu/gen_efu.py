@@ -67,6 +67,8 @@ LOOT = {
                   'GREAT_BALL': 1, 'NUGGET': 1}),
     'Target': (15, {'PEARL': 3, 'STARDUST': 3, 'POKE_BALL': 3, 'TINY_MUSHROOM': 2, 'SUPER_POTION': 2, 'GREAT_BALL': 2,
                     'NUGGET': 2}),
+    # The Rare Candy in Route 3's childcare centre (its own item ball script), out on 10% of explorations
+    'Rare': (90, {'RARE_CANDY': 1}),
 }
 items = [l.split('=')[0].strip() for l in open(root + '/generated/items.txt') if l.startswith('ITEM_')]
 loot = []

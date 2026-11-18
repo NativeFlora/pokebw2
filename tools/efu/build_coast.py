@@ -57,6 +57,17 @@ NACRENE_CHUNKS = {(1, 1): 'overworld_2_map19_18', (2, 1): 'overworld_2_map20_18'
 # The Nacrene rows that are now sea
 NACRENE_SEA_ROWS = 16
 
+# The white fence across the end of Nacrene's railway, which stood on the west chunk's (overworld_2_map18_18) last
+# column: copied into efu_coast_w1 where that chunk was, with its tiles blocked as they were. The box (tiles, local to
+# the chunk) holds only the fence's triangles of its material
+RAIL_FENCE = {'chunk': 'overworld_2_map18_18', 'material': 'saku01a', 'x': (29.5, 32), 'z': (20, 29),
+              'blocked': [(31, z) for z in range(22, 28)]}
+
+# The warehouses boarded up (build_base.py), by chunk and the prop's local tile column, and the warehouse prop drawn with
+# its door shut (resource 15 of FIELD_PROPS_EXTERIOR_SHARED_PC_01_3, c2_build_03, the two on the street without a door)
+CLOSED_WAREHOUSES = {('overworld_2_map19_18', 13), ('overworld_2_map20_18', 9), ('overworld_2_map20_18', 18)}
+WAREHOUSE_SHUT = 15
+
 BLOCKED = {'shape': '0', 'slope': '0', 'offset': '3', 'tile_type': str(0x810001), 'diagonal': '0'}
 SAND = {'shape': '0', 'slope': '0', 'offset': '3', 'tile_type': str(0x880019), 'diagonal': '0'}
 
@@ -311,16 +322,52 @@ def coast_terrain(cx, cz, walk_rows):
     return rows
 
 
+def copy_rail_fence(w):
+    """Copies the railway's fence (RAIL_FENCE) from the original chunk into a chunk being written."""
+    doc, binary = read_glb(os.path.join(MODELS, RAIL_FENCE['chunk'], 'model.glb'))
+    (x0, x1), (z0, z1) = RAIL_FENCE['x'], RAIL_FENCE['z']
+
+    def inside(v):
+        return x0 * TILE - 256 <= v[0] <= x1 * TILE - 256 and z0 * TILE - 256 <= v[2] <= z1 * TILE - 256
+
+    for mesh in doc['meshes']:
+        for prim in mesh['primitives']:
+            material = doc['materials'][prim['material']]
+            if material['name'] != RAIL_FENCE['material']:
+                continue
+            attrs = prim['attributes']
+            pos = accessor(doc, binary, attrs['POSITION'])
+            idx = [i[0] for i in accessor(doc, binary, prim['indices'])]
+            tris = [tuple(idx[k:k + 3]) for k in range(0, len(idx), 3)
+                    if all(inside(pos[i]) for i in idx[k:k + 3])]
+            used = sorted({i for t in tris for i in t})
+            remap = {old: new for new, old in enumerate(used)}
+            uvs = accessor(doc, binary, attrs['TEXCOORD_0'])
+            colors = accessor(doc, binary, attrs['COLOR_0'])
+            normals = accessor(doc, binary, attrs['NORMAL'])
+            texture = doc['textures'][material['pbrMetallicRoughness']['baseColorTexture']['index']]
+            m = w.material(material, doc['images'][texture['source']]['uri'])
+            w.primitive(m, [pos[i] for i in used], [uvs[i] for i in used],
+                        [tuple(c if isinstance(c, int) else round(c * 255) for c in colors[i][:3]) for i in used],
+                        [normals[i] for i in used], [tuple(remap[i] for i in t) for t in tris])
+
+
 def build_new_chunk(pos, folder, constant, walk_rows):
     path = os.path.join(MODELS, folder)
     os.makedirs(path, exist_ok=True)
     w = Writer('map_outsea')
     w.add_prims(coast_prims(*pos))
+    if folder == 'efu_coast_w1':
+        copy_rail_fence(w)
     w.save(os.path.join(path, 'model.glb'))
     with open(os.path.join(path, 'data.json'), 'w') as f:
         f.write(json.dumps({'$schema': '../map_model.schema.json', 'texture_set': NACRENE_SETS[0], 'written': True,
                             'template': 'MAP_MODEL_OVERWORLD_2_MAP_OUTSEA'}, indent=4) + '\n')
-    write_csv(os.path.join(path, 'terrain_0.csv'), coast_terrain(*pos, walk_rows))
+    terrain = coast_terrain(*pos, walk_rows)
+    if folder == 'efu_coast_w1':
+        for x, z in RAIL_FENCE['blocked']:
+            terrain[z * CHUNK + x] = dict(BLOCKED, x=str(x), z=str(z))
+    write_csv(os.path.join(path, 'terrain_0.csv'), terrain)
     with open(os.path.join(path, 'terrain_0_splits.csv'), 'w') as f:
         f.write('index,unused,slope0,slope1,offset0,offset1\n')
     lst = os.path.join(root, 'generated/map_models.txt')
@@ -393,7 +440,13 @@ def build_nacrene_chunk(pos, folder):
     for node in doc['nodes']:
         name = node.get('name', '')
         if name.startswith('bw2_prop_') and node['translation'][2] >= edge:
-            w.doc['nodes'].append({k: node[k] for k in ('name', 'translation', 'rotation', 'scale') if k in node})
+            node = {k: node[k] for k in ('name', 'translation', 'rotation', 'scale') if k in node}
+            # A boarded-up warehouse is the one whose door is drawn shut (c2_build_03): the others' doors are holes
+            # that the game fills with a door only where there is a warp
+            tx = int((node['translation'][0] + 256) // TILE)
+            if (folder, tx) in CLOSED_WAREHOUSES:
+                node['name'] = name[:-5] + '%05d' % WAREHOUSE_SHUT
+            w.doc['nodes'].append(node)
             w.doc['scenes'][0]['nodes'].append(len(w.doc['nodes']) - 1)
     w.save(os.path.join(path, 'model.glb'))
     data = json.load(open(os.path.join(path, 'data.json')))

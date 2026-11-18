@@ -25,6 +25,8 @@
 #define EFU_SCRIPT_LOOT_TARGET (EFU_SCRIPT_FIRST + 10)
 // Run (RTCallGlobal) after each win against a scav (global_3000.s): it drops an item from the target's table
 #define EFU_SCRIPT_SCAV_DROP (EFU_SCRIPT_FIRST + 11)
+// The Route 3 childcare centre's init script: a scav there on 30% of entries
+#define EFU_SCRIPT_CHILDCARE (EFU_SCRIPT_FIRST + 12)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -64,6 +66,8 @@
 // The hide flags of the item balls placed where the original had none (build_raid.py's NEW_BALLS), from this one.
 // Heading out rolls every loot spot's flag again, these and the original balls' (tools/efu/loot.json)
 #define EFU_FLAG_LOOT_FIRST 0xa90
+// The hide flag of the scav in Route 3's childcare centre, rolled on each entry (Script_ChildcareEnter)
+#define EFU_FLAG_CHILDCARE_SCAV 0xa93
 
 // Fleeing (btl_server_flow.c): the original's cap on the escape attempts it counts, and the count that means the
 // player failed to get away this turn and gets away at its end

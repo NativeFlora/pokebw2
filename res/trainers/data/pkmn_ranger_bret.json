@@ -14,7 +14,15 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_HERDIER",
+            "species": "SPECIES_LILLIPUP",
+            "form": 0,
+            "level": 15,
+            "difficulty": 50,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PANSEAR",
             "form": 0,
             "level": 16,
             "difficulty": 50,
@@ -24,15 +32,7 @@
         {
             "species": "SPECIES_PANSEAR",
             "form": 0,
-            "level": 17,
-            "difficulty": 50,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_PANSEAR",
-            "form": 0,
-            "level": 16,
+            "level": 15,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
@@ -40,7 +40,7 @@
         {
             "species": "SPECIES_WOOBAT",
             "form": 0,
-            "level": 17,
+            "level": 16,
             "difficulty": 50,
             "gender": 0,
             "ability": 0

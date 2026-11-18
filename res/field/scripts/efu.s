@@ -24,6 +24,7 @@
     ScriptEntry Script_LootCave
     ScriptEntry Script_LootTarget
     ScriptEntry Script_ScavDrop
+    ScriptEntry Script_ChildcareEnter
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -1921,6 +1922,19 @@ L_ScavDropFull:
     RTEndGlobal
     VMHalt
 
+// Entering Route 3's childcare centre (its init script): a scav waits there 30% of the time, ready to fight again
+Script_ChildcareEnter:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 30
+    VMJumpIf CMP_LT, L_ChildcareScav
+    FlagSet EFU_FLAG_CHILDCARE_SCAV
+    VMHalt
+
+L_ChildcareScav:
+    FlagReset EFU_FLAG_CHILDCARE_SCAV
+    TrainerFlagReset 401
+    VMHalt
+
 L_LootPickRoute:
     Random 0x8020, 22
 L_LootPickRoute_:
@@ -2169,6 +2183,11 @@ L_LootPickTarget__H_H_H_L:
     VMReturn
 L_LootPickTarget__H_H_H_H:
     WorkSetConst 0x800c, 92
+    VMReturn
+L_LootPickRare:
+    Random 0x8020, 1
+L_LootPickRare_:
+    WorkSetConst 0x800c, 50
     VMReturn
 L_LootRoll:
     Random 0x8020, 100
@@ -2419,4 +2438,12 @@ L_LootNext_29:
 L_LootOut_30:
     FlagReset 0x54e
 L_LootNext_30:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 90
+    VMJumpIf CMP_GE, L_LootOut_31
+    FlagSet 0x564
+    VMJump L_LootNext_31
+L_LootOut_31:
+    FlagReset 0x564
+L_LootNext_31:
     VMReturn

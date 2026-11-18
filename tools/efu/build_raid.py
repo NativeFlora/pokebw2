@@ -35,6 +35,8 @@ OTHER_EVOLUTION_LEVEL = 36
 # on losing it, and if spoken to after. Their own lines were about the old Route 3 (the school kids' lessons on Triple
 # and Rotation Battles, a double-battle pair's cheering)
 SCAVS = {
+    'youngster_jimmy': (False, "This place was full of kids once.\nNow it's mine!{be01}", "Okay, okay! I'm going!",
+                        "Don't come back here. There's\nnothing left worth taking."),
     'lass_shannon': (True, "Ooh, a straggler!\nWhat's in the bag?{be01}", "Ugh! Fine, keep your junk!",
                      "Everything out here belongs to\nwhoever's still standing."),
     'fisherman_bruce': (False, "I don't fish for food anymore.\nI fish for stragglers.{be01}", "The one that got away...",
@@ -79,6 +81,11 @@ FLAG_LOOT_FIRST = int(re.search(r'#define EFU_FLAG_LOOT_FIRST (0x[0-9a-f]+)', ef
 # The scripts that pick up loot, by tier (gen_efu.py writes them from loot.json and its item tables)
 LOOT_SCRIPTS = {t: 11000 + int(re.search(r'#define EFU_SCRIPT_LOOT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % t.upper(),
                                          efu_h).group(1)) for t in ('route', 'cave', 'target')}
+SCRIPT_CHILDCARE = 11000 + int(re.search(r'#define EFU_SCRIPT_CHILDCARE \(EFU_SCRIPT_FIRST \+ (\d+)\)', efu_h).group(1))
+FLAG_CHILDCARE_SCAV = int(re.search(r'#define EFU_FLAG_CHILDCARE_SCAV (0x[0-9a-f]+)', efu_h).group(1), 16)
+# The Route 3 childcare centre's scav, a Trainer from Route 2 (which can't be reached), and its Rare Candy
+CHILDCARE_TRAINER = 401
+CHILDCARE_CANDY_SCRIPT = 7280
 SCRIPT_SCAV_DROP = 11000 + int(re.search(r'#define EFU_SCRIPT_SCAV_DROP \(EFU_SCRIPT_FIRST \+ (\d+)\)', efu_h).group(1))
 # The original item balls' scripts (each gives its own item) and the hidden items'
 ITEM_SCRIPTS = (7000, 7799)
@@ -274,6 +281,23 @@ def build_events(loot):
     return scavs, {w['zone']: i for i, w in enumerate(warps)}
 
 
+def build_childcare(loot):
+    """The childcare centre on Route 3 (ROUTE_3_2): nobody left but its Rare Candy, out on 10% of explorations, and on
+    30% of entries a scav (Script_ChildcareEnter)."""
+    e = json.loads(orig('res/field/events/route_3_2.json'))
+    candy = next(n for n in e['npcs'] if n['script'] == CHILDCARE_CANDY_SCRIPT)
+    loot.spots.append({'flag': candy['flag'], 'tier': 'rare'})
+    female = SCAVS[scav_key(CHILDCARE_TRAINER)][0]
+    scav = {'id': max(n['id'] for n in e['npcs']) + 1, 'model': SCAV_MODEL[female], 'movement': 'MOVE_CODE_TURN_RANDOM',
+            'type': 'ACTOR_EVENT_TYPE_TRAINER', 'flag': 'EVENT_FLAG_0x%04x' % FLAG_CHILDCARE_SCAV,
+            'script': 3000 + CHILDCARE_TRAINER, 'direction': 'DIR_DOWN', 'params': [SCAV_SIGHT, 0, 0],
+            'area': {'width': 1, 'height': 1}, 'grid': {'x': 5, 'z': 5, 'y': 0}}
+    e['npcs'] = [candy, scav]
+    e['init_scripts'] = [{'type': 2, 'script': SCRIPT_CHILDCARE}]
+    write('res/field/events/route_3_2.json', e)
+    return CHILDCARE_TRAINER
+
+
 def build_places(loot, route_warps):
     """The caves and the target: only their item balls, as loot, and their way out to the zone."""
     for zone, (tier, door) in PLACES.items():
@@ -388,6 +412,7 @@ if __name__ == '__main__':
     loot = Loot()
     scavs, route_warps = build_events(loot)
     build_places(loot, route_warps)
+    scavs.append(build_childcare(loot))
     loot.save()
     build_trainers(scavs)
     build_trainer_scripts()
