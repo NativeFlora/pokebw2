@@ -11,6 +11,8 @@
 #include "constants/script_text_banks.h"
 #include "constants/sound.h"
 #include "constants/text_banks.h"
+#include "efu.h"
+#include "efu_bag.h"
 #include "field/event_poke_status.h"
 #include "field/field.h"
 #include "field/field_camera.h"
@@ -854,7 +856,8 @@ static void ShopUI_TryBuyItem(ShopUIWork *wk) {
     u32 balance = ShopUI_GetBalance(wk);
     u16 owned = BagSave_GetItemCountByID(wk->bag, wk->item, wk->heapId);
 
-    if (!BagSave_CheckAvailItemSpace(wk->bag, wk->item, 1, wk->heapId)) {
+    // Escape from Unova: the one-item bag (efu_bag.h)
+    if (!Efu_BagHasRoom(wk->bag, wk->item, 1) || !BagSave_CheckAvailItemSpace(wk->bag, wk->item, 1, wk->heapId)) {
         ShopUI_SetStatusDialogue(wk, ScrcmdShop_Text_CantTakeAnyMore, wk->item, FALSE);
         wk->state = SHOP_UI_SEQ_WAIT_MESSAGE;
         wk->nextState = SHOP_UI_SEQ_RETURN_TO_LIST;
@@ -886,6 +889,9 @@ static void ShopUI_TryBuyItem(ShopUIWork *wk) {
         }
         if (wk->maxAmount + owned > PML_ItemGetMaxStorageCount(wk->item)) {
             wk->maxAmount = PML_ItemGetMaxStorageCount(wk->item) - owned;
+        }
+        if (!Efu_BagHasRoom(wk->bag, wk->item, 2)) {
+            wk->maxAmount = EFU_BAG_HOLDABLE_MAX;
         }
     } else {
         ShopUI_SetBuyConfirmMessage(wk, wk->listMode);
@@ -1137,6 +1143,10 @@ static void ShopUI_LoadPokeMartItems(ShopUIWork *wk, u32 shopId, u32 fileId, u32
         ShopUI_AppendOption(wk, i, wk->listMode, item, msgData);
         wk->entries[i].item = item;
         wk->entries[i].price = PassPower_ApplyBargain(GetItemParam(item, ITEM_PARAM_PRICE, wk->heapId));
+        // Escape from Unova: the base's clerk sources everything at a steep markup
+        if (shopId == EFU_MART_SHOP_ID) {
+            wk->entries[i].price *= EFU_MART_PRICE_FACTOR;
+        }
     }
     wk->entryCount = i;
     ShopUI_CheckSellingTMHM(wk->entries, wk->entryCount);

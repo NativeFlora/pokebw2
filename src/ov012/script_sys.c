@@ -209,7 +209,7 @@ static const struct OpcodePermissions EVCMD_PERM_TABLE[] = {
     { 0, 0, 0 }, { 1, 0, 0 }, { 0, 0, 0 }, { 1, 1, 1 }, { 0, 0, 0 }, { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 0 }, // 0x2e0
     { 1, 0, 0 }, { 1, 0, 0 }, { 1, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 }, // 0x2e8
     { 0, 0, 0 }, { 1, 1, 1 }, { 1, 1, 1 },
-    // Escape from Unova's 0x15f above (EfuGround, once Nop, which was { 0, 0, 0 }) is allowed like 0x2db
+    // Escape from Unova's 0x15f above (EfuSpecial, once Nop, which was { 0, 0, 0 }) is allowed like 0x2db
     // Escape from Unova's commands, from 0x2f3: one entry each, or FieldScript_OpcodeGuard reads past the table
     { 1, 0, 0 }, // 0x2f3
 };

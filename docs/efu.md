@@ -20,7 +20,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   start where ov036's code and BSS end), so growing either moves those pointers, and main's compressed size, kept in
   the secure area, may change with them. It is luck: some sizes pass and some don't, so build after every change to
   them and, if the check fails, change the size a little (natural code, never padding) and try again. ov035 has stayed
-  at its v1 size (11520 bytes); ov036 is 354176 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
+  at its v1 size (11520 bytes); ov036 is 354944 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
 
 ## Where things are
@@ -38,14 +38,17 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | Options on a new game (fastest text, Set battle style, no battle animations) | `Config_Init` in `src/system/config.c` |
 | The base's beach and sea (Undella's sand and surf textures), and the grass filled in where cutting off the north left the ground bare | `tools/efu/build_coast.py`, run by `build_base.py` |
 | The first exploration zone's map (`MAP_MATRIX_EFU_ZONE_1`, which `ZONE_ROUTE_3` uses): Route 3 with Route 20 lowered into Striaton's place, forest everywhere else | `tools/efu/build_zone.py` |
-| The zone's events, wild Pokémon (2 to 15 on the route, 8 to 18 in the caves, 12 to 22 in the target), the scavs at 40 to 60 and their lines, the caves and the target, and the loot spots (`tools/efu/loot.json`) | `tools/efu/build_raid.py` |
-| The one-item bag (one item a Pokémon can hold at a time; Key Items and TMs are free) | `include/efu_bag.h`, used by `Scrcmd_Item_ItemCheckSpace` (`src/ov036/scrcmd_item.c`), taking a held item in `src/ov165/plist_sys.c` and in the PC in `src/ov255/box2_seq.c` |
+| The zone's events, wild Pokémon (2 to 15 on the route, 8 to 18 in the caves, 12 to 22 in the target), the scavs (teams of 2 to 6 at 65 to 90% of the cap, 14 to 20) and their lines, the caves and the target, the childcare centre, Route 3's Day Care, Nurse Joy, and the loot spots (`tools/efu/loot.json`) | `tools/efu/build_raid.py` |
+| The one-item bag (one item a Pokémon can hold at a time; Key Items and TMs are free) | `include/efu_bag.h`, used by `Scrcmd_Item_ItemCheckSpace` (`src/ov036/scrcmd_item.c`), taking a held item in `src/ov165/plist_sys.c` and in the PC in `src/ov255/box2_seq.c`, and buying in `src/ov036/scrcmd_shop.c` |
+| The bag's pockets (Items, TMs and Key Items; Medicine and Berries show as Items), Give first, A in the empty Items pocket for the party screen, the quicker animations, and the toss to the ground | `src/ov142/itemmenu.c`, `src/ov142/itemmenu_disp.c`, `tools/efu/build_bag.py` (the items' `field_pocket`) |
+| Items on the ground, the party's total level, the Day Care's growth (`EfuSpecial`, script command 0x15f) | `Scrcmd_Efu_Special` in `src/ov036/scrcmd_field_actor.c`, `Efu_DayCareGrow` in `src/ov036/day_care.c` |
+| The base's people: Nurse Joy, the clerk and the Day Care Lady, and the gate's guide | `build_interiors` in `tools/efu/build_base.py`, `Script_Nurse` and below in `tools/efu/efu.s.in`, the mart's prices in `src/ov036/scrcmd_shop.c` |
 | The loot tables and the scripts that roll them | `LOOT` in `tools/efu/gen_efu.py`, `Script_Loot*` in `tools/efu/efu.s.in` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` in `src/ov036/event_trainer_eye.c`, called each step from `src/ov036/fieldmap_event.c` |
-| Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs) |
+| Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs); 0x2db and 0x15f took over unused commands' rows, so the tables keep their size |
 
-Edit the templates, then from `tools/efu` run `python3 build_base.py`, `python3 build_zone.py`, `python3 build_raid.py`
-and `python3 gen_efu.py`, in that order (`gen_efu.py` reads `build_raid.py`'s `loot.json`). Never edit
+Edit the templates, then from `tools/efu` run `python3 build_base.py`, `python3 build_zone.py`, `python3 build_raid.py`,
+`python3 build_bag.py` and `python3 gen_efu.py`, in that order (`gen_efu.py` reads `build_raid.py`'s `loot.json`). Never edit
 `efu.s` or `efu.txt` by hand.
 
 Script gotchas: `VMJumpIf CMP_STACK` jumps when the comparison is false, so use `WorkCmpConst` with
@@ -79,14 +82,22 @@ Taken so far:
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
 | `EVENT_FLAG_0x0a80` to `0x0a8f` (`EFU_FLAG_SCAV_FIRST`) | Each scav NPC's hide flag, in the order `build_raid.py` gives them. All set on heading out. Version 3. |
 | `EVENT_FLAG_0x0a90` to `0x0a92` (`EFU_FLAG_LOOT_FIRST`) | The hide flags of the item balls put where the original had none (the Cave of Being's three). Rolled on heading out. |
+| `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | The childcare centre's scav's hide flag, rolled on each entry (30% out). |
+| `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
+| `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
+| `EVENT_FLAG_0x0a95` (`EFU_FLAG_BASE_JOY_HIDDEN`) | Her base NPC's hide flag, set from the above on entering the Pokémon Center. |
+| `EVENT_FLAG_0x0a96` (`EFU_FLAG_CLERK_MET`) | The clerk has told their story (and the waiting-area clerk's hide flag). |
+| `EVENT_FLAG_0x0a97` (`EFU_FLAG_BASE_CLERK_HIDDEN`) | The counter clerk's hide flag, set from the above on entering the Pokémon Center. |
+| `EVENT_FLAG_0x0a98` (`EFU_FLAG_DAYCARE_JOINED`) | The Day Care Lady has joined the base (and her Route 3 NPC's hide flag). |
+| `EVENT_FLAG_0x0a99` (`EFU_FLAG_BASE_DAYCARE_HIDDEN`) | Her NPC's hide flag in the player's warehouse, set from the above on entering it. |
 
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x0a93 to 0x0a9f; take them upward from there.
+Free event flags (nothing refers to them) include 0x0a9a to 0x0a9f; take them upward from there.
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415f, 0x4163, 0x4169, 0x4177, 0x4180, 0x418b, 0x4193, 0x4197 to 0x419e, 0x41a0 to 0x41a8. Take the next
+0x4156 to 0x415f, 0x4163, 0x4169, 0x4177, 0x4180, 0x418b, 0x4193, 0x4197 to 0x419e, 0x41a0 to 0x41a7. Take the next
 from the top of the list down, and move it into the table above.
 
 ## Raids and saving
@@ -133,22 +144,63 @@ in Items), counting each of a stack. Key Items and TMs and HMs are free. To carr
 bag code can't change, so `Efu_BagHasRoom` (`include/efu_bag.h`) is asked where items come in:
 
 - `ItemCheckSpace` (script command), which the item ball script (7400), hidden items and most gifts ask first, so a
-  loot ball asks first too (`L_LootNoRoom`): with the bag's item carried it says so and stays shut, and what it holds
-  is rolled only when it can be taken, so it can't be peeked at and rolled again. `ItemAdd` isn't gated: ov036's size is luck, and every
-  way into the bag in the zone and the base asks `ItemCheckSpace` first.
+  loot ball asks first too (`L_LootNoRoom`): with the bag's item carried it offers to leave it for what's in the ball,
+  unseen, and what the ball holds is rolled only when it is taken, so it can't be peeked at and rolled again. `ItemAdd`
+  isn't gated: ov036's size is luck, and every way into the bag in the zone and the base asks `ItemCheckSpace` first.
 - Taking a held item, or a held mail, in the party menu, which says the bag is full.
 - Taking a held item in the PC, in either mode, which keeps it on the Pokémon.
+- Buying in a shop (`ShopUI_TryBuyItem`), one at a time.
 
 Giving an item to a Pokémon that holds one swaps them, which keeps the count, so it is allowed. In battle, an item
-chosen and then cancelled goes back to the bag, which is also allowed. Shops aren't gated, since none can be reached.
+chosen and then cancelled goes back to the bag, which is also allowed.
+
+The bag shows three pockets: Items, TMs and HMs, and Key Items. Main's table of pockets (`sItemPockets`) can't change,
+so medicine and berries still go in their own pockets in the save, and the bag shows whichever of the Items, Medicine
+and Berries pockets holds the one item as Items (`Efu_BagItemPocket`, named and tabbed as Items by
+`Efu_BagShownPocket`); the item data's `field_pocket` says Items for them too, for the pickup messages
+(`build_bag.py`). There is no Free Space. Give comes first in an item's menu, A in the empty Items pocket opens the
+party screen (to take an item; the bag leaves as if it had been opened from there), and the fades, the cursor's
+flash and the pocket arrows are quicker. Trash is Toss.
+
+## Items on the ground
+
+Tossing an item from the bag opened in the field puts it on the ground: the bag keeps the item in
+`EFU_WORK_TOSSED_ITEM` and reserves `Script_Toss`, which runs once the field is back and puts it in an item ball on
+the first free tile of the eight around the player (below, left, right, above, then the corners), or says it's gone
+when none is free. The balls are actors that `EfuSpecial` makes (IDs from `EFU_GROUND_ID_FIRST`, 16 at most), with
+the item in user parameter 0 and `Script_GroundItem` as their script: it gives the item if the bag has room, or else
+offers to swap the bag's item for it, leaving the bag's item in its place. A scav's drop that doesn't fit lands
+beside the player the same way. The balls are the zone's actors, so they last through menus and battles but are gone
+once the player leaves the zone.
 
 The loot is cheap, since the first zone is free to travel to: on the route mostly Tiny Mushrooms and Poké Balls, with
 Oran Berries, Potions, status berries and Antidotes; in the caves Pearls and Stardust too, a Great Ball and a rare
 Nugget; in the target Pearls, Stardust, Super Potions, Great Balls and Nuggets more often.
 
+## The base's people
+
+- **Nurse Joy** waits in the northwest of the target (`JOY` in `build_raid.py`). She heals the team on the spot for a
+  dollar a level of the party (`EFU_SPECIAL_PARTY_LEVELS`; an egg counts its level), then offers to join the base for
+  `EFU_JOY_HIRE` ($1000). Once she has, she's at the base Pokémon Center's counter, healing for the same price.
+- **The clerk** sits in the Pokémon Center's waiting area. The first time the player talks to them, they tell what
+  happened and move to the Poké Mart counter, which then buys anything at the usual half price and sells
+  `MART` (`build_base.py`; Poké and Great Balls, Potions, Super Potions, Revives, Full Heals, Repels and Escape Ropes)
+  at `EFU_MART_PRICE_FACTOR` (5) times the price. It is Nacrene's old mail counter's list (`EFU_MART_SHOP_ID`), run by
+  the original clerk's script (global 10110).
+- **The Day Care Lady** is in Route 3's Day Care. For `EFU_DAYCARE_HIRE` ($1000) she moves into the player's
+  warehouse, downstairs, where the original Day Care Lady's script (global 2201) runs her. The Day Care no longer grows
+  its Pokémon by steps or makes eggs (`DayCare_Update`); instead each raid's return gives each one a level, up to
+  `EFU_LEVEL_CAP` (22, the zone's highest wild level), and withdrawing charges the original's $100 a level plus $100.
+- **The gate's guide**, behind the east gate's counter, will take the player to the farther zones; for now they say
+  Route 3 is as far as anyone goes.
+
+Each base NPC is hidden by its own flag, which the zone's init script (`Script_PokecenInit`, `Script_HomeInit`) sets
+from whether that person has joined, so the base needs no save upgrade.
+
 ## The scavs
 
-Route 3's and Route 20's Trainers, made single battles, evolved to their levels, dressed as Team Plasma Grunts (the classes renamed
+Route 3's and Route 20's Trainers, made single battles with two to six Pokémon from the zone's wild ones at 65 to 90%
+of its level cap (14 to 20), evolved to their levels, dressed as Team Plasma Grunts (the classes renamed
 Scav) and given new lines by `build_raid.py`, start hidden: heading out sets their flags. Each step the player takes,
 `EventTrainerEye_EfuPursue` runs before the original sight check:
 
@@ -158,6 +210,9 @@ Scav) and given new lines by `build_raid.py`, start hidden: heading out sets the
 - A scav that is out stands where it came out, looking around (`MOVE_CODE_TURN_RANDOM`), and never steps until it
   has seen the player: a scav wandering by its move code could be caught between two tiles when a chase or battle
   began, and the game locked up.
+- Distances are in steps without diagonal ones, and `EFU_SCAV_CATCH` is 1, so only a scav straight beside the player
+  fights. After a win, `Script_ScavDrop` (called from the Trainer battle scripts in `global_3000.s`) gives an item of
+  the target's table, or puts it on the ground beside the player when the bag is full.
 - A scav that sees the player (nothing in the way on the straight line between them) within
   `EFU_SCAV_CATCH` tiles whichever way it faces, or up to `EFU_SCAV_SIGHT` (7) tiles away in the quarter it faces,
   shows a "!" and gives chase.

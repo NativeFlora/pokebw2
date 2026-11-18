@@ -32,7 +32,77 @@
             }
         }
     ],
-    "npcs": [],
+    "npcs": [
+        {
+            "id": 1,
+            "model": "OBJ_CODE_78",
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a95",
+            "script": 11015,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 7,
+                "z": 10,
+                "y": 0
+            }
+        },
+        {
+            "id": 0,
+            "model": "OBJ_CODE_77",
+            "movement": "MOVE_CODE_FACE_LEFT",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a97",
+            "script": 11018,
+            "direction": "DIR_LEFT",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 11,
+                "z": 16,
+                "y": 0
+            }
+        },
+        {
+            "id": 8,
+            "model": "OBJ_CODE_77",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a96",
+            "script": 11017,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 9,
+                "z": 12,
+                "y": 0
+            }
+        }
+    ],
     "warps": [
         {
             "zone": "ZONE_NACRENE_CITY",
@@ -50,5 +120,10 @@
         }
     ],
     "triggers": [],
-    "init_scripts": []
+    "init_scripts": [
+        {
+            "type": 2,
+            "script": 11020
+        }
+    ]
 }

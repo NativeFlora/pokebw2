@@ -107,14 +107,14 @@
         ],
         [ "ITEM_TM04", "ITEM_TM08" ],
         [
-            "ITEM_BRIDGE_MAIL_S",
-            "ITEM_GREET_MAIL",
-            "ITEM_FAVORED_MAIL",
-            "ITEM_RSVP_MAIL",
-            "ITEM_THANKS_MAIL",
-            "ITEM_INQUIRY_MAIL",
-            "ITEM_LIKE_MAIL",
-            "ITEM_REPLY_MAIL"
+            "ITEM_POKE_BALL",
+            "ITEM_GREAT_BALL",
+            "ITEM_POTION",
+            "ITEM_SUPER_POTION",
+            "ITEM_REVIVE",
+            "ITEM_FULL_HEAL",
+            "ITEM_REPEL",
+            "ITEM_ESCAPE_ROPE"
         ],
         [
             "ITEM_HEAL_BALL",

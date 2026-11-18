@@ -37,5 +37,7 @@ DayCare *DayCare_Create(HeapID heapId, Field *field, DayCareSave *save);
 void DayCare_Free(DayCare *dayCare);
 // Counts a step of the Pokémon left there, and returns TRUE when an egg appears
 BOOL DayCare_Update(DayCare *dayCare);
+// Escape from Unova: each Pokémon left in the Day Care gains a level, up to EFU_LEVEL_CAP (a raid's return)
+void Efu_DayCareGrow(DayCare *dayCare);
 
 #endif // POKEBW2_FIELD_FIELD_DAYCARE_H

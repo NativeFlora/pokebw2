@@ -23,6 +23,7 @@ WILD_LEVELS = (2, 15)
 PLACE_LEVELS = {'wellspring_cave': (8, 18), 'wellspring_cave_2': (8, 18), 'pinwheel_forest_2': (12, 22)}
 # The zone's level cap, its highest wild level, and the scavs' Pokémon from 65% to 90% of it, two to six of them each
 LEVEL_CAP = max([WILD_LEVELS[1]] + [hi for lo, hi in PLACE_LEVELS.values()])
+assert LEVEL_CAP == int(re.search(r'#define EFU_LEVEL_CAP (\d+)', open(os.path.join(root, 'include/efu.h')).read()).group(1))
 SCAV_LEVELS = (round(LEVEL_CAP * 0.65), round(LEVEL_CAP * 0.9))
 SCAV_TEAM = (2, 6)
 efu_h = open(os.path.join(root, 'include/efu.h')).read()
@@ -87,6 +88,18 @@ FLAG_CHILDCARE_SCAV = int(re.search(r'#define EFU_FLAG_CHILDCARE_SCAV (0x[0-9a-f
 CHILDCARE_TRAINER = 401
 CHILDCARE_CANDY_SCRIPT = 7280
 SCRIPT_SCAV_DROP = 11000 + int(re.search(r'#define EFU_SCRIPT_SCAV_DROP \(EFU_SCRIPT_FIRST \+ (\d+)\)', efu_h).group(1))
+def efu_script(name):
+    return 11000 + int(re.search(r'#define EFU_SCRIPT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % name, efu_h).group(1))
+
+
+def efu_flag(name):
+    return 'EVENT_FLAG_0x%04x' % int(re.search(r'#define EFU_FLAG_%s (0x[0-9a-f]+)' % name, efu_h).group(1), 16)
+
+
+# Nurse Joy, in the northwest of the target (Pinwheel Forest's inner forest), until she joins the base
+JOY = {'id': 120, 'model': 'OBJ_CODE_78', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
+       'flag': efu_flag('JOY_JOINED'), 'script': efu_script('JOY_FOREST'), 'direction': 'DIR_DOWN',
+       'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': {'x': 12, 'z': 45, 'y': 0}}
 # The original item balls' scripts (each gives its own item) and the hidden items'
 ITEM_SCRIPTS = (7000, 7799)
 HIDDEN_SCRIPTS = (8000, 8799)
@@ -281,6 +294,15 @@ def build_events(loot):
     return scavs, {w['zone']: i for i, w in enumerate(warps)}
 
 
+def build_daycare():
+    """Route 3's Day Care (ROUTE_3_3): only the Day Care Lady, who joins the base for a fee (Script_DayCareJoin) and
+    is gone from here once she has."""
+    e = json.loads(orig('res/field/events/route_3_3.json'))
+    lady = [n for n in e['npcs'] if n['script'] == 2201][0]
+    e['npcs'] = [dict(lady, script=efu_script('DAYCARE_JOIN'), flag=efu_flag('DAYCARE_JOINED'))]
+    write('res/field/events/route_3_3.json', e)
+
+
 def build_childcare(loot):
     """The childcare centre on Route 3 (ROUTE_3_2): nobody left but its Rare Candy, out on 10% of explorations, and on
     30% of entries a scav (Script_ChildcareEnter)."""
@@ -326,6 +348,8 @@ def build_places(loot, route_warps):
                 assert all(x['zone'] not in PLACES for x in e['warps'][e['warps'].index(w):])
                 break
         e['warps'] = warps
+        if zone == TARGET_ZONE:
+            e['npcs'].append(JOY)
         write(f'res/field/events/{name}.json', e)
 
 
@@ -413,6 +437,7 @@ if __name__ == '__main__':
     scavs, route_warps = build_events(loot)
     build_places(loot, route_warps)
     scavs.append(build_childcare(loot))
+    build_daycare()
     loot.save()
     build_trainers(scavs)
     build_trainer_scripts()

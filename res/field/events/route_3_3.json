@@ -7,10 +7,14 @@
             "model": "OBJ_CODE_29",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 2201,
+            "flag": "EVENT_FLAG_0x0a98",
+            "script": 11019,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -18,44 +22,6 @@
             "grid": {
                 "x": 6,
                 "z": 7,
-                "y": 0
-            }
-        },
-        {
-            "id": 1,
-            "model": "OBJ_CODE_ROUGHNECK",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 1,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 7,
-                "z": 10,
-                "y": 0
-            }
-        },
-        {
-            "id": 2,
-            "model": "OBJ_CODE_BACKERS_F",
-            "movement": "MOVE_CODE_FACE_RIGHT",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 2,
-            "direction": "DIR_RIGHT",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 2,
-                "z": 10,
                 "y": 0
             }
         }

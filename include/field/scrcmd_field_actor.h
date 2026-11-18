@@ -43,8 +43,8 @@ BOOL Scrcmd_FieldActor_ActorSetRailPos(VM *vm, FieldScriptEnv *env);
 BOOL Scrcmd_FieldActor_ActorPlayTeleportSeq(VM *vm, FieldScriptEnv *env);
 BOOL Scrcmd_FieldActor_ActorFallDownToXZ(VM *vm, FieldScriptEnv *env);
 
-// Escape from Unova's EfuGround (command 0x15f, once Nop): items on the ground (efu.h)
-BOOL Scrcmd_Efu_Ground(VM *vm, FieldScriptEnv *env);
+// Escape from Unova's EfuSpecial (command 0x15f, once Nop): items on the ground (efu.h)
+BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env);
 
 // The actors the script waits on to stop, among the common symbols at the end of the .bss
 extern u8 g_ScrEventActorFlags;

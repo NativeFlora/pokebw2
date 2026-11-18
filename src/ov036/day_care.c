@@ -7,6 +7,7 @@
 #include "constants/pokemon.h"
 #include "constants/species.h"
 #include "constants/vars.h"
+#include "efu.h"
 #include "field/field.h"
 #include "field/field_daycare.h"
 #include "field/game_beacon_set.h"
@@ -232,6 +233,10 @@ void DayCare_CheckResetSeed(DayCare *dayCare) {
 }
 
 BOOL DayCare_Update(DayCare *dayCare) {
+    // Escape from Unova: the Pokémon in the Day Care grow by raids instead (Efu_DayCareGrow), and lay no eggs
+    if (dayCare != NULL) {
+        return FALSE;
+    }
     DayCareSave_UpdateStepCount(dayCare->save, 1);
     if (DayCare_CheckEggSpawn(dayCare) == TRUE) {
         DayCareSave_SetSpawnFlag(dayCare->save);
@@ -239,6 +244,27 @@ BOOL DayCare_Update(DayCare *dayCare) {
         return TRUE;
     }
     return FALSE;
+}
+
+// Escape from Unova: the next level's experience, which withdrawing commits (DayCare_CommitPkmGrowth, from its stored
+// level), and charges for (DayCare_CalcWithdrawCost)
+void Efu_DayCareGrow(DayCare *dayCare) {
+    PartyPkm *pkm;
+    u32 level;
+    u32 slot;
+
+    for (slot = 0; slot < 2; slot++) {
+        if (DayCareSave_GetPkmStatus(dayCare->save, slot) == TRUE) {
+            level = DayCare_CalcNewLevel(dayCare, slot);
+            if (level < EFU_LEVEL_CAP) {
+                pkm = DayCareSave_GetPkm(dayCare->save, slot);
+                PokeParty_SetParam(pkm, PKM_PARAM_EXP,
+                                   PML_UtilGetPkmLvExp(PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL),
+                                                       PokeParty_GetParam(pkm, PKM_PARAM_FORM, NULL), level + 1) -
+                                       DayCareSave_GetPkmStepCounter(dayCare->save, slot));
+            }
+        }
+    }
 }
 
 static void setPartyHasSpaceToConst(Field *field) {

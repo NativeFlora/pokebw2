@@ -62,7 +62,31 @@
             }
         }
     ],
-    "npcs": [],
+    "npcs": [
+        {
+            "id": 0,
+            "model": "OBJ_CODE_29",
+            "movement": "MOVE_CODE_FACE_RIGHT",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a99",
+            "script": 2201,
+            "direction": "DIR_RIGHT",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 3,
+                "z": 8,
+                "y": 0
+            }
+        }
+    ],
     "warps": [
         {
             "zone": "ZONE_NACRENE_CITY",
@@ -94,5 +118,10 @@
         }
     ],
     "triggers": [],
-    "init_scripts": []
+    "init_scripts": [
+        {
+            "type": 2,
+            "script": 11021
+        }
+    ]
 }

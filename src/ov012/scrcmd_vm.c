@@ -448,7 +448,7 @@ const FieldScriptCommand EVCMD_TABLE[] = {
     Scrcmd_Net_WifiListCountFriends,                    // 0x15c
     Scrcmd_Net_NetConnectWiFiClub,                      // 0x15d
     Scrcmd_Net_NetConnectGTS,                           // 0x15e
-    Scrcmd_Efu_Ground,                                  // 0x15f, Escape from Unova's (once Nop)
+    Scrcmd_Efu_Special,                                  // 0x15f, Escape from Unova's (once Nop)
     Scrcmd_Proc_NetConnectWiFiBattle,                   // 0x160
     Scrcmd_Proc_NetConnectBattleVideo,                  // 0x161
     Scrcmd_Net_NetConnectGTSNegotiation,                // 0x162

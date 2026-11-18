@@ -8,6 +8,7 @@
 #include "constants/directions.h"
 #include "constants/move_codes.h"
 #include "constants/obj_codes.h"
+#include "constants/pokemon.h"
 #include "constants/sound.h"
 #include "efu.h"
 #include "efu_bag.h"
@@ -17,6 +18,7 @@
 #include "field/field.h"
 #include "field/field_acmd.h"
 #include "field/field_actor.h"
+#include "field/field_daycare.h"
 #include "field/field_g3d_mapper.h"
 #include "field/field_map.h"
 #include "field/field_player.h"
@@ -29,6 +31,7 @@
 #include "gfl/heap.h"
 #include "gfl/sound.h"
 #include "nitro/fx.h"
+#include "pml/poke_party.h"
 #include "system/game_data.h"
 #include "system/game_system.h"
 #include "system/vm.h"
@@ -1086,11 +1089,11 @@ BOOL Scrcmd_FieldActor_ActorFallDownToXZ(VM *vm, FieldScriptEnv *env) {
     return FALSE;
 }
 
-// Escape from Unova: EfuGround, where the unused Nop was in the command table (0x15f), so ov012 keeps its size. With
-// EFU_GROUND_DROP, it puts an item ball holding the item on a tile, or with x EFU_GROUND_BESIDE_PLAYER on the first
+// Escape from Unova: EfuSpecial, where the unused Nop was in the command table (0x15f), so ov012 keeps its size. With
+// EFU_SPECIAL_DROP, it puts an item ball holding the item on a tile, or with x EFU_GROUND_BESIDE_PLAYER on the first
 // free tile around the player, and sets result to whether it did (with no free tile, or every ground item's ID taken,
-// the item is lost); with EFU_GROUND_BAG_ITEM, it sets result to the bag's holdable item
-BOOL Scrcmd_Efu_Ground(VM *vm, FieldScriptEnv *env) {
+// the item is lost); with EFU_SPECIAL_BAG_ITEM, it sets result to the bag's holdable item
+BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
     static const s8 sAround[8][2] = { { 0, 1 },  { -1, 0 }, { 1, 0 },   { 0, -1 },
                                       { -1, 1 }, { 1, 1 },  { -1, -1 }, { 1, -1 } };
     ScriptFieldWork *fieldWork = ScriptWork_GetFieldWork(FieldScriptEnv_GetScriptWork(env));
@@ -1106,8 +1109,27 @@ BOOL Scrcmd_Efu_Ground(VM *vm, FieldScriptEnv *env) {
     u16 id;
     int i;
 
-    if (op == EFU_GROUND_BAG_ITEM) {
+    if (op == EFU_SPECIAL_BAG_ITEM) {
         *result = Efu_BagHoldableItem(GameData_GetBag(FieldScriptEnv_GetGameData(env)));
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_PARTY_LEVELS) {
+        PokeParty *party = GameData_GetParty(FieldScriptEnv_GetGameData(env));
+        int count = PokeParty_GetPkmCount(party);
+        u16 total = 0;
+
+        for (i = 0; i < count; i++) {
+            PartyPkm *pkm = PokeParty_GetPkm(party, i);
+
+            if (!PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL)) {
+                total += PokeParty_GetParam(pkm, PKM_PARAM_LEVEL, NULL);
+            }
+        }
+        *result = total;
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_DAYCARE_GROW) {
+        Efu_DayCareGrow(Field_GetDayCare(fieldWork->field));
         return FALSE;
     }
     *result = FALSE;

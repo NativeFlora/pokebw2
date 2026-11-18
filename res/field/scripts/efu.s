@@ -11,9 +11,9 @@
     .macro EfuPokePartyClear
     FieldCommand 0x2db
     .endm
-// Items on the ground (0x15f, which was Nop; Scrcmd_Efu_Ground in src/ov036/scrcmd_field_actor.c): op is
-// EFU_GROUND_DROP or EFU_GROUND_BAG_ITEM (include/efu.h)
-    .macro EfuGround op, item, x, z, result
+// Items on the ground (0x15f, which was Nop; Scrcmd_Efu_Special in src/ov036/scrcmd_field_actor.c): op is
+// EFU_SPECIAL_DROP or EFU_SPECIAL_BAG_ITEM (include/efu.h)
+    .macro EfuSpecial op, item, x, z, result
     FieldCommand 0x15f
     .2byte \op
     .2byte \item
@@ -37,6 +37,14 @@
     ScriptEntry Script_ChildcareEnter
     ScriptEntry Script_GroundItem
     ScriptEntry Script_Toss
+    ScriptEntry Script_Nurse
+    ScriptEntry Script_JoyForest
+    ScriptEntry Script_ClerkIntro
+    ScriptEntry Script_Clerk
+    ScriptEntry Script_DayCareJoin
+    ScriptEntry Script_PokecenInit
+    ScriptEntry Script_HomeInit
+    ScriptEntry Script_GateGuide
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -142,6 +150,8 @@ Movement_StepBackWest:
 Script_RaidReturn:
     ActorsPauseAll
     WorkSetConst EFU_WORK_RAID, 0
+    // The Day Care's Pokémon grow a level with each raid
+    EfuSpecial EFU_SPECIAL_DAYCARE_GROW, 0, 0, 0, 0x8010
     SystemMsg Efu_Text_RaidReturn, 2
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
@@ -1914,7 +1924,7 @@ L_LootGive:
 // at and rolled again (every loot item can be held, so a Poke Ball stands for them all). On yes the bag's item is left
 // on the ball's tile, and the loot script goes on to roll and give the ball's item; on no (0x8013 is 1) it stops
 L_LootNoRoom:
-    EfuGround EFU_GROUND_BAG_ITEM, 0, 0, 0, 0x8012
+    EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8012
     WordSetItemNameEx 0, 0x8012, 1, 0
     SystemMsg Efu_Text_LootSwap, 2
     YesNoWin 0x8013
@@ -1923,7 +1933,7 @@ L_LootNoRoom:
     SystemMsgClose
     ActorGetGPos 0x8011, 0x8014, 0x8015
     ItemSub 0x8012, 1, 0x8016
-    EfuGround EFU_GROUND_DROP, 0x8012, 0x8014, 0x8015, 0x8016
+    EfuSpecial EFU_SPECIAL_DROP, 0x8012, 0x8014, 0x8015, 0x8016
 L_LootNoSwap:
     VMReturn
 
@@ -1951,7 +1961,7 @@ Script_ScavDrop:
 
 // With the bag's item carried, the drop lands beside the player, or is lost with nowhere to put it
 L_ScavDropFull:
-    EfuGround EFU_GROUND_DROP, 0x800c, EFU_GROUND_BESIDE_PLAYER, 0, 0x8010
+    EfuSpecial EFU_SPECIAL_DROP, 0x800c, EFU_GROUND_BESIDE_PLAYER, 0, 0x8010
     WorkCmpConst 0x8010, 0
     VMJumpIf CMP_EQ, L_ScavDropLost
     SystemMsg Efu_Text_ScavDropFull, 2
@@ -1980,7 +1990,7 @@ L_ChildcareScav:
     TrainerFlagReset 401
     VMHalt
 
-// An item on the ground (EfuGround), its item in the actor's user parameter 0: taken if the bag has room, or else
+// An item on the ground (EfuSpecial), its item in the actor's user parameter 0: taken if the bag has room, or else
 // offered in a swap for the bag's item, which is left in its place
 Script_GroundItem:
     ActorsPauseAll
@@ -2000,7 +2010,7 @@ Script_GroundItem:
     VMHalt
 
 L_GroundSwap:
-    EfuGround EFU_GROUND_BAG_ITEM, 0, 0, 0, 0x8012
+    EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8012
     WordSetItemNameEx 1, 0x8012, 1, 0
     SystemMsg Efu_Text_GroundSwap, 2
     YesNoWin 0x8013
@@ -2010,7 +2020,7 @@ L_GroundSwap:
     ActorDelete 0x8011
     ItemSub 0x8012, 1, 0x8016
     ItemAdd 0x800c, 1, 0x8016
-    EfuGround EFU_GROUND_DROP, 0x8012, 0x8014, 0x8015, 0x8016
+    EfuSpecial EFU_SPECIAL_DROP, 0x8012, 0x8014, 0x8015, 0x8016
     MEPlay SEQ_ME_ITEM
     SystemMsg Efu_Text_GroundSwapped, 2
     MEWait
@@ -2025,7 +2035,7 @@ Script_Toss:
     WorkSetConst EFU_WORK_TOSSED_ITEM, 0
     WorkCmpConst 0x800c, 0
     VMJumpIf CMP_EQ, L_TossDone
-    EfuGround EFU_GROUND_DROP, 0x800c, EFU_GROUND_BESIDE_PLAYER, 0, 0x8010
+    EfuSpecial EFU_SPECIAL_DROP, 0x800c, EFU_GROUND_BESIDE_PLAYER, 0, 0x8010
     WorkCmpConst 0x8010, 0
     VMJumpIf CMP_NE, L_TossDone
     ActorsPauseAll
@@ -2035,6 +2045,237 @@ Script_Toss:
     SystemMsgClose
     ActorsUnpauseAll
 L_TossDone:
+    VMHalt
+
+// Nurse Joy at the base's counter: a full heal for the party's total level in money
+Script_Nurse:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    MoneyWinDisp 31, 1
+    EfuSpecial EFU_SPECIAL_PARTY_LEVELS, 0, 0, 0, 0x8020
+    WordSetNumber 0, 0x8020, 5
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NurseOffer, 0x8011, 2, 0
+    VMCall L_PaidHeal
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_NE, L_NurseEnd
+    ActorCmdExec 0x8011, Movement_NurseTurn
+    ActorCmdWait
+    PokePartyGetCount 0x8023, 1
+    PokecenPlayHealingSequence 0x8023
+    PokePartyRecoverAll
+    ActorCmdExec 0x8011, Movement_NurseBack
+    ActorCmdWait
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NurseDone, 0x8011, 2, 0
+    LastKeyWait
+L_NurseEnd:
+    ActorMsgClose
+    MoneyWinClose
+    ActorsUnpauseAll
+    VMHalt
+
+// After the offer of a heal for 0x8020: on yes and with the money, takes it and sets 0x8021 to 0; otherwise says why
+// not, and sets it to 1
+L_PaidHeal:
+    YesNoWin 0x8021
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_PaidHealNo
+    MoneyCheck 0x8022, 0x8020
+    WorkCmpConst 0x8022, 0
+    VMJumpIf CMP_EQ, L_PaidHealPoor
+    MoneySub 0x8020
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_08
+    VMReturn
+
+L_PaidHealPoor:
+    WorkSetConst 0x8021, 1
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NotEnoughMoney, 0x8011, 2, 0
+    LastKeyWait
+    VMReturn
+
+L_PaidHealNo:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NurseBye, 0x8011, 2, 0
+    LastKeyWait
+    VMReturn
+
+Movement_NurseTurn:
+    Move 0, 1
+    MoveEnd
+
+Movement_NurseBack:
+    Move 1, 1
+    MoveEnd
+
+// Nurse Joy in Pinwheel Forest: a heal on the spot for the same price, then the offer to join the base for
+// EFU_JOY_HIRE, after which she is gone from the forest (her hide flag is EFU_FLAG_JOY_JOINED)
+Script_JoyForest:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    MoneyWinDisp 31, 1
+    EfuSpecial EFU_SPECIAL_PARTY_LEVELS, 0, 0, 0, 0x8020
+    WordSetNumber 0, 0x8020, 5
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_JoyOffer, 0x8011, 2, 0
+    VMCall L_PaidHeal
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_NE, L_JoyAsk
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    PokePartyRecoverAll
+    MEPlay SEQ_ME_ASA
+    MEWait
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+L_JoyAsk:
+    WorkSetConst 0x8020, EFU_JOY_HIRE
+    WordSetNumber 0, 0x8020, 5
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_JoyJoin, 0x8011, 2, 0
+    YesNoWin 0x8021
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_JoyStay
+    MoneyCheck 0x8022, 0x8020
+    WorkCmpConst 0x8022, 0
+    VMJumpIf CMP_EQ, L_JoyPoor
+    MoneySub 0x8020
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_08
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_JoyJoined, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    MoneyWinClose
+    FlagSet EFU_FLAG_JOY_JOINED
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete 0x8011
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    ActorsUnpauseAll
+    VMHalt
+
+L_JoyPoor:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NotEnoughMoney, 0x8011, 2, 0
+    LastKeyWait
+L_JoyStay:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_JoyStay, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    MoneyWinClose
+    ActorsUnpauseAll
+    VMHalt
+
+// The clerk, in the Pokémon Center's waiting area the first time: what happened, and then to the Poké Mart counter
+// (Script_PokecenInit shows the counter's clerk once EFU_FLAG_CLERK_MET is set, which hides this one)
+Script_ClerkIntro:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkIntro, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    FlagSet EFU_FLAG_CLERK_MET
+    FlagReset EFU_FLAG_BASE_CLERK_HIDDEN
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete 0x8011
+    ActorAdd 0
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    ActorsUnpauseAll
+    VMHalt
+
+// The clerk at the counter: the Poké Mart of EFU_MART_SHOP_ID's list, at EFU_MART_PRICE_FACTOR times the prices
+// (scrcmd_shop.c), through the original clerk's script (global 10110), as Nacrene's Pokémon Center ran it
+Script_Clerk:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    VMStackPush 0x8000
+    VMStackPush 0x8001
+    WorkSet 0x8000, EFU_MART_SHOP_ID
+    WorkSet 0x8001, 1
+    RTCallGlobal 10110
+    VMStackPop 0x8001
+    VMStackPop 0x8000
+    FinishAllEvents
+    ActorsUnpauseAll
+    VMHalt
+
+// The Day Care Lady in Route 3's Day Care: she moves into the player's warehouse for EFU_DAYCARE_HIRE, where the
+// original Day Care Lady's script (global 2201) runs her (Script_HomeInit shows her there)
+Script_DayCareJoin:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    MoneyWinDisp 31, 1
+    WorkSetConst 0x8020, EFU_DAYCARE_HIRE
+    WordSetNumber 0, 0x8020, 5
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_DayCareOffer, 0x8011, 2, 0
+    YesNoWin 0x8021
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_DayCareStay
+    MoneyCheck 0x8022, 0x8020
+    WorkCmpConst 0x8022, 0
+    VMJumpIf CMP_EQ, L_DayCarePoor
+    MoneySub 0x8020
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_08
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_DayCareJoined, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    MoneyWinClose
+    FlagSet EFU_FLAG_DAYCARE_JOINED
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete 0x8011
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    ActorsUnpauseAll
+    VMHalt
+
+L_DayCarePoor:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NotEnoughMoney, 0x8011, 2, 0
+    LastKeyWait
+L_DayCareStay:
+    ActorMsgClose
+    MoneyWinClose
+    ActorsUnpauseAll
+    VMHalt
+
+// The base's init scripts (on loading the zone): the people who have joined show, the rest stay hidden
+Script_PokecenInit:
+    FlagSet EFU_FLAG_BASE_JOY_HIDDEN
+    FlagGet EFU_FLAG_JOY_JOINED, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_PokecenClerk
+    FlagReset EFU_FLAG_BASE_JOY_HIDDEN
+L_PokecenClerk:
+    FlagSet EFU_FLAG_BASE_CLERK_HIDDEN
+    FlagGet EFU_FLAG_CLERK_MET, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_PokecenInitEnd
+    FlagReset EFU_FLAG_BASE_CLERK_HIDDEN
+L_PokecenInitEnd:
+    VMHalt
+
+Script_HomeInit:
+    FlagSet EFU_FLAG_BASE_DAYCARE_HIDDEN
+    FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_HomeInitEnd
+    FlagReset EFU_FLAG_BASE_DAYCARE_HIDDEN
+L_HomeInitEnd:
+    VMHalt
+
+// The east gate's guide: one day, the way to the farther zones
+Script_GateGuide:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GateGuide, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    ActorsUnpauseAll
     VMHalt
 
 L_LootPickRoute:

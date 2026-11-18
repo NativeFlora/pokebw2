@@ -9,7 +9,7 @@ be run again after changing it. It edits:
   of the player's warehouse, the Pokémon Center and the gate open, the rest boarded up;
 - the two chunks' collision and props: the passages north are blocked with rubble.
 """
-import csv, io, json, os, struct, subprocess
+import csv, io, json, os, re, struct, subprocess
 
 here = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(os.path.dirname(here))
@@ -56,6 +56,28 @@ RUBBLE = {
     'overworld_2_map20_18': [(11, 17, 258), (12.5, 17, 156), (14, 17, 21), (15, 17, 134)],
 }
 BLOCKED_TILE = 0x810001
+
+efu_h = open(os.path.join(root, 'include/efu.h')).read()
+
+
+def efu_script(name):
+    return 11000 + int(re.search(r'#define EFU_SCRIPT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % name, efu_h).group(1))
+
+
+def efu_flag(name):
+    return 'EVENT_FLAG_0x%04x' % int(re.search(r'#define EFU_FLAG_%s (0x[0-9a-f]+)' % name, efu_h).group(1), 16)
+
+
+def npc(i, model, script, flag, x, z, direction, movement='MOVE_CODE_NONE', y=0):
+    return {'id': i, 'model': model, 'movement': movement, 'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': flag,
+            'script': script, 'direction': direction, 'params': [0, 0, 0], 'area': {'width': 0, 'height': 0},
+            'grid': {'x': x, 'z': z, 'y': y}}
+
+
+# The base clerk's stock (EFU_MART_SHOP_ID's list; the clerk charges EFU_MART_PRICE_FACTOR times the price)
+MART = ['ITEM_POKE_BALL', 'ITEM_GREAT_BALL', 'ITEM_POTION', 'ITEM_SUPER_POTION', 'ITEM_REVIVE', 'ITEM_FULL_HEAL',
+        'ITEM_REPEL', 'ITEM_ESCAPE_ROPE']
+MART_SHOP_ID = int(re.search(r'#define EFU_MART_SHOP_ID (\d+)', efu_h).group(1))
 
 
 def build_matrix():
@@ -141,23 +163,32 @@ def build_spawn():
 
 
 def build_interiors():
-    # The player's warehouse: nobody else, and the bed by the left wall
+    # The player's warehouse: nobody else but the Day Care Lady downstairs once she has joined (her hide flag set from
+    # that by Script_HomeInit), and the bed by the left wall
     e = json.loads(orig('res/field/events/nacrene_city_8.json'))
-    e['npcs'] = []
+    e['npcs'] = [npc(0, 'OBJ_CODE_29', 2201, efu_flag('BASE_DAYCARE_HIDDEN'), 3, 8, 'DIR_RIGHT', 'MOVE_CODE_FACE_RIGHT')]
+    e['init_scripts'] = [{'type': 2, 'script': efu_script('HOME_INIT')}]
     # The bed's tiles; a background event's height (z, world units) must be within 2 of the player's
     e['bg_events'] = [{'script': 11003, 'condition': 0, 'direction': 4, 'grid': {'x': 2, 'y': yy, 'z': h}} for yy in (2, 3) for h in (44, 48, 52)]
     write('res/field/events/nacrene_city_8.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
-    # The Pokémon Center: empty, but the PC still works
+    # The Pokémon Center: the PC works, Nurse Joy is at the counter once she has joined, and the clerk sits in the
+    # waiting area until the player has met them, then runs the Poké Mart counter (their hide flags set by
+    # Script_PokecenInit)
     e = json.loads(orig('res/field/events/nacrene_city_pokemon_center.json'))
-    e['npcs'] = []
-    e['init_scripts'] = []
+    e['npcs'] = [
+        npc(1, 'OBJ_CODE_78', efu_script('NURSE'), efu_flag('BASE_JOY_HIDDEN'), 7, 10, 'DIR_DOWN', 'MOVE_CODE_FACE_DOWN'),
+        npc(0, 'OBJ_CODE_77', efu_script('CLERK'), efu_flag('BASE_CLERK_HIDDEN'), 11, 16, 'DIR_LEFT', 'MOVE_CODE_FACE_LEFT'),
+        npc(8, 'OBJ_CODE_77', efu_script('CLERK_INTRO'), efu_flag('CLERK_MET'), 9, 12, 'DIR_DOWN'),
+    ]
+    e['init_scripts'] = [{'type': 2, 'script': efu_script('POKECEN_INIT')}]
     e['bg_events'] = [b for b in e['bg_events'] if b['script'] == 2108]
     write('res/field/events/nacrene_city_pokemon_center.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
     # The east gate, where raids start: nobody there. The hall runs from Nacrene's door (x 1) to Route 3's (x 15) over
     # rows 4 to 6. Stepping onto column 14, by Route 3's door, while home asks to leave (and saves); stepping onto
     # column 2, by Nacrene's, while out comes home (and saves). EFU_WORK_RAID (include/efu.h) picks which is live
     e = json.loads(orig('res/field/events/nacrene_gate.json'))
-    e['npcs'] = []
+    # Its guide, behind the counter, who will take the player farther out one day
+    e['npcs'] = [npc(0, 'OBJ_CODE_76', efu_script('GATE_GUIDE'), 0, 13, 2, 'DIR_DOWN', 'MOVE_CODE_FACE_DOWN')]
     e['triggers'] = [
         {'script': 11004, 'var': 'EVENT_WORK_0x41ac', 'value': 0, 'type': 0,
          'grid': {'x': 14, 'z': 4, 'width': 1, 'height': 3, 'y': 0}, 'unk14': 0},
@@ -165,6 +196,18 @@ def build_interiors():
          'grid': {'x': 2, 'z': 4, 'width': 1, 'height': 3, 'y': 0}, 'unk14': 0},
     ]
     write('res/field/events/nacrene_gate.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
+
+
+def build_mart():
+    # Only that list's text changes, so the rest of the file keeps its layout
+    text = orig('res/field/shops/shops.json').decode()
+    at = text.index('[', text.index('"marts"') + len('"marts"')) + 1
+    for _ in range(MART_SHOP_ID + 1):
+        start = text.index('[', at)
+        end = text.index(']', start) + 1
+        at = end
+    items = ',\n'.join(' ' * 12 + f'"{i}"' for i in MART)
+    write('res/field/shops/shops.json', text[:start] + '[\n' + items + '\n        ]' + text[end:])
 
 
 def build_gate_board():
@@ -177,6 +220,7 @@ def build_gate_board():
 
 if __name__ == '__main__':
     build_gate_board()
+    build_mart()
     build_spawn()
     build_interiors()
     build_matrix()
