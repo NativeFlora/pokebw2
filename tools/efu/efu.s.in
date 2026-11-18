@@ -43,8 +43,12 @@
     ScriptEntry Script_Clerk
     ScriptEntry Script_DayCareJoin
     ScriptEntry Script_PokecenInit
-    ScriptEntry Script_HomeInit
+    ScriptEntry Script_DayCareInit
     ScriptEntry Script_GateGuide
+    ScriptEntry Script_BlockedDoor
+    ScriptEntry Script_GateInit
+    ScriptEntry Script_GuideMeet
+    ScriptEntry Script_TargetEnter
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -123,6 +127,7 @@ Script_RaidDepart:
     WorkSetConst EFU_WORK_SCAVS_OUT, 0
     // New loot: each spot's item ball is out or not by its tier's chance (L_LootRoll, from loot.json)
     VMCall L_LootRoll
+    VMCall L_DoorRoll
     WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
@@ -227,8 +232,9 @@ L_ConfirmStarter:
     VMReturn
     .balign 4, 0
 
-// Picking up loot: what the ball holds is rolled from its tier's table (gen_efu.py's LOOT), and the item ball script
-// of the original (global 7400, which the original balls call with their item) gives it and hides the ball by its flag
+// Picking up loot: what the ball holds is rolled from its place's tiers (gen_efu.py's LOOT_PLACES and LOOT_TIERS), and
+// the item ball script of the original (global 7400, which the original balls call with their item) gives it and hides
+// the ball by its flag
 Script_LootRoute:
     ActorsPauseAll
     WorkSetConst 0x8013, 0
@@ -293,7 +299,7 @@ L_LootKeep:
 // After a win against a scav (global_3000.s calls it): it drops an item from the target's table, which the player takes
 // if the bag has room
 Script_ScavDrop:
-    VMCall L_LootPickTarget
+    VMCall L_LootPickScav
     WordSetItemNameEx 0, 0x800c, 1, 0
     ItemCheckSpace 0x800c, 1, 0x8010
     WorkCmpConst 0x8010, 0
@@ -549,8 +555,9 @@ Script_Clerk:
     ActorsUnpauseAll
     VMHalt
 
-// The Day Care Lady in Route 3's Day Care: she moves into the player's warehouse for EFU_DAYCARE_HIRE, where the
-// original Day Care Lady's script (global 2201) runs her (Script_HomeInit shows her there)
+// The Day Care Lady in Route 3's Day Care: she moves into a warehouse of the base for EFU_DAYCARE_HIRE, where the
+// original Day Care Lady's script (global 2201) runs her (Script_DayCareInit shows her there, and EFU_FLAG_DAYCARE_JOINED
+// takes away the boulder in front of its door)
 Script_DayCareJoin:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
@@ -606,14 +613,75 @@ L_PokecenClerk:
 L_PokecenInitEnd:
     VMHalt
 
-Script_HomeInit:
+Script_DayCareInit:
     FlagSet EFU_FLAG_BASE_DAYCARE_HIDDEN
     FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
     WorkCmpConst 0x8020, 0
-    VMJumpIf CMP_EQ, L_HomeInitEnd
+    VMJumpIf CMP_EQ, L_DayCareInitEnd
     FlagReset EFU_FLAG_BASE_DAYCARE_HIDDEN
-L_HomeInitEnd:
+L_DayCareInitEnd:
     VMHalt
+
+Script_GateInit:
+    FlagSet EFU_FLAG_BASE_GUIDE_HIDDEN
+    FlagGet EFU_FLAG_GUIDE_MET, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_GateInitEnd
+    FlagReset EFU_FLAG_BASE_GUIDE_HIDDEN
+L_GateInitEnd:
+    VMHalt
+
+// The guide out on Route 3, the first time: they make for the east gate, where Script_GateGuide runs them
+Script_GuideMeet:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GuideMeet, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    FlagSet EFU_FLAG_GUIDE_MET
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete 0x8011
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    ActorsUnpauseAll
+    VMHalt
+
+// A boulder in front of a shut door
+Script_BlockedDoor:
+    ActorsPauseAll
+    SystemMsg Efu_Text_BlockedDoor, 2
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+// Entering the target (its init script): each of its scavs is out on EFU_TARGET_SCAV_CHANCE percent of entries, ready
+// to fight again
+Script_TargetEnter:
+    .irp i, 0,1,2
+    FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_TARGET_SCAV_CHANCE
+    VMJumpIf CMP_GE, L_TargetScavNext\i
+    FlagReset EFU_FLAG_TARGET_SCAV_FIRST + \i
+L_TargetScavNext\i:
+    .endr
+@TARGET_SCAV_RESET@
+    VMHalt
+
+// Heading out: each door that can be shut is, on EFU_DOOR_SHUT_CHANCE percent of explorations (its boulder out)
+L_DoorRoll:
+    .irp i, 0,1,2,3
+    FlagSet EFU_FLAG_DOOR_FIRST + \i
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_DOOR_SHUT_CHANCE
+    VMJumpIf CMP_GE, L_DoorNext\i
+    FlagReset EFU_FLAG_DOOR_FIRST + \i
+L_DoorNext\i:
+    .endr
+    VMReturn
 
 // The east gate's guide: one day, the way to the farther zones
 Script_GateGuide:

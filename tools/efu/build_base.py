@@ -41,6 +41,9 @@ MATRIX_CONST = 'MAP_MATRIX_EFU_NACRENE'
 
 # Doors: the warps kept by their target zone, and the others boarded up
 OPEN_ZONES = {'ZONE_NACRENE_CITY_8', 'ZONE_NACRENE_CITY_POKEMON_CENTER', 'ZONE_NACRENE_GATE'}
+# The Day Care Lady's warehouse's ground floor door (Nacrene's warp 2), open with a boulder in front of it until she has
+# joined (EFU_FLAG_DAYCARE_JOINED hides the boulder)
+DAYCARE_DOOR = 2
 SCRIPT_BOARDED = 11002  # EFU_SCRIPT_BOARDED_DOOR
 
 # Tiles (overworld chunk 19_18 and 20_18 local x, z) to block, and the rubble props to put there (resource IDs of the
@@ -101,11 +104,16 @@ def build_zone():
 def build_events():
     e = json.loads(orig('res/field/events/nacrene_city.json'))
     out = {'$schema': e['$schema'], 'bg_events': [], 'npcs': [], 'warps': [], 'triggers': [], 'init_scripts': []}
-    for w in e['warps']:
+    for i, w in enumerate(e['warps']):
         g = dict(w['grid'])
         g['x'] += DX * 16
         g['z'] += DZ * 16
-        if w['zone'] not in OPEN_ZONES:
+        if i == DAYCARE_DOOR:
+            # The boulder stands on the tile the door is walked into from, below it
+            assert w['unk4'] == 2 and g['y'] == 0
+            out['npcs'].append(npc(0, 'OBJ_CODE_STRENGTH_ROCK', efu_script('BLOCKED_DOOR'), efu_flag('DAYCARE_JOINED'),
+                                   g['x'] // 16, g['z'] // 16 + 1, 'DIR_DOWN'))
+        elif w['zone'] not in OPEN_ZONES:
             if g['y'] == 0:
                 # A boarded door: a sign on the door's tile and the tiles beside it, since the doors are drawn wider
                 # than their one-tile warp
@@ -117,7 +125,7 @@ def build_events():
             g['x'], g['z'] = 8, 8
         out['warps'].append(dict(w, grid=g))
     write('res/field/events/nacrene_city.json', json.dumps(out, indent=4, ensure_ascii=False) + '\n')
-    return [i for i, w in enumerate(e['warps']) if w['zone'] in OPEN_ZONES]
+    return [i for i, w in enumerate(e['warps']) if w['zone'] in OPEN_ZONES or i == DAYCARE_DOOR]
 
 
 def edit_terrain(model):
@@ -163,14 +171,23 @@ def build_spawn():
 
 
 def build_interiors():
-    # The player's warehouse: nobody else but the Day Care Lady downstairs once she has joined (her hide flag set from
-    # that by Script_HomeInit), and the bed by the left wall
+    # The player's warehouse: nobody else, and the bed by the left wall
     e = json.loads(orig('res/field/events/nacrene_city_8.json'))
-    e['npcs'] = [npc(0, 'OBJ_CODE_29', 2201, efu_flag('BASE_DAYCARE_HIDDEN'), 3, 8, 'DIR_RIGHT', 'MOVE_CODE_FACE_RIGHT')]
-    e['init_scripts'] = [{'type': 2, 'script': efu_script('HOME_INIT')}]
+    e['npcs'] = []
+    e['init_scripts'] = []
     # The bed's tiles; a background event's height (z, world units) must be within 2 of the player's
     e['bg_events'] = [{'script': 11003, 'condition': 0, 'direction': 4, 'grid': {'x': 2, 'y': yy, 'z': h}} for yy in (2, 3) for h in (44, 48, 52)]
     write('res/field/events/nacrene_city_8.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
+    # The Day Care Lady's warehouse, east of the Pokémon Center, the same as the player's: she is downstairs once she
+    # has joined (her hide flag set from that by Script_DayCareInit), and a boulder shuts its door until then
+    # (build_events). Its way out upstairs leads out of its ground floor door instead, since the upper one stays shut
+    e = json.loads(orig('res/field/events/nacrene_city_7.json'))
+    e['npcs'] = [npc(0, 'OBJ_CODE_29', 2201, efu_flag('BASE_DAYCARE_HIDDEN'), 3, 8, 'DIR_RIGHT', 'MOVE_CODE_FACE_RIGHT')]
+    e['init_scripts'] = [{'type': 2, 'script': efu_script('DAYCARE_INIT')}]
+    e['bg_events'] = []
+    e['triggers'] = []
+    e['warps'] = [dict(w, warp=DAYCARE_DOOR) if w['zone'] == 'ZONE_NACRENE_CITY' else w for w in e['warps']]
+    write('res/field/events/nacrene_city_7.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
     # The Pokémon Center: the PC works, Nurse Joy is at the counter once she has joined, and the clerk sits in the
     # waiting area until the player has met them, then runs the Poké Mart counter (their hide flags set by
     # Script_PokecenInit)
@@ -187,8 +204,11 @@ def build_interiors():
     # rows 4 to 6. Stepping onto column 14, by Route 3's door, while home asks to leave (and saves); stepping onto
     # column 2, by Nacrene's, while out comes home (and saves). EFU_WORK_RAID (include/efu.h) picks which is live
     e = json.loads(orig('res/field/events/nacrene_gate.json'))
-    # Its guide, behind the counter, who will take the player farther out one day
-    e['npcs'] = [npc(0, 'OBJ_CODE_76', efu_script('GATE_GUIDE'), 0, 13, 2, 'DIR_DOWN', 'MOVE_CODE_FACE_DOWN')]
+    # Its guide, behind the counter once the player has met them out in the zone (their hide flag set from that by
+    # Script_GateInit), who will take the player farther out one day
+    e['npcs'] = [npc(0, 'OBJ_CODE_76', efu_script('GATE_GUIDE'), efu_flag('BASE_GUIDE_HIDDEN'), 13, 2, 'DIR_DOWN',
+                     'MOVE_CODE_FACE_DOWN')]
+    e['init_scripts'] = [{'type': 2, 'script': efu_script('GATE_INIT')}]
     e['triggers'] = [
         {'script': 11004, 'var': 'EVENT_WORK_0x41ac', 'value': 0, 'type': 0,
          'grid': {'x': 14, 'z': 4, 'width': 1, 'height': 3, 'y': 0}, 'unk14': 0},
@@ -211,11 +231,15 @@ def build_mart():
 
 
 def build_gate_board():
-    # The electric noticeboard in the east gate is switched off
-    text = orig('res/field/gate_boards/gates.json').decode()
-    start = text.index('"zone": "ZONE_NACRENE_GATE"')
-    at = text.index('"enabled": true', start)
-    write('res/field/gate_boards/gates.json', text[:at] + '"enabled": false' + text[at + len('"enabled": true'):])
+    # The electric noticeboard in the east gate counts the explorations (EFU_WORK_RAID_COUNT) in the date's place, and
+    # shows nothing else (GimmickGate_SetupDefaultMessages): its date message (the first) says so. No other gate's
+    # board can be seen
+    write('res/field/gate_boards/gates.json', orig('res/field/gate_boards/gates.json').decode())
+    path = 'res/text/system/gate_news_board.txt'
+    lines = orig(path).decode().split('\n')
+    assert lines[0].startswith('GateNewsBoard_Text_20 = ')
+    lines[0] = 'GateNewsBoard_Text_20 = Explorations so far: {0201:0}'
+    write(path, '\n'.join(lines))
 
 
 if __name__ == '__main__':

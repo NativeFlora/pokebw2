@@ -43,8 +43,12 @@
     ScriptEntry Script_Clerk
     ScriptEntry Script_DayCareJoin
     ScriptEntry Script_PokecenInit
-    ScriptEntry Script_HomeInit
+    ScriptEntry Script_DayCareInit
     ScriptEntry Script_GateGuide
+    ScriptEntry Script_BlockedDoor
+    ScriptEntry Script_GateInit
+    ScriptEntry Script_GuideMeet
+    ScriptEntry Script_TargetEnter
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -123,6 +127,7 @@ Script_RaidDepart:
     WorkSetConst EFU_WORK_SCAVS_OUT, 0
     // New loot: each spot's item ball is out or not by its tier's chance (L_LootRoll, from loot.json)
     VMCall L_LootRoll
+    VMCall L_DoorRoll
     WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
@@ -1879,8 +1884,9 @@ L_ConfirmStarter:
     VMReturn
     .balign 4, 0
 
-// Picking up loot: what the ball holds is rolled from its tier's table (gen_efu.py's LOOT), and the item ball script
-// of the original (global 7400, which the original balls call with their item) gives it and hides the ball by its flag
+// Picking up loot: what the ball holds is rolled from its place's tiers (gen_efu.py's LOOT_PLACES and LOOT_TIERS), and
+// the item ball script of the original (global 7400, which the original balls call with their item) gives it and hides
+// the ball by its flag
 Script_LootRoute:
     ActorsPauseAll
     WorkSetConst 0x8013, 0
@@ -1945,7 +1951,7 @@ L_LootKeep:
 // After a win against a scav (global_3000.s calls it): it drops an item from the target's table, which the player takes
 // if the bag has room
 Script_ScavDrop:
-    VMCall L_LootPickTarget
+    VMCall L_LootPickScav
     WordSetItemNameEx 0, 0x800c, 1, 0
     ItemCheckSpace 0x800c, 1, 0x8010
     WorkCmpConst 0x8010, 0
@@ -2201,8 +2207,9 @@ Script_Clerk:
     ActorsUnpauseAll
     VMHalt
 
-// The Day Care Lady in Route 3's Day Care: she moves into the player's warehouse for EFU_DAYCARE_HIRE, where the
-// original Day Care Lady's script (global 2201) runs her (Script_HomeInit shows her there)
+// The Day Care Lady in Route 3's Day Care: she moves into a warehouse of the base for EFU_DAYCARE_HIRE, where the
+// original Day Care Lady's script (global 2201) runs her (Script_DayCareInit shows her there, and EFU_FLAG_DAYCARE_JOINED
+// takes away the boulder in front of its door)
 Script_DayCareJoin:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
@@ -2258,14 +2265,77 @@ L_PokecenClerk:
 L_PokecenInitEnd:
     VMHalt
 
-Script_HomeInit:
+Script_DayCareInit:
     FlagSet EFU_FLAG_BASE_DAYCARE_HIDDEN
     FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
     WorkCmpConst 0x8020, 0
-    VMJumpIf CMP_EQ, L_HomeInitEnd
+    VMJumpIf CMP_EQ, L_DayCareInitEnd
     FlagReset EFU_FLAG_BASE_DAYCARE_HIDDEN
-L_HomeInitEnd:
+L_DayCareInitEnd:
     VMHalt
+
+Script_GateInit:
+    FlagSet EFU_FLAG_BASE_GUIDE_HIDDEN
+    FlagGet EFU_FLAG_GUIDE_MET, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_GateInitEnd
+    FlagReset EFU_FLAG_BASE_GUIDE_HIDDEN
+L_GateInitEnd:
+    VMHalt
+
+// The guide out on Route 3, the first time: they make for the east gate, where Script_GateGuide runs them
+Script_GuideMeet:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GuideMeet, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    FlagSet EFU_FLAG_GUIDE_MET
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete 0x8011
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    ActorsUnpauseAll
+    VMHalt
+
+// A boulder in front of a shut door
+Script_BlockedDoor:
+    ActorsPauseAll
+    SystemMsg Efu_Text_BlockedDoor, 2
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+// Entering the target (its init script): each of its scavs is out on EFU_TARGET_SCAV_CHANCE percent of entries, ready
+// to fight again
+Script_TargetEnter:
+    .irp i, 0,1,2
+    FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_TARGET_SCAV_CHANCE
+    VMJumpIf CMP_GE, L_TargetScavNext\i
+    FlagReset EFU_FLAG_TARGET_SCAV_FIRST + \i
+L_TargetScavNext\i:
+    .endr
+    TrainerFlagReset 643
+    TrainerFlagReset 642
+    TrainerFlagReset 645
+    VMHalt
+
+// Heading out: each door that can be shut is, on EFU_DOOR_SHUT_CHANCE percent of explorations (its boulder out)
+L_DoorRoll:
+    .irp i, 0,1,2,3
+    FlagSet EFU_FLAG_DOOR_FIRST + \i
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_DOOR_SHUT_CHANCE
+    VMJumpIf CMP_GE, L_DoorNext\i
+    FlagReset EFU_FLAG_DOOR_FIRST + \i
+L_DoorNext\i:
+    .endr
+    VMReturn
 
 // The east gate's guide: one day, the way to the farther zones
 Script_GateGuide:
@@ -2278,260 +2348,458 @@ Script_GateGuide:
     ActorsUnpauseAll
     VMHalt
 
-L_LootPickRoute:
-    Random 0x8020, 22
-L_LootPickRoute_:
-    WorkCmpConst 0x8020, 11
-    VMJumpIf CMP_GE, L_LootPickRoute__H
-L_LootPickRoute__L:
-    WorkCmpConst 0x8020, 5
-    VMJumpIf CMP_GE, L_LootPickRoute__L_H
-L_LootPickRoute__L_L:
-    WorkSetConst 0x800c, 86
-    VMReturn
-L_LootPickRoute__L_H:
-    WorkCmpConst 0x8020, 8
-    VMJumpIf CMP_GE, L_LootPickRoute__L_H_H
-L_LootPickRoute__L_H_L:
-    WorkCmpConst 0x8020, 6
-    VMJumpIf CMP_GE, L_LootPickRoute__L_H_L_H
-L_LootPickRoute__L_H_L_L:
-    WorkSetConst 0x800c, 86
-    VMReturn
-L_LootPickRoute__L_H_L_H:
-    WorkSetConst 0x800c, 4
-    VMReturn
-L_LootPickRoute__L_H_H:
-    WorkSetConst 0x800c, 4
-    VMReturn
-L_LootPickRoute__H:
-    WorkCmpConst 0x8020, 16
-    VMJumpIf CMP_GE, L_LootPickRoute__H_H
-L_LootPickRoute__H_L:
-    WorkCmpConst 0x8020, 13
-    VMJumpIf CMP_GE, L_LootPickRoute__H_L_H
-L_LootPickRoute__H_L_L:
-    WorkCmpConst 0x8020, 12
-    VMJumpIf CMP_GE, L_LootPickRoute__H_L_L_H
-L_LootPickRoute__H_L_L_L:
-    WorkSetConst 0x800c, 4
-    VMReturn
-L_LootPickRoute__H_L_L_H:
-    WorkSetConst 0x800c, 155
-    VMReturn
-L_LootPickRoute__H_L_H:
-    WorkCmpConst 0x8020, 14
-    VMJumpIf CMP_GE, L_LootPickRoute__H_L_H_H
-L_LootPickRoute__H_L_H_L:
-    WorkSetConst 0x800c, 155
-    VMReturn
-L_LootPickRoute__H_L_H_H:
-    WorkCmpConst 0x8020, 15
-    VMJumpIf CMP_GE, L_LootPickRoute__H_L_H_H_H
-L_LootPickRoute__H_L_H_H_L:
-    WorkSetConst 0x800c, 155
-    VMReturn
-L_LootPickRoute__H_L_H_H_H:
-    WorkSetConst 0x800c, 17
-    VMReturn
-L_LootPickRoute__H_H:
-    WorkCmpConst 0x8020, 19
-    VMJumpIf CMP_GE, L_LootPickRoute__H_H_H
-L_LootPickRoute__H_H_L:
+L_LootTierCommon:
+    Random 0x8020, 34
+L_LootTierCommon_:
     WorkCmpConst 0x8020, 17
-    VMJumpIf CMP_GE, L_LootPickRoute__H_H_L_H
-L_LootPickRoute__H_H_L_L:
+    VMJumpIf CMP_GE, L_LootTierCommon__H
+L_LootTierCommon__L:
+    WorkCmpConst 0x8020, 8
+    VMJumpIf CMP_GE, L_LootTierCommon__L_H
+L_LootTierCommon__L_L:
+    WorkCmpConst 0x8020, 4
+    VMJumpIf CMP_GE, L_LootTierCommon__L_L_H
+L_LootTierCommon__L_L_L:
+    WorkSetConst 0x800c, 86
+    VMReturn
+L_LootTierCommon__L_L_H:
+    WorkCmpConst 0x8020, 6
+    VMJumpIf CMP_GE, L_LootTierCommon__L_L_H_H
+L_LootTierCommon__L_L_H_L:
+    WorkSetConst 0x800c, 86
+    VMReturn
+L_LootTierCommon__L_L_H_H:
+    WorkSetConst 0x800c, 4
+    VMReturn
+L_LootTierCommon__L_H:
+    WorkCmpConst 0x8020, 12
+    VMJumpIf CMP_GE, L_LootTierCommon__L_H_H
+L_LootTierCommon__L_H_L:
+    WorkSetConst 0x800c, 4
+    VMReturn
+L_LootTierCommon__L_H_H:
+    WorkCmpConst 0x8020, 14
+    VMJumpIf CMP_GE, L_LootTierCommon__L_H_H_H
+L_LootTierCommon__L_H_H_L:
+    WorkSetConst 0x800c, 155
+    VMReturn
+L_LootTierCommon__L_H_H_H:
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootTierCommon__L_H_H_H_H
+L_LootTierCommon__L_H_H_H_L:
+    WorkSetConst 0x800c, 155
+    VMReturn
+L_LootTierCommon__L_H_H_H_H:
+    WorkCmpConst 0x8020, 16
+    VMJumpIf CMP_GE, L_LootTierCommon__L_H_H_H_H_H
+L_LootTierCommon__L_H_H_H_H_L:
+    WorkSetConst 0x800c, 155
+    VMReturn
+L_LootTierCommon__L_H_H_H_H_H:
     WorkSetConst 0x800c, 17
     VMReturn
-L_LootPickRoute__H_H_L_H:
-    WorkCmpConst 0x8020, 18
-    VMJumpIf CMP_GE, L_LootPickRoute__H_H_L_H_H
-L_LootPickRoute__H_H_L_H_L:
-    WorkSetConst 0x800c, 17
-    VMReturn
-L_LootPickRoute__H_H_L_H_H:
-    WorkSetConst 0x800c, 149
-    VMReturn
-L_LootPickRoute__H_H_H:
-    WorkCmpConst 0x8020, 20
-    VMJumpIf CMP_GE, L_LootPickRoute__H_H_H_H
-L_LootPickRoute__H_H_H_L:
-    WorkSetConst 0x800c, 151
-    VMReturn
-L_LootPickRoute__H_H_H_H:
+L_LootTierCommon__H:
+    WorkCmpConst 0x8020, 25
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H
+L_LootTierCommon__H_L:
     WorkCmpConst 0x8020, 21
-    VMJumpIf CMP_GE, L_LootPickRoute__H_H_H_H_H
-L_LootPickRoute__H_H_H_H_L:
-    WorkSetConst 0x800c, 152
+    VMJumpIf CMP_GE, L_LootTierCommon__H_L_H
+L_LootTierCommon__H_L_L:
+    WorkCmpConst 0x8020, 19
+    VMJumpIf CMP_GE, L_LootTierCommon__H_L_L_H
+L_LootTierCommon__H_L_L_L:
+    WorkSetConst 0x800c, 17
     VMReturn
-L_LootPickRoute__H_H_H_H_H:
+L_LootTierCommon__H_L_L_H:
+    WorkCmpConst 0x8020, 20
+    VMJumpIf CMP_GE, L_LootTierCommon__H_L_L_H_H
+L_LootTierCommon__H_L_L_H_L:
+    WorkSetConst 0x800c, 17
+    VMReturn
+L_LootTierCommon__H_L_L_H_H:
     WorkSetConst 0x800c, 18
     VMReturn
-L_LootPickCave:
-    Random 0x8020, 19
-L_LootPickCave_:
-    WorkCmpConst 0x8020, 9
-    VMJumpIf CMP_GE, L_LootPickCave__H
-L_LootPickCave__L:
-    WorkCmpConst 0x8020, 4
-    VMJumpIf CMP_GE, L_LootPickCave__L_H
-L_LootPickCave__L_L:
-    WorkSetConst 0x800c, 86
+L_LootTierCommon__H_L_H:
+    WorkCmpConst 0x8020, 23
+    VMJumpIf CMP_GE, L_LootTierCommon__H_L_H_H
+L_LootTierCommon__H_L_H_L:
+    WorkCmpConst 0x8020, 22
+    VMJumpIf CMP_GE, L_LootTierCommon__H_L_H_L_H
+L_LootTierCommon__H_L_H_L_L:
+    WorkSetConst 0x800c, 18
     VMReturn
-L_LootPickCave__L_H:
-    WorkCmpConst 0x8020, 6
-    VMJumpIf CMP_GE, L_LootPickCave__L_H_H
-L_LootPickCave__L_H_L:
-    WorkSetConst 0x800c, 4
+L_LootTierCommon__H_L_H_L_H:
+    WorkSetConst 0x800c, 22
     VMReturn
-L_LootPickCave__L_H_H:
+L_LootTierCommon__H_L_H_H:
+    WorkCmpConst 0x8020, 24
+    VMJumpIf CMP_GE, L_LootTierCommon__H_L_H_H_H
+L_LootTierCommon__H_L_H_H_L:
+    WorkSetConst 0x800c, 22
+    VMReturn
+L_LootTierCommon__H_L_H_H_H:
+    WorkSetConst 0x800c, 79
+    VMReturn
+L_LootTierCommon__H_H:
+    WorkCmpConst 0x8020, 29
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_H
+L_LootTierCommon__H_H_L:
+    WorkCmpConst 0x8020, 27
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_L_H
+L_LootTierCommon__H_H_L_L:
+    WorkCmpConst 0x8020, 26
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_L_L_H
+L_LootTierCommon__H_H_L_L_L:
+    WorkSetConst 0x800c, 79
+    VMReturn
+L_LootTierCommon__H_H_L_L_H:
+    WorkSetConst 0x800c, 21
+    VMReturn
+L_LootTierCommon__H_H_L_H:
+    WorkCmpConst 0x8020, 28
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_L_H_H
+L_LootTierCommon__H_H_L_H_L:
+    WorkSetConst 0x800c, 19
+    VMReturn
+L_LootTierCommon__H_H_L_H_H:
+    WorkSetConst 0x800c, 20
+    VMReturn
+L_LootTierCommon__H_H_H:
+    WorkCmpConst 0x8020, 31
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_H_H
+L_LootTierCommon__H_H_H_L:
+    WorkCmpConst 0x8020, 30
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_H_L_H
+L_LootTierCommon__H_H_H_L_L:
+    WorkSetConst 0x800c, 149
+    VMReturn
+L_LootTierCommon__H_H_H_L_H:
+    WorkSetConst 0x800c, 151
+    VMReturn
+L_LootTierCommon__H_H_H_H:
+    WorkCmpConst 0x8020, 32
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_H_H_H
+L_LootTierCommon__H_H_H_H_L:
+    WorkSetConst 0x800c, 152
+    VMReturn
+L_LootTierCommon__H_H_H_H_H:
+    WorkCmpConst 0x8020, 33
+    VMJumpIf CMP_GE, L_LootTierCommon__H_H_H_H_H_H
+L_LootTierCommon__H_H_H_H_H_L:
+    WorkSetConst 0x800c, 153
+    VMReturn
+L_LootTierCommon__H_H_H_H_H_H:
+    WorkSetConst 0x800c, 150
+    VMReturn
+L_LootTierUncommon:
+    Random 0x8020, 28
+L_LootTierUncommon_:
+    WorkCmpConst 0x8020, 14
+    VMJumpIf CMP_GE, L_LootTierUncommon__H
+L_LootTierUncommon__L:
     WorkCmpConst 0x8020, 7
-    VMJumpIf CMP_GE, L_LootPickCave__L_H_H_H
-L_LootPickCave__L_H_H_L:
-    WorkSetConst 0x800c, 4
-    VMReturn
-L_LootPickCave__L_H_H_H:
-    WorkCmpConst 0x8020, 8
-    VMJumpIf CMP_GE, L_LootPickCave__L_H_H_H_H
-L_LootPickCave__L_H_H_H_L:
-    WorkSetConst 0x800c, 4
-    VMReturn
-L_LootPickCave__L_H_H_H_H:
-    WorkSetConst 0x800c, 88
-    VMReturn
-L_LootPickCave__H:
-    WorkCmpConst 0x8020, 14
-    VMJumpIf CMP_GE, L_LootPickCave__H_H
-L_LootPickCave__H_L:
-    WorkCmpConst 0x8020, 11
-    VMJumpIf CMP_GE, L_LootPickCave__H_L_H
-L_LootPickCave__H_L_L:
-    WorkSetConst 0x800c, 88
-    VMReturn
-L_LootPickCave__H_L_H:
-    WorkCmpConst 0x8020, 12
-    VMJumpIf CMP_GE, L_LootPickCave__H_L_H_H
-L_LootPickCave__H_L_H_L:
-    WorkSetConst 0x800c, 90
-    VMReturn
-L_LootPickCave__H_L_H_H:
-    WorkCmpConst 0x8020, 13
-    VMJumpIf CMP_GE, L_LootPickCave__H_L_H_H_H
-L_LootPickCave__H_L_H_H_L:
-    WorkSetConst 0x800c, 90
-    VMReturn
-L_LootPickCave__H_L_H_H_H:
-    WorkSetConst 0x800c, 17
-    VMReturn
-L_LootPickCave__H_H:
-    WorkCmpConst 0x8020, 16
-    VMJumpIf CMP_GE, L_LootPickCave__H_H_H
-L_LootPickCave__H_H_L:
-    WorkCmpConst 0x8020, 15
-    VMJumpIf CMP_GE, L_LootPickCave__H_H_L_H
-L_LootPickCave__H_H_L_L:
-    WorkSetConst 0x800c, 17
-    VMReturn
-L_LootPickCave__H_H_L_H:
-    WorkSetConst 0x800c, 155
-    VMReturn
-L_LootPickCave__H_H_H:
-    WorkCmpConst 0x8020, 17
-    VMJumpIf CMP_GE, L_LootPickCave__H_H_H_H
-L_LootPickCave__H_H_H_L:
-    WorkSetConst 0x800c, 155
-    VMReturn
-L_LootPickCave__H_H_H_H:
-    WorkCmpConst 0x8020, 18
-    VMJumpIf CMP_GE, L_LootPickCave__H_H_H_H_H
-L_LootPickCave__H_H_H_H_L:
-    WorkSetConst 0x800c, 3
-    VMReturn
-L_LootPickCave__H_H_H_H_H:
-    WorkSetConst 0x800c, 92
-    VMReturn
-L_LootPickTarget:
-    Random 0x8020, 17
-L_LootPickTarget_:
-    WorkCmpConst 0x8020, 8
-    VMJumpIf CMP_GE, L_LootPickTarget__H
-L_LootPickTarget__L:
-    WorkCmpConst 0x8020, 4
-    VMJumpIf CMP_GE, L_LootPickTarget__L_H
-L_LootPickTarget__L_L:
-    WorkCmpConst 0x8020, 2
-    VMJumpIf CMP_GE, L_LootPickTarget__L_L_H
-L_LootPickTarget__L_L_L:
-    WorkSetConst 0x800c, 88
-    VMReturn
-L_LootPickTarget__L_L_H:
+    VMJumpIf CMP_GE, L_LootTierUncommon__L_H
+L_LootTierUncommon__L_L:
     WorkCmpConst 0x8020, 3
-    VMJumpIf CMP_GE, L_LootPickTarget__L_L_H_H
-L_LootPickTarget__L_L_H_L:
+    VMJumpIf CMP_GE, L_LootTierUncommon__L_L_H
+L_LootTierUncommon__L_L_L:
+    WorkSetConst 0x800c, 3
+    VMReturn
+L_LootTierUncommon__L_L_H:
+    WorkCmpConst 0x8020, 5
+    VMJumpIf CMP_GE, L_LootTierUncommon__L_L_H_H
+L_LootTierUncommon__L_L_H_L:
+    WorkCmpConst 0x8020, 4
+    VMJumpIf CMP_GE, L_LootTierUncommon__L_L_H_L_H
+L_LootTierUncommon__L_L_H_L_L:
+    WorkSetConst 0x800c, 3
+    VMReturn
+L_LootTierUncommon__L_L_H_L_H:
+    WorkSetConst 0x800c, 26
+    VMReturn
+L_LootTierUncommon__L_L_H_H:
+    WorkSetConst 0x800c, 26
+    VMReturn
+L_LootTierUncommon__L_H:
+    WorkCmpConst 0x8020, 10
+    VMJumpIf CMP_GE, L_LootTierUncommon__L_H_H
+L_LootTierUncommon__L_H_L:
+    WorkCmpConst 0x8020, 8
+    VMJumpIf CMP_GE, L_LootTierUncommon__L_H_L_H
+L_LootTierUncommon__L_H_L_L:
+    WorkSetConst 0x800c, 26
+    VMReturn
+L_LootTierUncommon__L_H_L_H:
     WorkSetConst 0x800c, 88
     VMReturn
-L_LootPickTarget__L_L_H_H:
-    WorkSetConst 0x800c, 90
-    VMReturn
-L_LootPickTarget__L_H:
-    WorkCmpConst 0x8020, 6
-    VMJumpIf CMP_GE, L_LootPickTarget__L_H_H
-L_LootPickTarget__L_H_L:
-    WorkSetConst 0x800c, 90
-    VMReturn
-L_LootPickTarget__L_H_H:
-    WorkSetConst 0x800c, 4
-    VMReturn
-L_LootPickTarget__H:
+L_LootTierUncommon__L_H_H:
     WorkCmpConst 0x8020, 12
-    VMJumpIf CMP_GE, L_LootPickTarget__H_H
-L_LootPickTarget__H_L:
-    WorkCmpConst 0x8020, 10
-    VMJumpIf CMP_GE, L_LootPickTarget__H_L_H
-L_LootPickTarget__H_L_L:
-    WorkCmpConst 0x8020, 9
-    VMJumpIf CMP_GE, L_LootPickTarget__H_L_L_H
-L_LootPickTarget__H_L_L_L:
-    WorkSetConst 0x800c, 4
+    VMJumpIf CMP_GE, L_LootTierUncommon__L_H_H_H
+L_LootTierUncommon__L_H_H_L:
+    WorkSetConst 0x800c, 88
     VMReturn
-L_LootPickTarget__H_L_L_H:
-    WorkSetConst 0x800c, 86
+L_LootTierUncommon__L_H_H_H:
+    WorkSetConst 0x800c, 90
     VMReturn
-L_LootPickTarget__H_L_H:
-    WorkCmpConst 0x8020, 11
-    VMJumpIf CMP_GE, L_LootPickTarget__H_L_H_H
-L_LootPickTarget__H_L_H_L:
-    WorkSetConst 0x800c, 86
-    VMReturn
-L_LootPickTarget__H_L_H_H:
-    WorkSetConst 0x800c, 26
-    VMReturn
-L_LootPickTarget__H_H:
-    WorkCmpConst 0x8020, 14
-    VMJumpIf CMP_GE, L_LootPickTarget__H_H_H
-L_LootPickTarget__H_H_L:
-    WorkCmpConst 0x8020, 13
-    VMJumpIf CMP_GE, L_LootPickTarget__H_H_L_H
-L_LootPickTarget__H_H_L_L:
-    WorkSetConst 0x800c, 26
-    VMReturn
-L_LootPickTarget__H_H_L_H:
-    WorkSetConst 0x800c, 3
-    VMReturn
-L_LootPickTarget__H_H_H:
+L_LootTierUncommon__H:
+    WorkCmpConst 0x8020, 21
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_H
+L_LootTierUncommon__H_L:
+    WorkCmpConst 0x8020, 17
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_L_H
+L_LootTierUncommon__H_L_L:
     WorkCmpConst 0x8020, 15
-    VMJumpIf CMP_GE, L_LootPickTarget__H_H_H_H
-L_LootPickTarget__H_H_H_L:
-    WorkSetConst 0x800c, 3
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_L_L_H
+L_LootTierUncommon__H_L_L_L:
+    WorkSetConst 0x800c, 90
     VMReturn
-L_LootPickTarget__H_H_H_H:
+L_LootTierUncommon__H_L_L_H:
+    WorkCmpConst 0x8020, 16
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_L_L_H_H
+L_LootTierUncommon__H_L_L_H_L:
+    WorkSetConst 0x800c, 90
+    VMReturn
+L_LootTierUncommon__H_L_L_H_H:
+    WorkSetConst 0x800c, 27
+    VMReturn
+L_LootTierUncommon__H_L_H:
+    WorkCmpConst 0x8020, 19
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_L_H_H
+L_LootTierUncommon__H_L_H_L:
+    WorkCmpConst 0x8020, 18
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_L_H_L_H
+L_LootTierUncommon__H_L_H_L_L:
+    WorkSetConst 0x800c, 27
+    VMReturn
+L_LootTierUncommon__H_L_H_L_H:
+    WorkSetConst 0x800c, 158
+    VMReturn
+L_LootTierUncommon__H_L_H_H:
+    WorkCmpConst 0x8020, 20
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_L_H_H_H
+L_LootTierUncommon__H_L_H_H_L:
+    WorkSetConst 0x800c, 158
+    VMReturn
+L_LootTierUncommon__H_L_H_H_H:
+    WorkSetConst 0x800c, 87
+    VMReturn
+L_LootTierUncommon__H_H:
+    WorkCmpConst 0x8020, 24
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_H_H
+L_LootTierUncommon__H_H_L:
+    WorkCmpConst 0x8020, 22
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_H_L_H
+L_LootTierUncommon__H_H_L_L:
+    WorkSetConst 0x800c, 87
+    VMReturn
+L_LootTierUncommon__H_H_L_H:
+    WorkSetConst 0x800c, 76
+    VMReturn
+L_LootTierUncommon__H_H_H:
+    WorkCmpConst 0x8020, 26
+    VMJumpIf CMP_GE, L_LootTierUncommon__H_H_H_H
+L_LootTierUncommon__H_H_H_L:
+    WorkSetConst 0x800c, 38
+    VMReturn
+L_LootTierUncommon__H_H_H_H:
+    WorkSetConst 0x800c, 30
+    VMReturn
+L_LootTierRare:
+    Random 0x8020, 20
+L_LootTierRare_:
+    WorkCmpConst 0x8020, 10
+    VMJumpIf CMP_GE, L_LootTierRare__H
+L_LootTierRare__L:
+    WorkCmpConst 0x8020, 5
+    VMJumpIf CMP_GE, L_LootTierRare__L_H
+L_LootTierRare__L_L:
+    WorkCmpConst 0x8020, 2
+    VMJumpIf CMP_GE, L_LootTierRare__L_L_H
+L_LootTierRare__L_L_L:
+    WorkSetConst 0x800c, 2
+    VMReturn
+L_LootTierRare__L_L_H:
+    WorkCmpConst 0x8020, 3
+    VMJumpIf CMP_GE, L_LootTierRare__L_L_H_H
+L_LootTierRare__L_L_H_L:
+    WorkSetConst 0x800c, 2
+    VMReturn
+L_LootTierRare__L_L_H_H:
+    WorkSetConst 0x800c, 25
+    VMReturn
+L_LootTierRare__L_H:
+    WorkCmpConst 0x8020, 7
+    VMJumpIf CMP_GE, L_LootTierRare__L_H_H
+L_LootTierRare__L_H_L:
+    WorkCmpConst 0x8020, 6
+    VMJumpIf CMP_GE, L_LootTierRare__L_H_L_H
+L_LootTierRare__L_H_L_L:
+    WorkSetConst 0x800c, 25
+    VMReturn
+L_LootTierRare__L_H_L_H:
+    WorkSetConst 0x800c, 28
+    VMReturn
+L_LootTierRare__L_H_H:
+    WorkCmpConst 0x8020, 8
+    VMJumpIf CMP_GE, L_LootTierRare__L_H_H_H
+L_LootTierRare__L_H_H_L:
+    WorkSetConst 0x800c, 28
+    VMReturn
+L_LootTierRare__L_H_H_H:
+    WorkCmpConst 0x8020, 9
+    VMJumpIf CMP_GE, L_LootTierRare__L_H_H_H_H
+L_LootTierRare__L_H_H_H_L:
+    WorkSetConst 0x800c, 28
+    VMReturn
+L_LootTierRare__L_H_H_H_H:
     WorkSetConst 0x800c, 92
     VMReturn
-L_LootPickRare:
-    Random 0x8020, 1
-L_LootPickRare_:
+L_LootTierRare__H:
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootTierRare__H_H
+L_LootTierRare__H_L:
+    WorkCmpConst 0x8020, 12
+    VMJumpIf CMP_GE, L_LootTierRare__H_L_H
+L_LootTierRare__H_L_L:
+    WorkSetConst 0x800c, 92
+    VMReturn
+L_LootTierRare__H_L_H:
+    WorkCmpConst 0x8020, 13
+    VMJumpIf CMP_GE, L_LootTierRare__H_L_H_H
+L_LootTierRare__H_L_H_L:
+    WorkSetConst 0x800c, 89
+    VMReturn
+L_LootTierRare__H_L_H_H:
+    WorkCmpConst 0x8020, 14
+    VMJumpIf CMP_GE, L_LootTierRare__H_L_H_H_H
+L_LootTierRare__H_L_H_H_L:
+    WorkSetConst 0x800c, 89
+    VMReturn
+L_LootTierRare__H_L_H_H_H:
+    WorkSetConst 0x800c, 157
+    VMReturn
+L_LootTierRare__H_H:
+    WorkCmpConst 0x8020, 17
+    VMJumpIf CMP_GE, L_LootTierRare__H_H_H
+L_LootTierRare__H_H_L:
+    WorkCmpConst 0x8020, 16
+    VMJumpIf CMP_GE, L_LootTierRare__H_H_L_H
+L_LootTierRare__H_H_L_L:
+    WorkSetConst 0x800c, 157
+    VMReturn
+L_LootTierRare__H_H_L_H:
+    WorkSetConst 0x800c, 40
+    VMReturn
+L_LootTierRare__H_H_H:
+    WorkCmpConst 0x8020, 18
+    VMJumpIf CMP_GE, L_LootTierRare__H_H_H_H
+L_LootTierRare__H_H_H_L:
+    WorkSetConst 0x800c, 40
+    VMReturn
+L_LootTierRare__H_H_H_H:
+    WorkCmpConst 0x8020, 19
+    VMJumpIf CMP_GE, L_LootTierRare__H_H_H_H_H
+L_LootTierRare__H_H_H_H_L:
     WorkSetConst 0x800c, 50
     VMReturn
+L_LootTierRare__H_H_H_H_H:
+    WorkSetConst 0x800c, 93
+    VMReturn
+L_LootTierValuable:
+    Random 0x8020, 14
+L_LootTierValuable_:
+    WorkCmpConst 0x8020, 7
+    VMJumpIf CMP_GE, L_LootTierValuable__H
+L_LootTierValuable__L:
+    WorkCmpConst 0x8020, 3
+    VMJumpIf CMP_GE, L_LootTierValuable__L_H
+L_LootTierValuable__L_L:
+    WorkSetConst 0x800c, 91
+    VMReturn
+L_LootTierValuable__L_H:
+    WorkCmpConst 0x8020, 5
+    VMJumpIf CMP_GE, L_LootTierValuable__L_H_H
+L_LootTierValuable__L_H_L:
+    WorkSetConst 0x800c, 29
+    VMReturn
+L_LootTierValuable__L_H_H:
+    WorkSetConst 0x800c, 23
+    VMReturn
+L_LootTierValuable__H:
+    WorkCmpConst 0x8020, 10
+    VMJumpIf CMP_GE, L_LootTierValuable__H_H
+L_LootTierValuable__H_L:
+    WorkCmpConst 0x8020, 8
+    VMJumpIf CMP_GE, L_LootTierValuable__H_L_H
+L_LootTierValuable__H_L_L:
+    WorkSetConst 0x800c, 51
+    VMReturn
+L_LootTierValuable__H_L_H:
+    WorkCmpConst 0x8020, 9
+    VMJumpIf CMP_GE, L_LootTierValuable__H_L_H_H
+L_LootTierValuable__H_L_H_L:
+    WorkSetConst 0x800c, 51
+    VMReturn
+L_LootTierValuable__H_L_H_H:
+    WorkSetConst 0x800c, 581
+    VMReturn
+L_LootTierValuable__H_H:
+    WorkCmpConst 0x8020, 12
+    VMJumpIf CMP_GE, L_LootTierValuable__H_H_H
+L_LootTierValuable__H_H_L:
+    WorkCmpConst 0x8020, 11
+    VMJumpIf CMP_GE, L_LootTierValuable__H_H_L_H
+L_LootTierValuable__H_H_L_L:
+    WorkSetConst 0x800c, 583
+    VMReturn
+L_LootTierValuable__H_H_L_H:
+    WorkSetConst 0x800c, 234
+    VMReturn
+L_LootTierValuable__H_H_H:
+    WorkCmpConst 0x8020, 13
+    VMJumpIf CMP_GE, L_LootTierValuable__H_H_H_H
+L_LootTierValuable__H_H_H_L:
+    WorkSetConst 0x800c, 217
+    VMReturn
+L_LootTierValuable__H_H_H_H:
+    WorkSetConst 0x800c, 221
+    VMReturn
+L_LootTierCandy:
+    Random 0x8020, 1
+L_LootTierCandy_:
+    WorkSetConst 0x800c, 50
+    VMReturn
+L_LootPickRoute:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 85
+    VMJumpIf CMP_LT, L_LootTierCommon
+    VMJump L_LootTierUncommon
+L_LootPickCave:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 50
+    VMJumpIf CMP_LT, L_LootTierCommon
+    WorkCmpConst 0x8020, 90
+    VMJumpIf CMP_LT, L_LootTierUncommon
+    VMJump L_LootTierRare
+L_LootPickTarget:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_LT, L_LootTierCommon
+    WorkCmpConst 0x8020, 65
+    VMJumpIf CMP_LT, L_LootTierUncommon
+    WorkCmpConst 0x8020, 97
+    VMJumpIf CMP_LT, L_LootTierRare
+    VMJump L_LootTierValuable
+L_LootPickScav:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 45
+    VMJumpIf CMP_LT, L_LootTierUncommon
+    WorkCmpConst 0x8020, 90
+    VMJumpIf CMP_LT, L_LootTierRare
+    VMJump L_LootTierValuable
+L_LootPickCandy:
+    Random 0x8020, 100
+    VMJump L_LootTierCandy
 L_LootRoll:
     Random 0x8020, 100
     WorkCmpConst 0x8020, 40

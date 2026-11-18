@@ -35,6 +35,7 @@
 #include "nitro/math.h"
 #include "nitro/os.h"
 #include "pml/item.h"
+#include "pml/move.h"
 #include "pml/personal.h"
 #include "pml/poke_party.h"
 #include "save/box.h"
@@ -239,6 +240,7 @@ enum {
 static void Box2Main_VBlank(TCB *tcb, void *data);
 static void PokeDataSwapBoxParty(Box2SysWork *syswk, Box2PokeMoveData *box, Box2PokeMoveData *party);
 static void PokeDataMoveBoxToParty(Box2SysWork *syswk, Box2PokeMoveData *box);
+static void Efu_RecoverHalf(PartyPkm *pkm);
 static void PokeDataMovePartyToBox(Box2SysWork *syswk, Box2PokeMoveData *party);
 static void PokeDataSwapParty(Box2SysWork *syswk, Box2PokeMoveData *party);
 static void PokeDataMoveParty(Box2SysWork *syswk, Box2PokeMoveData *party);
@@ -840,6 +842,7 @@ static void PokeDataSwapBoxParty(Box2SysWork *syswk, Box2PokeMoveData *box, Box2
         tray = syswk->tray;
     }
     pkm = boxPkmRegenToPartyPkm(Box2Main_GetBoxPkm(syswk, tray, box->dfPos), HEAPID_TAIL(HEAPID_BOX2_APP));
+    Efu_RecoverHalf(pkm);
     index = party->dfPos - BOX2_PARTY_POS;
     BoxSaveAccessor_SetPkm(syswk->param->boxes, tray, box->dfPos,
                            PokeParty_ToBoxPkm(PokeParty_GetPkm(syswk->param->party, index)));
@@ -857,6 +860,7 @@ static void PokeDataMoveBoxToParty(Box2SysWork *syswk, Box2PokeMoveData *box) {
     if (syswk->app->rangeWidth == 1 && syswk->app->rangeHeight == 1) {
         pkm =
             boxPkmRegenToPartyPkm(Box2Main_GetBoxPkm(syswk, syswk->getTray, box->dfPos), HEAPID_TAIL(HEAPID_BOX2_APP));
+        Efu_RecoverHalf(pkm);
         PokeParty_AddPkm(syswk->param->party, pkm);
         Box2Main_ClearPokeData(syswk, syswk->getTray, box->dfPos);
         GFL_HeapFree(pkm);
@@ -878,6 +882,7 @@ static void PokeDataMoveBoxToParty(Box2SysWork *syswk, Box2PokeMoveData *box) {
                 if (syswk->app->rangeFlags[pos] != 0) {
                     pkm = boxPkmRegenToPartyPkm(Box2Main_GetBoxPkm(syswk, syswk->getTray, base + pos),
                                                 HEAPID_TAIL(HEAPID_BOX2_APP));
+                    Efu_RecoverHalf(pkm);
                     PokeParty_AddPkm(syswk->param->party, pkm);
                     Box2Main_ClearPokeData(syswk, syswk->getTray, base + pos);
                     GFL_HeapFree(pkm);
@@ -886,6 +891,25 @@ static void PokeDataMoveBoxToParty(Box2SysWork *syswk, Box2PokeMoveData *box) {
         }
     }
     Box2Obj_MakeTrayIconChar(syswk, syswk->getTray);
+}
+
+// Escape from Unova: a Pokémon leaves the PC at half its HP and PP, as the player's bed would leave it, not healed in
+// full as the box's Pokémon are
+static void Efu_RecoverHalf(PartyPkm *pkm) {
+    u32 slot;
+
+    if (PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL)) {
+        return;
+    }
+    PokeParty_SetParam(pkm, PKM_PARAM_HP, (PokeParty_GetParam(pkm, PKM_PARAM_MAX_HP, NULL) + 1) / 2);
+    for (slot = 0; slot < 4; slot++) {
+        u16 move = PokeParty_GetParam(pkm, PKM_PARAM_MOVE1 + slot, NULL);
+
+        if (move != 0) {
+            PokeParty_SetParam(pkm, PKM_PARAM_MOVE1_PP + slot,
+                               (PML_MoveGetMaxPP(move, PokeParty_GetParam(pkm, PKM_PARAM_MOVE1_PP_UP + slot, NULL)) + 1) / 2);
+        }
+    }
 }
 
 static void PokeDataMovePartyToBox(Box2SysWork *syswk, Box2PokeMoveData *party) {

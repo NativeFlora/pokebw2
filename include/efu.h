@@ -38,9 +38,17 @@
 #define EFU_SCRIPT_CLERK (EFU_SCRIPT_FIRST + 18)
 #define EFU_SCRIPT_DAYCARE_JOIN (EFU_SCRIPT_FIRST + 19)
 #define EFU_SCRIPT_POKECEN_INIT (EFU_SCRIPT_FIRST + 20)
-#define EFU_SCRIPT_HOME_INIT (EFU_SCRIPT_FIRST + 21)
+#define EFU_SCRIPT_DAYCARE_INIT (EFU_SCRIPT_FIRST + 21)
 // The east gate's guide, who will take the player to the farther zones
 #define EFU_SCRIPT_GATE_GUIDE (EFU_SCRIPT_FIRST + 22)
+// A boulder in front of a door that is shut (EFU_FLAG_DOOR_FIRST, the Day Care's warehouse)
+#define EFU_SCRIPT_BLOCKED_DOOR (EFU_SCRIPT_FIRST + 23)
+// The east gate's init script: its guide is there once the player has met them (EFU_FLAG_GUIDE_MET)
+#define EFU_SCRIPT_GATE_INIT (EFU_SCRIPT_FIRST + 24)
+// The guide out in the zone, the first time
+#define EFU_SCRIPT_GUIDE_MEET (EFU_SCRIPT_FIRST + 25)
+// The target's init script: each of its scavs is out on EFU_TARGET_SCAV_CHANCE percent of entries
+#define EFU_SCRIPT_TARGET_ENTER (EFU_SCRIPT_FIRST + 26)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -118,6 +126,20 @@
 #define EFU_FLAG_BASE_CLERK_HIDDEN 0xa97
 #define EFU_FLAG_DAYCARE_JOINED 0xa98
 #define EFU_FLAG_BASE_DAYCARE_HIDDEN 0xa99
+// The guide, met out in the zone (their NPC's hide flag there), and their NPC's hide flag at the east gate, which its
+// init script sets from that (Script_GateInit)
+#define EFU_FLAG_GUIDE_MET 0xa9e
+#define EFU_FLAG_BASE_GUIDE_HIDDEN 0xa9f
+
+// Doors that are shut on some explorations: each has a boulder in front of it, hidden by its flag from this one
+// (build_raid.py's DOORS, in their order), which heading out rolls (L_DoorRoll): shut on EFU_DOOR_SHUT_CHANCE percent
+#define EFU_FLAG_DOOR_FIRST 0xa9a
+#define EFU_DOOR_COUNT 4
+#define EFU_DOOR_SHUT_CHANCE 30
+// The target's scavs, each hidden by its flag from this one and out on EFU_TARGET_SCAV_CHANCE percent of entries
+#define EFU_FLAG_TARGET_SCAV_FIRST 0xa40
+#define EFU_TARGET_SCAV_COUNT 3
+#define EFU_TARGET_SCAV_CHANCE 40
 
 // Fleeing (btl_server_flow.c): the original's cap on the escape attempts it counts, and the count that means the
 // player failed to get away this turn and gets away at its end

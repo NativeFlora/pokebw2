@@ -1,6 +1,6 @@
 """Escape from Unova: writes res/field/scripts/efu.s and res/text/script/efu.txt from the templates in this directory,
 adding the starter menus (a type list, then a list per type) from starters.py's pool."""
-import json, collections, os, subprocess
+import json, collections, os, re, subprocess
 here = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(os.path.dirname(here))
 subprocess.run(['python3', os.path.join(here, 'starters.py')], check=True, stderr=subprocess.DEVNULL)
@@ -56,26 +56,37 @@ def tree(lo, hi, label):
     tree(lo, mid, label + '_L')
     tree(mid, hi, label + '_H')
 tree(0, len(pool), 'L_LostSoulPick')
-# Loot: each tier's table (items with their weights), and how often a spot of the tier comes up empty, in percent
-# The first zone is free to travel to, so its loot is cheap: mostly Tiny Mushrooms and Poke Balls on the route, with
-# Pearls, Stardust and the odd Nugget in the caves and the target. The bag carries one item a Pokemon can hold
-# (include/efu_bag.h), so every roll gives one
-LOOT = {
-    'Route': (40, {'TINY_MUSHROOM': 6, 'POKE_BALL': 6, 'ORAN_BERRY': 3, 'POTION': 3, 'CHERI_BERRY': 1,
-                   'PECHA_BERRY': 1, 'RAWST_BERRY': 1, 'ANTIDOTE': 1}),
-    'Cave': (25, {'TINY_MUSHROOM': 4, 'POKE_BALL': 4, 'PEARL': 3, 'STARDUST': 2, 'POTION': 2, 'ORAN_BERRY': 2,
-                  'GREAT_BALL': 1, 'NUGGET': 1}),
-    'Target': (15, {'PEARL': 3, 'STARDUST': 3, 'POKE_BALL': 3, 'TINY_MUSHROOM': 2, 'SUPER_POTION': 2, 'GREAT_BALL': 2,
-                    'NUGGET': 2}),
-    # The Rare Candy in Route 3's childcare centre (its own item ball script), out on 10% of explorations
-    'Rare': (90, {'RARE_CANDY': 1}),
+# Loot comes in tiers, each a table of items with their weights, from everyday finds to the valuable ones; every item
+# can be held, since the bag carries one item a Pokemon can hold (include/efu_bag.h), and every roll gives one
+LOOT_TIERS = {
+    'Common': {'TINY_MUSHROOM': 6, 'POKE_BALL': 6, 'ORAN_BERRY': 4, 'POTION': 4, 'ANTIDOTE': 2, 'PARLYZ_HEAL': 2,
+               'REPEL': 2, 'AWAKENING': 1, 'BURN_HEAL': 1, 'ICE_HEAL': 1, 'CHERI_BERRY': 1, 'PECHA_BERRY': 1,
+               'RAWST_BERRY': 1, 'ASPEAR_BERRY': 1, 'CHESTO_BERRY': 1},
+    'Uncommon': {'GREAT_BALL': 4, 'SUPER_POTION': 4, 'PEARL': 4, 'STARDUST': 4, 'FULL_HEAL': 2, 'SITRUS_BERRY': 2,
+                 'BIG_MUSHROOM': 2, 'SUPER_REPEL': 2, 'ETHER': 2, 'FRESH_WATER': 2},
+    'Rare': {'ULTRA_BALL': 3, 'HYPER_POTION': 3, 'REVIVE': 3, 'NUGGET': 3, 'BIG_PEARL': 2, 'LUM_BERRY': 2, 'ELIXIR': 2,
+             'RARE_CANDY': 1, 'HEART_SCALE': 1},
+    'Valuable': {'STAR_PIECE': 3, 'MAX_REVIVE': 2, 'FULL_RESTORE': 2, 'PP_UP': 2, 'BIG_NUGGET': 1, 'COMET_SHARD': 1,
+                 'LEFTOVERS': 1, 'QUICK_CLAW': 1, 'KINGS_ROCK': 1},
+    # The Rare Candy in Route 3's childcare centre, its own item ball
+    'Candy': {'RARE_CANDY': 1},
+}
+# Each kind of place: how often its spots come up empty on an exploration, in percent, and the chances of its tiers.
+# The first zone is free to travel to, so its route is mostly common finds; its caves and target, and the scavs' drops,
+# reach the better tiers
+LOOT_PLACES = {
+    'Route': (40, {'Common': 85, 'Uncommon': 15}),
+    'Cave': (25, {'Common': 50, 'Uncommon': 40, 'Rare': 10}),
+    'Target': (15, {'Common': 15, 'Uncommon': 50, 'Rare': 32, 'Valuable': 3}),
+    'Scav': (0, {'Uncommon': 45, 'Rare': 45, 'Valuable': 10}),
+    'Candy': (90, {'Candy': 100}),
 }
 items = [l.split('=')[0].strip() for l in open(root + '/generated/items.txt') if l.startswith('ITEM_')]
 loot = []
-for tier, (empty, table) in LOOT.items():
+for tier, table in LOOT_TIERS.items():
     # Random picks a slot of the table laid out by weight, and a binary search of comparisons finds its item
     slots = [items.index('ITEM_' + i) for i, w in table.items() for _ in range(w)]
-    loot.append(f'L_LootPick{tier}:\n    Random 0x8020, {len(slots)}\n')
+    loot.append(f'L_LootTier{tier}:\n    Random 0x8020, {len(slots)}\n')
     def pick(lo, hi, label):
         if hi - lo == 1 or len(set(slots[lo:hi])) == 1:
             loot.append(f'{label}:\n    WorkSetConst 0x800c, {slots[lo]}\n    VMReturn\n')
@@ -84,13 +95,22 @@ for tier, (empty, table) in LOOT.items():
         loot.append(f'{label}:\n    WorkCmpConst 0x8020, {mid}\n    VMJumpIf CMP_GE, {label}_H\n')
         pick(lo, mid, label + '_L')
         pick(mid, hi, label + '_H')
-    pick(0, len(slots), f'L_LootPick{tier}_')
-# Heading out: each spot's ball is out (its hide flag cleared) unless its tier's empty chance comes up
+    pick(0, len(slots), f'L_LootTier{tier}_')
+# A place's pick: a tier by its chances, then that tier's item (into 0x800c)
+for place, (empty, tiers) in LOOT_PLACES.items():
+    assert sum(tiers.values()) == 100
+    loot.append(f'L_LootPick{place}:\n    Random 0x8020, 100\n')
+    total = 0
+    for tier, chance in list(tiers.items())[:-1]:
+        total += chance
+        loot.append(f'    WorkCmpConst 0x8020, {total}\n    VMJumpIf CMP_LT, L_LootTier{tier}\n')
+    loot.append(f'    VMJump L_LootTier{list(tiers)[-1]}\n')
+# Heading out: each spot's ball is out (its hide flag cleared) unless its place's empty chance comes up
 spots = json.load(open(os.path.join(here, 'loot.json')))
 loot.append('L_LootRoll:\n')
 for i, spot in enumerate(spots):
     flag = int(spot['flag'].split('0x')[1], 16)
-    empty = LOOT[spot['tier'].capitalize()][0]
+    empty = LOOT_PLACES[spot['place'].capitalize()][0]
     loot.append(f'    Random 0x8020, 100\n    WorkCmpConst 0x8020, {empty}\n    VMJumpIf CMP_GE, L_LootOut_{i}\n'
                 f'    FlagSet {flag:#x}\n    VMJump L_LootNext_{i}\nL_LootOut_{i}:\n    FlagReset {flag:#x}\n'
                 f'L_LootNext_{i}:\n')
@@ -98,6 +118,10 @@ loot.append('    VMReturn\n')
 tmpl = open(os.path.join(here, 'efu.s.in')).read()
 tmpl = tmpl.replace('@LOST_SOUL@\n', ''.join(ls))
 tmpl = tmpl.replace('@LOOT@\n', ''.join(loot))
+# The target's scavs fight again on each entry they are out (build_raid.py's TARGET_SCAVS)
+target_scavs = re.search(r'^TARGET_SCAVS = \[([0-9, ]+)\]', open(os.path.join(here, 'build_raid.py')).read(), re.M)
+tmpl = tmpl.replace('@TARGET_SCAV_RESET@\n', ''.join(f'    TrainerFlagReset {t.strip()}\n'
+                                                      for t in target_scavs.group(1).split(',')))
 tmpl = tmpl.replace('@POKE_BALL@', str(items.index('ITEM_POKE_BALL')))
 open(root + '/res/field/scripts/efu.s', 'w').write(tmpl.replace('@STARTER_MENUS@\n', ''.join(s)))
 hand = open(os.path.join(here, 'efu.txt.in'), encoding='utf-8').read()

@@ -1,130 +1,130 @@
 [
     {
         "flag": "EVENT_FLAG_0x055e",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x055f",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0560",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0561",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0562",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0563",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x044f",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0450",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0451",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0452",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0453",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0454",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0455",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0456",
-        "tier": "route"
+        "place": "route"
     },
     {
         "flag": "EVENT_FLAG_0x0565",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x0569",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x0566",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x0567",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x0568",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x056b",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x0a90",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x0a91",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x0a92",
-        "tier": "cave"
+        "place": "cave"
     },
     {
         "flag": "EVENT_FLAG_0x054f",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x0556",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x0555",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x0554",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x0553",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x0552",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x0550",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x054e",
-        "tier": "target"
+        "place": "target"
     },
     {
         "flag": "EVENT_FLAG_0x0564",
-        "tier": "rare"
+        "place": "candy"
     }
 ]

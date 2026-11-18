@@ -14,15 +14,7 @@
         {
             "species": "SPECIES_PATRAT",
             "form": 0,
-            "level": 16,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_PIDOVE",
-            "form": 0,
-            "level": 17,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -31,6 +23,14 @@
             "species": "SPECIES_PIDOVE",
             "form": 0,
             "level": 16,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PIDOVE",
+            "form": 0,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -38,7 +38,7 @@
         {
             "species": "SPECIES_SLAKOTH",
             "form": 0,
-            "level": 17,
+            "level": 16,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -46,7 +46,7 @@
         {
             "species": "SPECIES_WOOBAT",
             "form": 0,
-            "level": 16,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -54,7 +54,7 @@
         {
             "species": "SPECIES_DRILBUR",
             "form": 0,
-            "level": 17,
+            "level": 16,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

@@ -33,4 +33,6 @@ Efu_Text_JoyStay = Then I'll stay out here a while longer.\nBe careful.
 Efu_Text_ClerkIntro = Oh! Someone's still here?{be01}\nWhen the evacuation came, the ships\nleft without most of us.{be01}\nThe staff here went with them.\nI stayed. Where would I go?{be01}\nI can still source supplies, but\nnothing's cheap anymore.{be01}\nAnd I'll buy whatever you drag back\nfrom out there. I'll be at the counter.
 Efu_Text_DayCareOffer = I'm the Day-Care Lady. Or I was.{be01}\nWith scavs about, nobody leaves their\nPokémon with me anymore.{be01}\nYou have somewhere safe? For ${0204:0},\nI'll move in and raise your Pokémon.
 Efu_Text_DayCareJoined = I'll pack up and meet you there.{be01}\nEach time you come back from out there,\nthe Pokémon I raise will be a bit stronger.
-Efu_Text_GateGuide = I used to guide travelers out of\nthis gate.{be01}\nRoute 3 is as far as anyone dares\nto go now.{be01}\nWhen the roads farther out are safe,\nI'll take you there.
+Efu_Text_GateGuide = Route 3 is as far as anyone dares\nto go now.{be01}\nWhen the roads farther out are safe,\nI'll take you there.
+Efu_Text_GuideMeet = Another survivor? You came out of\nthe old warehouses, right?{be01}\nI used to guide travelers from the\ngate there. I know every road.{be01}\nI'll set up at the gate again.\nFind me there to go farther out.
+Efu_Text_BlockedDoor = A boulder blocks the way in.

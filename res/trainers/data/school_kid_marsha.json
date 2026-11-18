@@ -15,15 +15,15 @@
         {
             "species": "SPECIES_HOPPIP",
             "form": 0,
-            "level": 17,
+            "level": 16,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_SKIPLOOM",
+            "species": "SPECIES_HOPPIP",
             "form": 0,
-            "level": 18,
+            "level": 17,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -31,7 +31,7 @@
         {
             "species": "SPECIES_ODDISH",
             "form": 0,
-            "level": 17,
+            "level": 16,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

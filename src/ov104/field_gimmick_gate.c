@@ -5,6 +5,7 @@
 #include "constants/text_banks.h"
 #include "constants/version.h"
 #include "constants/zones.h"
+#include "efu.h"
 #include "field/encounter.h"
 #include "field/field.h"
 #include "field/field_environment.h"
@@ -641,15 +642,11 @@ void GimmickGate_SetupMessages(GimmickGateWork *work) {
     GimmickGate_SetupDefaultMessages(work);
 }
 
+// Escape from Unova: the news is gone with everyone who made it. The board counts the explorations instead, in the
+// date's place (GimmickGate_AddDateMessage)
 void GimmickGate_SetupDefaultMessages(GimmickGateWork *work) {
     if (!Elboard_GetMessageCount(work->board) && work->zoneData && work->zoneData->enabled) {
-        GimmickGate_AddSwarmMessage(work);
         GimmickGate_AddDateMessage(work);
-        GimmickGate_AddWeatherMessage(work);
-        GimmickGate_AddWeekdayMessage3(work);
-        GimmickGate_AddWeekdayMessage4(work);
-        GimmickGate_AddWeekdayMessage5(work);
-        GimmickGate_AddWeekdayMessage6(work);
     }
 }
 
@@ -676,13 +673,10 @@ void GimmickGate_SetupEntryMessages(GimmickGateWork *work) {
 void GimmickGate_AddDateMessage(GimmickGateWork *work) {
     WordSet *wordSet;
     ElboardMessageArg arg;
-    RTCDate date;
 
     wordSet = GFL_WordSetSystemCreateDefault(work->heapId);
-    RTC_GetDate(&date);
-    WordSetNumber(wordSet, 2, date.year, 2, 2, 1);
-    loadMonthToStrbuf(wordSet, 0, date.month);
-    WordSetNumber(wordSet, 1, date.day, 2, 0, 1);
+    // Escape from Unova: the explorations set out on, for the zone's message in the date's place (gates.json)
+    WordSetNumber(wordSet, 0, *EventWork_GetWkPtr(GameData_GetEventWork(work->gameData), EFU_WORK_RAID_COUNT), 5, 0, 1);
     arg.animation = sMessageAnimations[GIMMICK_GATE_SLOT_DATE];
     arg.name = sBoardNames[GIMMICK_GATE_SLOT_DATE];
     arg.plName = sBoardPlNames[GIMMICK_GATE_SLOT_DATE];

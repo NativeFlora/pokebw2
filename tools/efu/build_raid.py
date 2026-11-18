@@ -71,6 +71,13 @@ SCAVS = {
                          "Stay off the high ground.\nThat's where we watch from."),
     'backers_may_mal': (True, "No more cheering! Only taking!\nHand over your stuff!{be01}", "Boo! Hiss!",
                         "I used to cheer on Trainers.\nNow I cheer when they drop things."),
+    # The target's (TARGET_SCAVS)
+    'veteran_sinan': (False, "I've outlasted everyone in these\nwoods. I'll outlast you too!{be01}", "Hah... Not bad.",
+                      "The forest keeps what it takes.\nRemember that."),
+    'pkmn_ranger_hillary': (True, "This forest is my larder now.\nAnd you're in it!{be01}", "I'll find easier prey.",
+                            "The deeper you go, the more\nyou find. And the more find you."),
+    'youngster_keita_2': (False, "I heard you coming a mile off.\nDrop the bag!{be01}", "Aw, man...",
+                          "There's good stuff under these\ntrees. I'm not telling you where."),
 }
 # The scavs' Trainer class, whichever it was: Team Plasma's Grunts, renamed
 SCAV_CLASS = {False: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_M', True: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_F'}
@@ -78,6 +85,10 @@ SCAV_MODEL = {False: 'OBJ_CODE_TEAM_PLASMA_GRUNT_M', True: 'OBJ_CODE_TEAM_PLASMA
 SCAV_CLASS_NAME = 'Scav'
 FLAG_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 SCAV_MAX = int(re.search(r'#define EFU_SCAV_MAX (\d+)', efu_h).group(1))
+FLAG_DOOR_FIRST = int(re.search(r'#define EFU_FLAG_DOOR_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+assert int(re.search(r'#define EFU_DOOR_COUNT (\d+)', efu_h).group(1)) == 4
+FLAG_TARGET_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_TARGET_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+assert int(re.search(r'#define EFU_TARGET_SCAV_COUNT (\d+)', efu_h).group(1)) == 3
 FLAG_LOOT_FIRST = int(re.search(r'#define EFU_FLAG_LOOT_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 # The scripts that pick up loot, by tier (gen_efu.py writes them from loot.json and its item tables)
 LOOT_SCRIPTS = {t: 11000 + int(re.search(r'#define EFU_SCRIPT_LOOT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % t.upper(),
@@ -112,6 +123,22 @@ PLACES = {
     'ZONE_CAVE_OF_BEING': ('cave', 'ZONE_CAVE_OF_BEING'),
     TARGET_ZONE: ('target', TARGET_ZONE),
 }
+# The target's Trainers that are scavs there, each out on EFU_TARGET_SCAV_CHANCE percent of entries
+# (Script_TargetEnter), with a hide flag of their own from EFU_FLAG_TARGET_SCAV_FIRST
+TARGET_SCAVS = [643, 642, 645]
+# The zone's doors that are shut on some explorations, a boulder in front of each, hidden by its flag from
+# EFU_FLAG_DOOR_FIRST in this order: the childcare centre, the Day Care, Wellspring Cave and the Cave of Being
+DOORS = ['ZONE_ROUTE_3_2', 'ZONE_ROUTE_3_3', 'ZONE_WELLSPRING_CAVE', 'ZONE_CAVE_OF_BEING']
+# The tile a warp is walked into from, by the direction the player faces on arriving there (the warp's unk4, a DIR_*
+# plus 1): the player walks into it the other way
+APPROACH = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+# The guide, out on Route 3 by the way in, until the player has met them (Script_GuideMeet)
+GUIDE = {'id': 121, 'model': 'OBJ_CODE_76', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
+         'flag': efu_flag('GUIDE_MET'), 'script': efu_script('GUIDE_MEET'), 'direction': 'DIR_DOWN',
+         'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': {'x': 684, 'z': 594, 'y': 0}}
+# The target's way out to Skyarrow Bridge's gate takes the player home, as the east gate does: every gate out of a
+# zone is a way home
+EXIT_GATES = {'ZONE_BRIDGE_GATE'}
 # New item balls, where nothing was: where the lake trio stood in the Cave of Being
 NEW_BALLS = {'ZONE_CAVE_OF_BEING': [(27, 18), (17, 7), (9, 16)]}
 
@@ -290,6 +317,21 @@ def build_events(loot):
         elif w['zone'] == 'ZONE_CAVE_OF_BEING':
             warps.append(dict(w, zone='ZONE_CAVE_OF_BEING', warp=0))
     e['warps'] = warps
+    # A boulder in front of each door that can be shut (one for each tile of a wider way in), hidden while it is open
+    next_id = max(n['id'] for n in npcs) + 1
+    for i, zone in enumerate(DOORS):
+        w = next(w for w in warps if w['zone'] == zone)
+        dx, dz = APPROACH[w['unk4']]
+        g = w['grid']
+        for tx in range(g['width']):
+            for tz in range(g['height']):
+                npcs.append({'id': next_id, 'model': 'OBJ_CODE_STRENGTH_ROCK', 'movement': 'MOVE_CODE_NONE',
+                             'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': 'EVENT_FLAG_0x%04x' % (FLAG_DOOR_FIRST + i),
+                             'script': efu_script('BLOCKED_DOOR'), 'direction': 'DIR_DOWN', 'params': [0, 0, 0],
+                             'area': {'width': 0, 'height': 0},
+                             'grid': {'x': g['x'] // 16 + tx + dx, 'z': g['z'] // 16 + tz + dz, 'y': g['y'] * 4096}})
+                next_id += 1
+    npcs.append(GUIDE)
     write('res/field/events/route_3.json', e)
     return scavs, {w['zone']: i for i, w in enumerate(warps)}
 
@@ -308,7 +350,7 @@ def build_childcare(loot):
     30% of entries a scav (Script_ChildcareEnter)."""
     e = json.loads(orig('res/field/events/route_3_2.json'))
     candy = next(n for n in e['npcs'] if n['script'] == CHILDCARE_CANDY_SCRIPT)
-    loot.spots.append({'flag': candy['flag'], 'tier': 'rare'})
+    loot.spots.append({'flag': candy['flag'], 'place': 'candy'})
     female = SCAVS[scav_key(CHILDCARE_TRAINER)][0]
     scav = {'id': max(n['id'] for n in e['npcs']) + 1, 'model': SCAV_MODEL[female], 'movement': 'MOVE_CODE_TURN_RANDOM',
             'type': 'ACTOR_EVENT_TYPE_TRAINER', 'flag': 'EVENT_FLAG_0x%04x' % FLAG_CHILDCARE_SCAV,
@@ -339,6 +381,9 @@ def build_places(loot, route_warps):
         for w in e['warps']:
             if w['zone'] in ('ZONE_ROUTE_3', 'ZONE_ROUTE_20', 'ZONE_PINWHEEL_FOREST'):
                 warps.append(dict(w, zone='ZONE_ROUTE_3', warp=route_warps[door]))
+            elif w['zone'] in EXIT_GATES:
+                # Home: to the east gate's Route 3 door, from where the player walks into the base as from the route
+                warps.append(dict(w, zone='ZONE_NACRENE_GATE', warp=0))
             elif w['zone'] in PLACES:
                 # Its other floors
                 warps.append(w)
@@ -350,6 +395,14 @@ def build_places(loot, route_warps):
         e['warps'] = warps
         if zone == TARGET_ZONE:
             e['npcs'].append(JOY)
+            original = json.loads(orig(f'res/field/events/{name}.json'))
+            for i, tid in enumerate(TARGET_SCAVS):
+                n = next(n for n in original['npcs'] if n['script'] == 3000 + tid)
+                female = SCAVS[scav_key(tid)][0]
+                e['npcs'].append(dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM',
+                                      params=[SCAV_SIGHT, 0, 0], area={'width': 1, 'height': 1},
+                                      flag='EVENT_FLAG_0x%04x' % (FLAG_TARGET_SCAV_FIRST + i)))
+            e['init_scripts'] = [{'type': 2, 'script': efu_script('TARGET_ENTER')}]
         write(f'res/field/events/{name}.json', e)
 
 
@@ -364,7 +417,7 @@ class Loot:
         return 'EVENT_FLAG_0x%04x' % next(self.flags)
 
     def ball(self, n, tier):
-        self.spots.append({'flag': n['flag'], 'tier': tier})
+        self.spots.append({'flag': n['flag'], 'place': tier})
         return dict(n, script=LOOT_SCRIPTS[tier])
 
     def save(self):
@@ -437,6 +490,7 @@ if __name__ == '__main__':
     scavs, route_warps = build_events(loot)
     build_places(loot, route_warps)
     scavs.append(build_childcare(loot))
+    scavs += TARGET_SCAVS
     build_daycare()
     loot.save()
     build_trainers(scavs)

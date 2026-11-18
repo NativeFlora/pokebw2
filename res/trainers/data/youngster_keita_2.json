@@ -1,10 +1,12 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Keita",
-    "class": "TRAINER_CLASS_YOUNGSTER",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 4,
     "reward": "ITEM_NONE",
@@ -12,7 +14,7 @@
         {
             "species": "SPECIES_MANKEY",
             "form": 0,
-            "level": 60,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,15 +22,15 @@
         {
             "species": "SPECIES_SNUBBULL",
             "form": 0,
-            "level": 60,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_CRAWDAUNT",
+            "species": "SPECIES_CORPHISH",
             "form": 0,
-            "level": 60,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -37,15 +39,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Shorts and Pokémon!\nThis is the ultimate combination!{be01}"
+            "text": "I heard you coming a mile off.\nDrop the bag!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "It's not my Pokémon's fault!\nIt's not my shorts' fault either!"
+            "text": "Aw, man..."
         },
         {
             "type": 2,
-            "text": "I'm wearing shorts to help toughen up\nmy kneecaps! Do you want to feel them?"
+            "text": "There's good stuff under these\ntrees. I'm not telling you where."
         }
     ]
 }

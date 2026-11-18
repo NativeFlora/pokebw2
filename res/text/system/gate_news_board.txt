@@ -1,4 +1,4 @@
-GateNewsBoard_Text_20 = {0180:0} {0201:1}, 20{0201:2}
+GateNewsBoard_Text_20 = Explorations so far: {0201:0}
 GateNewsBoard_Text_Empty =     \x{ffff}
 GateNewsBoard_Text_Empty_2 =     \x{ffff}
 GateNewsBoard_Text_TrainerFromAspertiaCity = ◇ A Trainer from Aspertia City challenged and successfully beat Cheren, the Aspertia Gym Leader!

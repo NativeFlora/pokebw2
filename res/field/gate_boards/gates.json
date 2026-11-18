@@ -11,7 +11,7 @@
             },
             "direction": "DIR_DOWN",
             "animation": 1,
-            "enabled": false,
+            "enabled": true,
             "messages": {
                 "date": 0,
                 "message1": 195,

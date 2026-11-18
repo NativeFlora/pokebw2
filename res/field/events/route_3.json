@@ -952,6 +952,167 @@
                 "z": 636,
                 "y": 0
             }
+        },
+        {
+            "id": 40,
+            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a9a",
+            "script": 11023,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 740,
+                "z": 556,
+                "y": 65536
+            }
+        },
+        {
+            "id": 41,
+            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a9b",
+            "script": 11023,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 749,
+                "z": 556,
+                "y": 65536
+            }
+        },
+        {
+            "id": 42,
+            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a9c",
+            "script": 11023,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 680,
+                "z": 554,
+                "y": 65536
+            }
+        },
+        {
+            "id": 43,
+            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a9c",
+            "script": 11023,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 680,
+                "z": 555,
+                "y": 65536
+            }
+        },
+        {
+            "id": 44,
+            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a9d",
+            "script": 11023,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 745,
+                "z": 630,
+                "y": 0
+            }
+        },
+        {
+            "id": 45,
+            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a9d",
+            "script": 11023,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 746,
+                "z": 630,
+                "y": 0
+            }
+        },
+        {
+            "id": 121,
+            "model": "OBJ_CODE_76",
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": "EVENT_FLAG_0x0a9e",
+            "script": 11025,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 684,
+                "z": 594,
+                "y": 0
+            }
         }
     ],
     "warps": [

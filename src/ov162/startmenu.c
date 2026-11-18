@@ -1432,25 +1432,13 @@ static void StartMenu_SetBlend(void) {
 static void StartMenu_InitItems(StartMenuWork *wk) {
     u32 n = 0;
 
+    // Escape from Unova: only Continue and New Game
     if (SaveControl_IsDataAlreadyPresent(wk->save) == TRUE) {
         wk->items[n] = ITEM_CONTINUE;
         n++;
     }
     wk->items[n] = ITEM_NEW_GAME;
-    *(wk->items + n + 1) = ITEM_MYSTERY_GIFT;
-    *(wk->items + n + 2) = ITEM_UNOVA_LINK;
-    n += 3;
-    if (TrainerGameInfo_GetStartMenuItemFlags(wk->gameInfo, 1)) {
-        wk->items[n] = ITEM_BATTLE_COMPETITION;
-        n++;
-    }
-    if (TrainerGameInfo_GetStartMenuItemFlags(wk->gameInfo, 2)) {
-        wk->items[n] = ITEM_GAME_SYNC_SETTINGS;
-        n++;
-    }
-    wk->items[n] = ITEM_WFC_SETTINGS;
-    *(wk->items + n + 1) = ITEM_MIC_TEST;
-    n += 2;
+    n++;
     while (n < ITEM_COUNT) {
         wk->items[n++] = ITEM_NONE;
     }
