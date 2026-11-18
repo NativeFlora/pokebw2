@@ -175,8 +175,10 @@ in Items), counting each of a stack. Key Items and TMs and HMs are free. To carr
 bag code can't change, so `Efu_BagHasRoom` (`include/efu_bag.h`) is asked where items come in:
 
 - `ItemCheckSpace` (script command), which the item ball script (7400), hidden items and most gifts ask first, so a
-  loot ball asks first too (`L_LootNoRoom`): with the bag's item carried it offers to leave it for what's in the ball,
-  unseen, and what the ball holds is rolled only when it is taken, so it can't be peeked at and rolled again. `ItemAdd`
+  loot ball asks first too (`L_LootSwapOut`): with the bag's item carried it leaves it on the ball's tile for what's in
+  the ball, unseen and without asking, and what the ball holds is rolled only when it is taken, so it can't be peeked
+  at and rolled again. A loot ball gives its item with one message over the item fanfare, not through the original's
+  item ball script (global 7400) with its two messages and pickup pose. `ItemAdd`
   isn't gated: ov036's size is luck, and every way into the bag in the zone and the base asks `ItemCheckSpace` first.
 - Taking a held item, or a held mail, in the party menu, which says the bag is full.
 - Taking a held item in the PC, in either mode, which keeps it on the Pokémon.
@@ -189,9 +191,14 @@ The bag shows three pockets: Items, TMs and HMs, and Key Items. Main's table of 
 so medicine and berries still go in their own pockets in the save, and the bag shows whichever of the Items, Medicine
 and Berries pockets holds the one item as Items (`Efu_BagItemPocket`, named and tabbed as Items by
 `Efu_BagShownPocket`); the item data's `field_pocket` says Items for them too, for the pickup messages
-(`build_bag.py`). There is no Free Space. Give comes first in an item's menu, A in the empty Items pocket opens the
-party screen (to take an item; the bag leaves as if it had been opened from there), and the fades, the cursor's
-flash and the pocket arrows are quicker. Trash is Toss.
+(`build_bag.py`). There is no Free Space. The fades, the cursor's flash and the pocket arrows are quicker. Trash is Toss,
+and tossing a single item doesn't ask.
+
+The field bag shows the party on the lower screen, in two columns of three where the pocket tabs were (hidden, their
+OBJ palettes reused: `ItemMenuDisp_EfuCreateParty`), each with its held item mark. Tapping a Pokémon, or picking one
+with the keys after Give in an item's menu or A in the empty Items pocket (`ItemMenu_StateEfuPickParty`), gives it the
+bag's item, swapping for the one it holds, or takes its item when the bag has none (`ItemMenu_EfuPartyAction`). Eggs
+and mail are left alone. Arceus's and Genesect's forms follow the item as in the party screen.
 
 ## Items on the ground
 
@@ -200,7 +207,7 @@ Tossing an item from the bag opened in the field puts it on the ground: the bag 
 the first free tile of the eight around the player (below, left, right, above, then the corners), or says it's gone
 when none is free. The balls are actors that `EfuSpecial` makes (IDs from `EFU_GROUND_ID_FIRST`, 16 at most), with
 the item in user parameter 0 and `Script_GroundItem` as their script: it gives the item if the bag has room, or else
-offers to swap the bag's item for it, leaving the bag's item in its place. A scav's drop that doesn't fit lands
+swaps the bag's item for it without asking, leaving the bag's item in its place. A scav's drop that doesn't fit lands
 beside the player the same way. The balls are the zone's actors, so they last through menus and battles but are gone
 once the player leaves the zone.
 
@@ -261,6 +268,16 @@ Running from a wild battle always works (`btl_server_flow.c`): when the original
 or trapped), the escape count is set to `EFU_ESCAPE_PENDING`, the rest of the turn happens (the wild Pokémon attacks),
 and `ActionOrder_Run` gets the player away at its end. If the player's Pokémon faints first, the next try always
 works.
+
+## Fewer waits
+
+- **Wild battles start sooner.** The model encounter effects (ov149) flash once, fade sooner and play their model at
+  double speed, and the cutins (ov146) flash once (`FLASH_COUNT`). In battle, the opening sweep (effect 000), the
+  camera's turn to the player (001) and the send-out (003) are quicker, and the messages no longer wait for the cries.
+- **Fewer questions.** Giving an item to a Pokémon that holds one swaps them without asking (`plist_sys.c`). The PC
+  takes a held item without asking (`box2_seq.c`), and leaving the PC doesn't ask whether to go on (except in the Dream
+  World mode). The bag tosses a single item without asking (`ItemMenu_TossNow`). Loot and ground balls swap without
+  asking (above).
 
 ## Testing
 

@@ -5,7 +5,9 @@
 #include "app/itemmenu_disp.h"
 #include "constants/arc.h"
 #include "constants/items.h"
+#include "constants/pokemon.h"
 #include "constants/sound.h"
+#include "constants/species.h"
 #include "constants/text_banks.h"
 #include "efu.h"
 #include "efu_bag.h"
@@ -31,6 +33,7 @@
 #include "gfl/ui.h"
 #include "nitro/math.h"
 #include "pml/item.h"
+#include "pml/poke_party.h"
 #include "save/bag.h"
 #include "save/encounter.h"
 #include "save/event_work.h"
@@ -286,6 +289,9 @@ static void ItemMenu_StateSortWaitMessage(ItemMenuWork *work);
 static BOOL ItemMenu_CanUseInMode(ItemMenuWork *work, u8 fieldPocket);
 static void ItemMenu_StatePocketArrowDone(ItemMenuWork *work);
 static void ItemMenu_SaveFreeSpaceFilter(BagCursor *cursor, u32 mode, u32 result, u32 freeSpaceFilter);
+static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot);
+static void ItemMenu_EfuStartPickParty(ItemMenuWork *work);
+static void ItemMenu_StateEfuPickParty(ItemMenuWork *work);
 
 const GameProcFunctions BAG_PROC_FUNCTIONS = { ItemMenuProc_Init, ItemMenuProc_Main, ItemMenuProc_Exit };
 
@@ -978,6 +984,11 @@ static void ItemMenu_StateItemMenu(ItemMenuWork *work) {
             ItemMenu_SetState(work, NULL);
             break;
         case ITEMMENU_ACTION_GIVE:
+            // Escape from Unova: the field bag gives the item to a Pokémon of its own party
+            if (work->efuParty) {
+                ItemMenu_EfuStartPickParty(work);
+                break;
+            }
             work->result = BAG_RESULT_GIVE_ITEM;
             ItemMenuDisp_SetBackButtonActive(work, FALSE);
             ItemMenu_SetState(work, NULL);
@@ -1134,14 +1145,9 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
             ItemMenu_SetState(work, ItemMenu_StateFlashCursor);
             return;
         }
-        // Escape from Unova: A in the empty Items pocket opens the party screen, to take an item from a Pokémon. The
-        // bag leaves as if it had been opened from there (ItemMenuProc_Exit), which goes back to it
-        if (work->pocket == work->efuItemPocket && work->mode == BAG_MODE_NORMAL) {
-            work->result = BAG_RESULT_BACK;
-            work->item = ITEM_NONE;
-            work->efuOpenParty = TRUE;
-            GCTX_HIDSetUsingTouch(FALSE);
-            ItemMenu_PressButton(work, ITEMMENU_BUTTON_BACK, NULL);
+        // Escape from Unova: A in the empty Items pocket picks a Pokémon of the party, to take its held item
+        if (work->pocket == work->efuItemPocket && work->efuParty) {
+            ItemMenu_EfuStartPickParty(work);
             return;
         }
     } else if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_SELECT) {
@@ -2082,6 +2088,15 @@ static void ItemMenu_ButtonCallback(u32 button, u32 event, void *data) {
     if (event != BMN_EVENT_TOUCH) {
         return;
     }
+    // Escape from Unova: the party took the pocket tabs' place
+    if (work->efuParty && button < ITEMMENU_TOUCH_POCKET_LEFT) {
+        if (work->state == ItemMenu_StateList &&
+            button < PokeParty_GetPkmCount(GameData_GetParty(work->gameData))) {
+            ItemMenu_SetKeyMode(work, FALSE);
+            ItemMenu_EfuPartyAction(work, button);
+        }
+        return;
+    }
     if (button < ITEMMENU_TOUCH_POCKET_LEFT) {
         s32 pockets[] = {
             BAG_POCKET_MEDICINE,  BAG_POCKET_TMS_HMS,    BAG_POCKET_BERRIES,
@@ -2256,6 +2271,35 @@ static const TouchRect sButtonRects[] = {
     { TOUCH_RECT_END, 0, 0, 0 },
 };
 
+// Escape from Unova: sButtonRects, with the party's slots in two columns of three for the pocket tabs, in the field bag
+static const TouchRect sEfuButtonRects[] = {
+    { 44, 83, 4, 67 },
+    { 44, 83, 68, 131 },
+    { 84, 123, 4, 67 },
+    { 84, 123, 68, 131 },
+    { 124, 163, 4, 67 },
+    { 124, 163, 68, 131 },
+    { 168, 191, 0, 23 },
+    { 168, 191, 120, 143 },
+    { 168, 191, 152, 175 },
+    { 168, 191, 176, 191 },
+    { 168, 191, 192, 215 },
+    { 168, 191, 224, 247 },
+    { 12, 35, 144, 223 },
+    { 36, 59, 144, 223 },
+    { 60, 83, 144, 223 },
+    { 84, 107, 144, 223 },
+    { 108, 131, 144, 223 },
+    { 132, 155, 144, 223 },
+    { 12, 35, 120, 143 },
+    { 36, 59, 120, 143 },
+    { 60, 83, 120, 143 },
+    { 84, 107, 120, 143 },
+    { 108, 131, 120, 143 },
+    { 132, 155, 120, 143 },
+    { TOUCH_RECT_END, 0, 0, 0 },
+};
+
 // clang-format on
 
 static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *data) {
@@ -2326,9 +2370,15 @@ static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *dat
     ItemMenuDisp_CreateWindows(work);
     ItemMenuDisp_LoadListRes(work);
     ItemMenuDisp_CreatePocketTabs(work);
+    // Escape from Unova: the field bag shows the party
+    work->efuParty = work->mode == BAG_MODE_NORMAL;
+    if (work->efuParty) {
+        ItemMenuDisp_EfuCreateParty(work);
+    }
     ItemMenu_RedrawList(work);
     ItemMenuDisp_CreateListActors(work);
-    work->buttonMan = GFL_BMN_Create(sButtonRects, ItemMenu_ButtonCallback, work, work->heapId);
+    work->buttonMan = GFL_BMN_Create(work->efuParty ? sEfuButtonRects : sButtonRects, ItemMenu_ButtonCallback, work,
+                                     work->heapId);
     ItemMenu_CreatePaletteAnim(work);
     ItemMenu_CreatePaletteFade(work);
     work->vblankTask = GFL_VBlankTCBAdd(ItemMenu_VBlank, work, 0);
@@ -2406,9 +2456,6 @@ static BOOL ItemMenuProc_Exit(GameProc *proc, u32 *state, void *param, void *dat
     GFL_BGSysFree();
     bag->result = work->result;
     bag->item = work->item;
-    if (work->efuOpenParty) {
-        bag->mode = BAG_MODE_GIVE_ITEM;
-    }
     ItemMenu_SaveFreeSpaceFilter(work->cursor, bag->mode, bag->result, work->freeSpaceFilter);
     setKeypressFramecounts(work->savedRepeatWait, work->savedRepeatStart);
     GFL_ProcReleaseSubsystem(proc);
@@ -2954,6 +3001,123 @@ static BOOL ItemMenu_CanUseInMode(ItemMenuWork *work, u8 fieldPocket) {
 
 static void ItemMenu_StatePocketArrowDone(ItemMenuWork *work) {
     ItemMenu_ReturnToList(work);
+}
+
+// Escape from Unova: redraws the list and the party after an item went between the bag and a Pokémon. The bag's
+// Items pocket follows its one holdable item (efu_bag.h)
+static void ItemMenu_EfuRefresh(ItemMenuWork *work) {
+    u32 itemPocket = Efu_BagItemPocket(work->bag);
+    u32 oldPocket = work->efuItemPocket;
+
+    work->efuItemPocket = itemPocket;
+    if (work->pocket == oldPocket) {
+        work->pocket = itemPocket;
+        if (itemPocket != oldPocket) {
+            ItemMenu_ChangePocket(work, oldPocket, itemPocket);
+        }
+        work->cursorRow = 0;
+        work->scroll = -1;
+        ItemMenuDisp_UpdateScrollBar(work);
+    }
+    work->drawnScroll = ITEMMENU_DRAWN_SCROLL_INVALID;
+    ItemMenu_UpdateList(work);
+    if (GCTX_HIDIsUsingTouch() == FALSE && ItemMenu_GetItemCount(work) != 0) {
+        ItemMenuDisp_DrawItemInfo(work);
+    } else {
+        ItemMenuDisp_HideItemInfo(work);
+    }
+    ItemMenuDisp_EfuUpdateParty(work);
+}
+
+// Escape from Unova: what picking a Pokémon of the party does. With the bag's holdable item, gives it to the Pokémon,
+// putting the Pokémon's item in the bag in its place. Without it, takes the Pokémon's item. Eggs and mail stay
+static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot) {
+    PartyPkm *pkm = PokeParty_GetPkm(GameData_GetParty(work->gameData), slot);
+    u16 item = Efu_BagHoldableItem(work->bag);
+    u16 heldItem = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
+
+    if (PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL) || PML_ItemIsMail(heldItem)) {
+        GFL_SndSEPlay(SEQ_SE_BEEP);
+        return;
+    }
+    if (item != ITEM_NONE && !PML_ItemIsMail(item)) {
+        BagSave_SubItem(work->bag, item, 1, work->heapId);
+        if (heldItem != ITEM_NONE) {
+            BagSave_AddItem(work->bag, heldItem, 1, work->heapId);
+        }
+        PokeParty_SetParam(pkm, PKM_PARAM_ITEM, item);
+    } else if (heldItem != ITEM_NONE && Efu_BagHasRoom(work->bag, heldItem, 1)) {
+        BagSave_AddItem(work->bag, heldItem, 1, work->heapId);
+        PokeParty_SetParam(pkm, PKM_PARAM_ITEM, ITEM_NONE);
+        item = ITEM_NONE;
+    } else {
+        GFL_SndSEPlay(SEQ_SE_BEEP);
+        return;
+    }
+    // The forms that held items give, as the party screen changes them (plist_item.c)
+    if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_ARCEUS &&
+        PokeParty_GetParam(pkm, PKM_PARAM_FORM, NULL) != _getTypeForPlate(item)) {
+        PokeParty_ChangeForme(pkm, _getTypeForPlate(item));
+    }
+    if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_GENESECT &&
+        PokeParty_GetParam(pkm, PKM_PARAM_FORM, NULL) != PML_ItemGetGenesectDriveForme(item)) {
+        PokeParty_ChangeForme(pkm, PML_ItemGetGenesectDriveForme(item));
+    }
+    GFL_SndSEPlay(SEQ_SE_DECIDE1);
+    ItemMenu_EfuRefresh(work);
+}
+
+// Escape from Unova: picks a Pokémon of the party with the keys or a touch, for ItemMenu_EfuPartyAction
+static void ItemMenu_EfuStartPickParty(ItemMenuWork *work) {
+    ItemMenuDisp_SetButtonsActive(work, TRUE);
+    ClActor_SetAutoAnim(work->scrollBar, FALSE);
+    work->efuPartyCursor = 0;
+    ItemMenuDisp_EfuUpdateParty(work);
+    ItemMenu_SetState(work, ItemMenu_StateEfuPickParty);
+}
+
+static void ItemMenu_EfuEndPickParty(ItemMenuWork *work) {
+    work->efuPartyCursor = -1;
+    ItemMenuDisp_EfuUpdateParty(work);
+    ClActor_SetAutoAnim(work->scrollBar, TRUE);
+    ItemMenu_SetKeyMode(work, GCTX_HIDIsUsingTouch() ? FALSE : TRUE);
+    ItemMenu_ReturnToList(work);
+}
+
+static void ItemMenu_StateEfuPickParty(ItemMenuWork *work) {
+    s32 count = PokeParty_GetPkmCount(GameData_GetParty(work->gameData));
+    s32 cursor = work->efuPartyCursor;
+    s32 touched = GFL_HIDGetTouchPressedRect(sEfuButtonRects);
+    u32 keys = GCTX_HIDGetTypedKeys();
+
+    if (touched != TOUCH_RECT_NONE && touched < count) {
+        GCTX_HIDSetUsingTouch(TRUE);
+        ItemMenu_EfuPartyAction(work, touched);
+        ItemMenu_EfuEndPickParty(work);
+        return;
+    }
+    if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_A) {
+        ItemMenu_EfuPartyAction(work, cursor);
+        ItemMenu_EfuEndPickParty(work);
+        return;
+    }
+    if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_B) {
+        GFL_SndSEPlay(SEQ_SE_CANCEL1);
+        ItemMenu_EfuEndPickParty(work);
+        return;
+    }
+    if (keys & (PAD_KEY_LEFT | PAD_KEY_RIGHT)) {
+        cursor ^= 1;
+    } else if (keys & PAD_KEY_UP) {
+        cursor -= 2;
+    } else if (keys & PAD_KEY_DOWN) {
+        cursor += 2;
+    }
+    if (cursor != work->efuPartyCursor && cursor >= 0 && cursor < count) {
+        GFL_SndSEPlay(SEQ_SE_SELECT1);
+        work->efuPartyCursor = cursor;
+        ItemMenuDisp_EfuUpdateParty(work);
+    }
 }
 
 // Whether the Free Space keeps its filter after the bag closes, by the bag's mode and the result

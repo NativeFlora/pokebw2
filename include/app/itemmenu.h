@@ -241,7 +241,13 @@ struct ItemMenuWork {
     u32 sortType;
     u32 freeSpaceFilter;
     u32 efuItemPocket; // Escape from Unova: the pocket the bag shows as Items (efu_bag.h)
-    BOOL efuOpenParty; // Escape from Unova: whether the bag leaves for the party screen
+    // Escape from Unova: the field bag shows the party on the lower screen, where the pocket tabs were, to give the
+    // bag's item to a Pokémon or take one's held item with a touch (ItemMenu_EfuPartyAction)
+    BOOL efuParty;
+    // The Pokémon picked with the keys while picking one (ItemMenu_StateEfuPickParty), or -1
+    s32 efuPartyCursor;
+    ClActor *efuPartyIcons[6];
+    ClActor *efuHeldMarks[6];
 };
 
 // The slot of an item of the list

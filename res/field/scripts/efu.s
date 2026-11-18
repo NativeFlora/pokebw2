@@ -1884,66 +1884,65 @@ L_ConfirmStarter:
     VMReturn
     .balign 4, 0
 
-// Picking up loot: what the ball holds is rolled from its place's tiers (gen_efu.py's LOOT_PLACES and LOOT_TIERS), and
-// the item ball script of the original (global 7400, which the original balls call with their item) gives it and hides
-// the ball by its flag
+// Picking up loot: what the ball holds is rolled from its place's tiers (gen_efu.py's LOOT_PLACES and LOOT_TIERS),
+// then given at once with one message, and the ball is hidden by its flag (the original's item ball script, global
+// 7400, took two messages and the player's pickup pose)
 Script_LootRoute:
     ActorsPauseAll
-    WorkSetConst 0x8013, 0
-    ItemCheckSpace 4, 1, 0x800c
-    WorkCmpConst 0x800c, 0
-    VMCallIf CMP_EQ, L_LootNoRoom
-    WorkCmpConst 0x8013, 1
-    VMJumpIf CMP_EQ, L_LootKeep
+    VMCall L_LootSwapOut
     VMCall L_LootPickRoute
     VMJump L_LootGive
 
 Script_LootCave:
     ActorsPauseAll
-    WorkSetConst 0x8013, 0
-    ItemCheckSpace 4, 1, 0x800c
-    WorkCmpConst 0x800c, 0
-    VMCallIf CMP_EQ, L_LootNoRoom
-    WorkCmpConst 0x8013, 1
-    VMJumpIf CMP_EQ, L_LootKeep
+    VMCall L_LootSwapOut
     VMCall L_LootPickCave
     VMJump L_LootGive
 
 Script_LootTarget:
     ActorsPauseAll
-    WorkSetConst 0x8013, 0
-    ItemCheckSpace 4, 1, 0x800c
-    WorkCmpConst 0x800c, 0
-    VMCallIf CMP_EQ, L_LootNoRoom
-    WorkCmpConst 0x8013, 1
-    VMJumpIf CMP_EQ, L_LootKeep
+    VMCall L_LootSwapOut
     VMCall L_LootPickTarget
 L_LootGive:
-    WorkSetConst 0x800d, 1
-    RTCallGlobal 7400
-    FinishAllEvents
-    ActorsUnpauseAll
-    VMHalt
+    ActorGetSpawnFlag 0x8011, 0x8010
+    FlagSet 0x8010
+    ActorDelete 0x8011
+    ItemAdd 0x800c, 1, 0x8010
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    WorkCmpConst 0x8012, 0
+    VMJumpIf CMP_NE, L_ItemSwapped
+    VMJump L_ItemTaken
 
-// The one-item bag (include/efu_bag.h): each loot script asks first, and with the bag's item already carried, it offers
-// to swap it for what's in the ball, unseen, so what a ball holds is rolled only when it is taken and can't be peeked
-// at and rolled again (every loot item can be held, so a Poke Ball stands for them all). On yes the bag's item is left
-// on the ball's tile, and the loot script goes on to roll and give the ball's item; on no (0x8013 is 1) it stops
-L_LootNoRoom:
+// The one-item bag (include/efu_bag.h): with the bag's item already carried, a loot ball swaps it for what's in the
+// ball, unseen, without asking: the bag's item is left on the ball's tile, where it can be picked up again. What a ball
+// holds is rolled only when it is taken, so it can't be peeked at and rolled again (every loot item can be held, so a
+// Poke Ball stands for them all). 0x8012 is the item left, or 0
+L_LootSwapOut:
+    WorkSetConst 0x8012, 0
+    ItemCheckSpace 4, 1, 0x800c
+    WorkCmpConst 0x800c, 0
+    VMJumpIf CMP_NE, L_LootSwapOutDone
     EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8012
-    WordSetItemNameEx 0, 0x8012, 1, 0
-    SystemMsg Efu_Text_LootSwap, 2
-    YesNoWin 0x8013
-    WorkCmpConst 0x8013, 1
-    VMJumpIf CMP_EQ, L_LootNoSwap
-    SystemMsgClose
     ActorGetGPos 0x8011, 0x8014, 0x8015
     ItemSub 0x8012, 1, 0x8016
     EfuSpecial EFU_SPECIAL_DROP, 0x8012, 0x8014, 0x8015, 0x8016
-L_LootNoSwap:
+L_LootSwapOutDone:
     VMReturn
 
-L_LootKeep:
+// The messages of an item picked up, its name in word 0 and what was left for it in word 1, played over the item
+// fanfare, which the player can't cut short
+L_ItemTaken:
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_GroundTake, 2
+    VMJump L_ItemDone
+
+L_ItemSwapped:
+    WordSetItemNameEx 1, 0x8012, 1, 0
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_GroundSwapped, 2
+L_ItemDone:
+    MEWait
+    LastKeyWait
     SystemMsgClose
     ActorsUnpauseAll
     VMHalt
@@ -1996,44 +1995,28 @@ L_ChildcareScav:
     TrainerFlagReset 401
     VMHalt
 
-// An item on the ground (EfuSpecial), its item in the actor's user parameter 0: taken if the bag has room, or else
-// offered in a swap for the bag's item, which is left in its place
+// An item on the ground (EfuSpecial), its item in the actor's user parameter 0: taken, and when the bag's item is
+// already carried, swapped for it without asking, leaving the bag's item in its place
 Script_GroundItem:
     ActorsPauseAll
     ActorGetUserParam 0x8011, 0, 0x800c
     WordSetItemNameEx 0, 0x800c, 1, 0
+    WorkSetConst 0x8012, 0
     ItemCheckSpace 0x800c, 1, 0x8010
     WorkCmpConst 0x8010, 0
     VMJumpIf CMP_EQ, L_GroundSwap
     ActorDelete 0x8011
     ItemAdd 0x800c, 1, 0x8010
-    MEPlay SEQ_ME_ITEM
-    SystemMsg Efu_Text_GroundTake, 2
-    MEWait
-    LastKeyWait
-    SystemMsgClose
-    ActorsUnpauseAll
-    VMHalt
+    VMJump L_ItemTaken
 
 L_GroundSwap:
     EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8012
-    WordSetItemNameEx 1, 0x8012, 1, 0
-    SystemMsg Efu_Text_GroundSwap, 2
-    YesNoWin 0x8013
-    WorkCmpConst 0x8013, 1
-    VMJumpIf CMP_EQ, L_LootKeep
     ActorGetGPos 0x8011, 0x8014, 0x8015
     ActorDelete 0x8011
     ItemSub 0x8012, 1, 0x8016
     ItemAdd 0x800c, 1, 0x8016
     EfuSpecial EFU_SPECIAL_DROP, 0x8012, 0x8014, 0x8015, 0x8016
-    MEPlay SEQ_ME_ITEM
-    SystemMsg Efu_Text_GroundSwapped, 2
-    MEWait
-    LastKeyWait
-    SystemMsgClose
-    ActorsUnpauseAll
-    VMHalt
+    VMJump L_ItemSwapped
 
 // Reserved by the bag after a toss (itemmenu.c): the item lands beside the player, or is lost with nowhere to put it
 Script_Toss:

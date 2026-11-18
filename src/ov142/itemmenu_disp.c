@@ -1,9 +1,11 @@
 #include "types.h"
 #include "app/itemmenu.h"
 #include "app/itemmenu_disp.h"
+#include "app/pokelist.h"
 #include "constants/arc.h"
 #include "constants/items.h"
 #include "constants/moves.h"
+#include "constants/pokemon.h"
 #include "constants/sound.h"
 #include "efu_bag.h"
 #include "gfl/arc.h"
@@ -26,6 +28,7 @@
 #include "nnsys/g2d.h"
 #include "pml/item.h"
 #include "pml/move.h"
+#include "pml/poke_party.h"
 #include "save/bag.h"
 #include "save/player_info.h"
 #include "save/save_control.h"
@@ -37,6 +40,7 @@
 #include "system/game_data.h"
 #include "system/gf_font.h"
 #include "system/palanm.h"
+#include "system/poke_icon.h"
 #include "system/printsys.h"
 #include "system/scroll_bar.h"
 #include "system/text_speed.h"
@@ -368,7 +372,7 @@ void ItemMenuDisp_Init(ItemMenuWork *work) {
     GFL_ArcToolFree(arc);
 
     GFL_BGSysLoadNCLRDefault(ARCID_FONT, 5, PALTYPE_MAIN_BG, 0x180, 0x20, work->heapId);
-    work->actorUnit = ClActUnit_Create(54, 0, work->heapId);
+    work->actorUnit = ClActUnit_Create(54 + 12, 0, work->heapId); // Escape from Unova: and the party's icons and marks
     GFL_BGSysSetBGEnabledB(GX_PLANEMASK_OBJ, TRUE);
     GFL_BGSysSetBGEnabledA(GX_PLANEMASK_OBJ, TRUE);
 
@@ -1566,4 +1570,92 @@ static BOOL ItemMenuDisp_ShowsCount(u8 pocket) {
     BOOL showCount[] = { TRUE, TRUE, FALSE, TRUE, FALSE, TRUE };
 
     return showCount[pocket];
+}
+
+// Escape from Unova: the party on the lower screen, in two columns of three where the pocket tabs were. The tabs
+// stay, hidden, and the icons take their OBJ palettes (6 to 8); the held item marks take palette 9
+#define EFU_PARTY_ICON_PLTT_OFFSET 0xc0
+#define EFU_HELD_MARK_PLTT_OFFSET 0x120
+#define EFU_HELD_MARK_MAPPING 2 // GX_OBJVRAMMODE_CHAR_1D_128K's cells and animations
+
+// Where each party slot's icon is, the middle of the slot's cell of ItemMenu_EfuPartyRects
+static const ClActorPos sEfuPartyIconPos[6] = { { 36, 64 }, { 100, 64 }, { 36, 104 }, { 100, 104 }, { 36, 144 }, { 100, 144 } };
+
+void ItemMenuDisp_EfuCreateParty(ItemMenuWork *work) {
+    PokeParty *party = GameData_GetParty(work->gameData);
+    s32 count = PokeParty_GetPkmCount(party);
+    ArcTool *arc = GFL_ArcSysCreateFileHandle(ARCID_POKEICON, work->heapId);
+    u32 iconPlt = ClActSys_LoadPlttEx(arc, PokeIcon_GetPaletteFile(), CLACT_VRAM_MAIN, EFU_PARTY_ICON_PLTT_OFFSET,
+                                      work->heapId);
+    u32 iconCel = ClActSys_LoadCellAnims(arc, PokeIcon_GetCellFile_Main(), getOBJTileMapping_MainEng(), work->heapId);
+    u32 markPlt;
+    u32 markChr;
+    u32 markCel;
+    ClActorSetup setup;
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        BoxPkm *pkm = PokeParty_ToBoxPkm(PokeParty_GetPkm(party, i));
+        u32 chars = ClActSys_LoadChars(arc, PokeIcon_GetFileOfPkm(pkm), FALSE, CLACT_VRAM_MAIN, work->heapId);
+
+        setup.x = sEfuPartyIconPos[i].x;
+        setup.y = sEfuPartyIconPos[i].y;
+        setup.sequence = POKELIST_PARTY_ICON_ANM_DEFAULT;
+        setup.priority = 1;
+        setup.bgPriority = 1;
+        work->efuPartyIcons[i] =
+            ClActor_Create(work->actorUnit, chars, iconPlt, iconCel, &setup, CLACT_SURFACE_MAIN, work->heapId);
+        ClActor_SetPalette(work->efuPartyIcons[i], PokeIcon_GetPaletteOfPkm(pkm), CLACT_PALETTE_REPLACE);
+        ClActor_SetAutoAnim(work->efuPartyIcons[i], TRUE);
+    }
+    GFL_ArcToolFree(arc);
+
+    arc = GFL_ArcSysCreateFileHandle(ARCID_APP_MENU_COMMON, work->heapId);
+    markPlt = ClActSys_LoadPlttRange(arc, AppMenuCommon_GetItemIconPaletteFile(), CLACT_VRAM_MAIN,
+                                     EFU_HELD_MARK_PLTT_OFFSET, 0, 1, work->heapId);
+    markChr = ClActSys_LoadChars(arc, AppMenuCommon_GetItemIconCharFile(), FALSE, CLACT_VRAM_MAIN, work->heapId);
+    markCel = ClActSys_LoadCellAnims(arc, AppMenuCommon_GetItemIconCellFile(EFU_HELD_MARK_MAPPING),
+                                     AppMenuCommon_GetItemIconAnimFile(EFU_HELD_MARK_MAPPING), work->heapId);
+    GFL_ArcToolFree(arc);
+    for (i = 0; i < count; i++) {
+        setup.x = sEfuPartyIconPos[i].x + 8;
+        setup.y = sEfuPartyIconPos[i].y + 8;
+        setup.sequence = POKELIST_HELD_ITEM_ANM_ITEM;
+        setup.priority = 0;
+        setup.bgPriority = 1;
+        work->efuHeldMarks[i] =
+            ClActor_Create(work->actorUnit, markChr, markPlt, markCel, &setup, CLACT_SURFACE_MAIN, work->heapId);
+    }
+    for (i = 0; i < NELEMS(work->pocketTabs); i++) {
+        ClActor_SetVisible(work->pocketTabs[i], FALSE);
+    }
+    work->efuPartyCursor = -1;
+    ItemMenuDisp_EfuUpdateParty(work);
+}
+
+// Shows each Pokémon's held item mark, and the picked one hopping
+void ItemMenuDisp_EfuUpdateParty(ItemMenuWork *work) {
+    PokeParty *party = GameData_GetParty(work->gameData);
+    s32 i;
+
+    for (i = 0; i < 6; i++) {
+        PartyPkm *pkm;
+        u32 item;
+
+        if (work->efuPartyIcons[i] == NULL) {
+            continue;
+        }
+        pkm = PokeParty_GetPkm(party, i);
+        item = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
+        ClActor_SetVisible(work->efuHeldMarks[i], item != ITEM_NONE);
+        ClActor_SetSequence(work->efuHeldMarks[i],
+                            PML_ItemIsMail(item) ? POKELIST_HELD_ITEM_ANM_MAIL : POKELIST_HELD_ITEM_ANM_ITEM);
+        if (PokeParty_GetParam(pkm, PKM_PARAM_HP, NULL) == 0 && !PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL)) {
+            ClActor_SetSequence(work->efuPartyIcons[i], POKELIST_PARTY_ICON_ANM_FAINTED);
+        } else if (i == work->efuPartyCursor) {
+            ClActor_SetSequence(work->efuPartyIcons[i], POKELIST_PARTY_ICON_ANM_HP_GREEN);
+        } else {
+            ClActor_SetSequence(work->efuPartyIcons[i], POKELIST_PARTY_ICON_ANM_DEFAULT);
+        }
+    }
 }
