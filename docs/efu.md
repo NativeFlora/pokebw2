@@ -89,12 +89,17 @@ Taken so far:
 | `EVENT_FLAG_0x0a96` (`EFU_FLAG_CLERK_MET`) | The clerk has told their story (and the waiting-area clerk's hide flag). |
 | `EVENT_FLAG_0x0a97` (`EFU_FLAG_BASE_CLERK_HIDDEN`) | The counter clerk's hide flag, set from the above on entering the Pokémon Center. |
 | `EVENT_FLAG_0x0a98` (`EFU_FLAG_DAYCARE_JOINED`) | The Day Care Lady has joined the base (and her Route 3 NPC's hide flag). |
-| `EVENT_FLAG_0x0a99` (`EFU_FLAG_BASE_DAYCARE_HIDDEN`) | Her NPC's hide flag in the player's warehouse, set from the above on entering it. |
+| `EVENT_FLAG_0x0a99` (`EFU_FLAG_BASE_DAYCARE_HIDDEN`) | Her NPC's hide flag in her warehouse (`NACRENE_CITY_7`), set from the above on entering it. |
+| `EVENT_FLAG_0x0a9a` to `0x0a9d` (`EFU_FLAG_DOOR_FIRST`) | The hide flags of the boulders in front of the zone's doors that can be shut (`DOORS` in `build_raid.py`), rolled on heading out. |
+| `EVENT_FLAG_0x0a9e` (`EFU_FLAG_GUIDE_MET`) | The guide has been met on Route 3 (and their Route 3 NPC's hide flag). |
+| `EVENT_FLAG_0x0a9f` (`EFU_FLAG_BASE_GUIDE_HIDDEN`) | The gate guide's hide flag, set from the above on entering the gate. |
+| `EVENT_FLAG_0x0a40` to `0x0a42` (`EFU_FLAG_TARGET_SCAV_FIRST`) | The target's scavs' hide flags, rolled on each entry (40% out each). |
 
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x0a9a to 0x0a9f; take them upward from there.
+Free event flags (nothing refers to them) include 0x0a43 to 0x0a4f, 0x0a01 to 0x0a3f and 0x091e to 0x095f; take
+them upward from 0x0a43. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
 0x4156 to 0x415f, 0x4163, 0x4169, 0x4177, 0x4180, 0x418b, 0x4193, 0x4197 to 0x419e, 0x41a0 to 0x41a7. Take the next
@@ -126,14 +131,40 @@ chunk. Five tree textures of Route 20's are imported into Striaton's texture set
 
 Its doors: the gate home, Route 3's two houses, Wellspring Cave (both floors), the Cave of Being (Route 20's mound) and
 the target, Pinwheel Forest's inner forest, through Route 20's old gate to Virbank. The caves and the forest keep
-only their item balls and their way back; their Trainers, story triggers and other exits are gone.
+only their item balls and their way back; their Trainers, story triggers and other exits are gone, except the
+forest's gate to Skyarrow Bridge (`EXIT_GATES`), which is a second way home: it opens on the east gate's Route 3 door,
+from where the player walks into the base as from the route.
+
+Four of the doors can be shut (`DOORS`: the two houses, Wellspring Cave and the Cave of Being): heading out
+(`L_DoorRoll`) puts a boulder in front of each on `EFU_DOOR_SHUT_CHANCE` (30) percent of explorations. The boulders
+are `OBJ_CODE_MODEL_3`, the strength boulder with a drawn model (the other rock codes draw nothing), one for each
+tile of a wide way in. Strength can push one aside; the game saves no position for them outside its own puzzle rooms,
+so the next zone load puts it back.
+
+The guide waits on Route 3 near the gate (`GUIDE`, `Script_GuideMeet`). Meeting them sets `EFU_FLAG_GUIDE_MET`, and
+from then on they stand behind the east gate's counter (`Script_GateInit`). The gate's news board says how many
+explorations the player has set out on (`EFU_WORK_RAID_COUNT`, `GimmickGate_AddDateMessage`).
 
 ## Loot
 
-Every item ball of the zone, its caves and its target runs a loot script of its place's tier (route, cave or target,
-`EFU_SCRIPT_LOOT_*`), which rolls the item from the tier's table and hands it to the original item ball script (global
-7400) to give and to hide the ball. Heading out rolls every spot again (`L_LootRoll`): the ball is out unless the
-tier's empty chance comes up (40, 25 and 15 percent). The hidden items of these places are gone, since the dowsing
+Every item ball of the zone, its caves and its target runs a loot script of its place (route, cave or target,
+`EFU_SCRIPT_LOOT_*`), which picks a tier by the place's chances, rolls the item from the tier's table, and hands it to
+the original item ball script (global 7400) to give and to hide the ball. Heading out rolls every spot again
+(`L_LootRoll`): the ball is out unless the place's empty chance comes up. `gen_efu.py` has the tables (`LOOT_TIERS`,
+`LOOT_PLACES`):
+
+| Place | Empty | Common | Uncommon | Rare | Valuable |
+| --- | --- | --- | --- | --- | --- |
+| Route | 40% | 85% | 15% | | |
+| Cave | 25% | 50% | 40% | 10% | |
+| Target | 15% | 15% | 50% | 32% | 3% |
+| A scav's drop | | | 45% | 45% | 10% |
+
+Common is Tiny Mushrooms, Poké Balls, Oran Berries, Potions, Repels and the status cures; Uncommon Great Balls, Super
+Potions, Pearls, Stardust, Full Heals, Sitrus Berries, Big Mushrooms, Super Repels, Ethers and Fresh Water; Rare Ultra
+Balls, Hyper Potions, Revives, Nuggets, Big Pearls, Lum Berries, Elixirs, a Rare Candy or a Heart Scale; Valuable Star
+Pieces, Max Revives, Full Restores, PP Ups, Big Nuggets, Comet Shards and four held items. The childcare centre's
+Rare Candy is its own place, out on 10% of explorations. The hidden items of these places are gone, since the dowsing
 table ties them to their original places. `FieldScript_CheckSCRID` (ov012) lets actors run the hack's scripts (above
 the original's last, 10913), or talking to a loot ball would do nothing.
 
@@ -173,9 +204,6 @@ offers to swap the bag's item for it, leaving the bag's item in its place. A sca
 beside the player the same way. The balls are the zone's actors, so they last through menus and battles but are gone
 once the player leaves the zone.
 
-The loot is cheap, since the first zone is free to travel to: on the route mostly Tiny Mushrooms and Poké Balls, with
-Oran Berries, Potions, status berries and Antidotes; in the caves Pearls and Stardust too, a Great Ball and a rare
-Nugget; in the target Pearls, Stardust, Super Potions, Great Balls and Nuggets more often.
 
 ## The base's people
 
@@ -187,14 +215,19 @@ Nugget; in the target Pearls, Stardust, Super Potions, Great Balls and Nuggets m
   `MART` (`build_base.py`; Poké and Great Balls, Potions, Super Potions, Revives, Full Heals, Repels and Escape Ropes)
   at `EFU_MART_PRICE_FACTOR` (5) times the price. It is Nacrene's old mail counter's list (`EFU_MART_SHOP_ID`), run by
   the original clerk's script (global 10110).
-- **The Day Care Lady** is in Route 3's Day Care. For `EFU_DAYCARE_HIRE` ($1000) she moves into the player's
-  warehouse, downstairs, where the original Day Care Lady's script (global 2201) runs her. The Day Care no longer grows
+- **The Day Care Lady** is in Route 3's Day Care. For `EFU_DAYCARE_HIRE` ($1000) she moves into the abandoned
+  warehouse east of the Pokémon Center (`NACRENE_CITY_7`, `DAYCARE_DOOR`), whose door a boulder blocks until she
+  has, and where the original Day Care Lady's script (global 2201) runs her. The Day Care no longer grows
   its Pokémon by steps or makes eggs (`DayCare_Update`); instead each raid's return gives each one a level, up to
   `EFU_LEVEL_CAP` (22, the zone's highest wild level), and withdrawing charges the original's $100 a level plus $100.
-- **The gate's guide**, behind the east gate's counter, will take the player to the farther zones; for now they say
-  Route 3 is as far as anyone goes.
+- **The gate's guide** is first met on Route 3, then waits behind the east gate's counter. They will take the player
+  to the farther zones; for now they say Route 3 is as far as anyone goes.
 
-Each base NPC is hidden by its own flag, which the zone's init script (`Script_PokecenInit`, `Script_HomeInit`) sets
+The player's warehouse (`NACRENE_CITY_8`) is theirs alone. The title menu offers only Continue and New Game
+(`StartMenu_InitItems`). A Pokémon taken out of the PC (withdrawn, moved or swapped into the party) comes out with half
+its HP and half of each move's PP, rounded up (`Efu_RecoverHalf` in `box2_main.c`).
+
+Each base NPC is hidden by its own flag, which the zone's init script (`Script_PokecenInit`, `Script_DayCareInit`, `Script_GateInit`) sets
 from whether that person has joined, so the base needs no save upgrade.
 
 ## The scavs

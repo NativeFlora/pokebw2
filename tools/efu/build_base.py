@@ -111,7 +111,7 @@ def build_events():
         if i == DAYCARE_DOOR:
             # The boulder stands on the tile the door is walked into from, below it
             assert w['unk4'] == 2 and g['y'] == 0
-            out['npcs'].append(npc(0, 'OBJ_CODE_STRENGTH_ROCK', efu_script('BLOCKED_DOOR'), efu_flag('DAYCARE_JOINED'),
+            out['npcs'].append(npc(0, 'OBJ_CODE_MODEL_3', efu_script('BLOCKED_DOOR'), efu_flag('DAYCARE_JOINED'),
                                    g['x'] // 16, g['z'] // 16 + 1, 'DIR_DOWN'))
         elif w['zone'] not in OPEN_ZONES:
             if g['y'] == 0:

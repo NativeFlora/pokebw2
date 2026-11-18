@@ -155,7 +155,7 @@
     "npcs": [
         {
             "id": 0,
-            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0a98",

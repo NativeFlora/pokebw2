@@ -955,7 +955,7 @@
         },
         {
             "id": 40,
-            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0a9a",
@@ -978,7 +978,7 @@
         },
         {
             "id": 41,
-            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0a9b",
@@ -1001,7 +1001,7 @@
         },
         {
             "id": 42,
-            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0a9c",
@@ -1024,7 +1024,7 @@
         },
         {
             "id": 43,
-            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0a9c",
@@ -1047,7 +1047,7 @@
         },
         {
             "id": 44,
-            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0a9d",
@@ -1070,7 +1070,7 @@
         },
         {
             "id": 45,
-            "model": "OBJ_CODE_STRENGTH_ROCK",
+            "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0a9d",

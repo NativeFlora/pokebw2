@@ -325,7 +325,7 @@ def build_events(loot):
         g = w['grid']
         for tx in range(g['width']):
             for tz in range(g['height']):
-                npcs.append({'id': next_id, 'model': 'OBJ_CODE_STRENGTH_ROCK', 'movement': 'MOVE_CODE_NONE',
+                npcs.append({'id': next_id, 'model': 'OBJ_CODE_MODEL_3', 'movement': 'MOVE_CODE_NONE',
                              'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': 'EVENT_FLAG_0x%04x' % (FLAG_DOOR_FIRST + i),
                              'script': efu_script('BLOCKED_DOOR'), 'direction': 'DIR_DOWN', 'params': [0, 0, 0],
                              'area': {'width': 0, 'height': 0},
