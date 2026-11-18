@@ -5,6 +5,7 @@
     ScriptHeader 1
     ScriptVariant Effect000
 
+// Escape from Unova: the camera sweeps in faster, and the message doesn't wait for the cry to end
 Effect000:
     SetYield FALSE
     CameraMovePreset 0, 1, 0, 0, 0
@@ -27,32 +28,31 @@ Effect000_00DE:
 Effect000_0102:
     Wait EFFVM_WAIT_ALL
     SetYield FALSE
-    CameraRotate 1, 0, 8192, 20, 0, 10
+    CameraRotate 1, 0, 8192, 8, 0, 4
     Wait EFFVM_WAIT_CAMERA
     IfPokeExists 1, FALSE, Effect000_0170
-    McssPalFade 1, 12, 0, 1, 0
+    McssPalFade 1, 12, 0, 0, 0
     PlayCry 1, 0x80000000, 0, 0, 0, 0, 0
 
 Effect000_0170:
     IfPokeExists 3, FALSE, Effect000_01B2
-    McssPalFade 3, 12, 0, 1, 0
+    McssPalFade 3, 12, 0, 0, 0
     PlayCry 3, 0x80000000, 0, 0, 0, 0, 0
 
 Effect000_01B2:
     IfPokeExists 5, FALSE, Effect000_01F4
-    McssPalFade 5, 12, 0, 1, 0
+    McssPalFade 5, 12, 0, 0, 0
     PlayCry 5, 0x80000000, 0, 0, 0, 0, 0
 
 Effect000_01F4:
     IfPokeExists 7, FALSE, Effect000_0236
-    McssPalFade 7, 12, 0, 1, 0
+    McssPalFade 7, 12, 0, 0, 0
     PlayCry 7, 0x80000000, 0, 0, 0, 0, 0
 
 Effect000_0236:
-    CameraMovePreset 1, 8, 20, 0, 20
+    CameraMovePreset 1, 8, 8, 0, 8
     Wait EFFVM_WAIT_CAMERA
     Wait EFFVM_WAIT_MCSS
-    Wait EFFVM_WAIT_CRY
     IfPokeExists 1, FALSE, Effect000_02D2
     IfVarConst EFFVM_VAR_FAMOUS + 1, EFFVM_CMP_EQ, FALSE, Effect000_0292
     Call BTLV_EFFECT_FIRST + 114, 1, 1

@@ -21,7 +21,8 @@ enum {
 };
 
 // How many times the screens flash
-#define FLASH_COUNT 2
+// Escape from Unova: one flash, not two
+#define FLASH_COUNT 1
 
 struct EncounterCutinWork {
     s32 flashes;

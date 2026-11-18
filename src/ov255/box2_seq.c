@@ -5628,11 +5628,11 @@ static int Box2Seq_TakeItem(Box2SysWork *syswk) {
             Box2Obj_SetIconBlend(syswk->app, syswk->pos, FALSE);
             syswk->app->iconsDimmed = 1;
             Box2Frame_HideMenu(syswk->app->bgWinFrame);
-            Box2Bmp_PrintTakeItem(syswk, item, BOX2_WIN_MESSAGE);
+            // Escape from Unova: take the item without asking
             if (syswk->param->mode == BOX2_MODE_MOVE_ITEMS) {
-                return Box2Seq_OpenYesNo(syswk, BOX2_YESNO_PUT_ITEM_IN_BAG);
+                return Box2Seq_YesItemToBag(syswk);
             }
-            return Box2Seq_OpenYesNo(syswk, BOX2_YESNO_TAKE_ITEM);
+            return Box2Seq_YesTakeItem(syswk);
         }
         Box2Obj_SetVisible(syswk->app, BOX2_ACTOR_CURSOR, FALSE);
         Box2Frame_SlideMenuOut(syswk->app->bgWinFrame);
@@ -6507,6 +6507,10 @@ static int Box2Seq_CallNameInput(Box2SysWork *syswk) {
 static int Box2Seq_AskContinue(Box2SysWork *syswk) {
     Box2Obj_SetVisible(syswk->app, BOX2_ACTOR_CURSOR, FALSE);
     Box2Obj_SetToolButtons(syswk, BOX2_ACTOR_MENU_MODE, FALSE);
+    // Escape from Unova: leave without asking whether to continue
+    if (syswk->param->mode != BOX2_MODE_DREAM_WORLD) {
+        return Box2Seq_Leave(syswk);
+    }
     Box2Bmp_PrintContinue(syswk, BOX2_WIN_MESSAGE);
     DimActorsForContinuePrompt(syswk);
     return Box2Seq_OpenYesNo(syswk, BOX2_YESNO_CONTINUE);

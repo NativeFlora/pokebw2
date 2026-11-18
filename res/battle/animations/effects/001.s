@@ -5,10 +5,11 @@
     ScriptHeader 1
     ScriptVariant Effect001
 
+// Escape from Unova: the camera turns to the player twice as fast
 Effect001:
     SetYield FALSE
     McssCameraMode 0, 0
-    CameraMove 2, 0xa000, 0x1000, 0x10000, 0x6000, 0x2000, 0x10000, 32, 0, 32
+    CameraMove 2, 0xa000, 0x1000, 0x10000, 0x6000, 0x2000, 0x10000, 16, 0, 16
     LoadVar EFFVM_VAR_TRAINER_TYPE
     SetTrainer -1, 8, -61440, -45056, 0
     IfPokeExists 1, FALSE, Effect001_00BE

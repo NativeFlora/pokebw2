@@ -132,7 +132,8 @@ GameEventReturnCode EncEffModel_EventCallback(GameEvent *event, u32 *state, void
     case STEP_WAIT_FLASH_OUT:
         if (!GFL_FadeIsRunning()) {
             work->flashes++;
-            if (work->flashes < 2) {
+            // Escape from Unova: one flash, not two
+            if (work->flashes < 1) {
                 GFL_FadeSet(FADE_ENGINE_A_WHITE, 0, 16, 0);
                 *state = STEP_WAIT_FLASH_IN;
             } else {
@@ -160,7 +161,8 @@ GameEventReturnCode EncEffModel_EventCallback(GameEvent *event, u32 *state, void
         Field_SetRenderMode(work->field, 2);
         work->fadeStarted = FALSE;
         GFL_G3DActorGetAnmFrameCount(work->actor, 0, &frameCount);
-        work->fadeFrame = frameCount - FX32_CONST(20);
+        // Escape from Unova: the animation runs at double speed, so the fade starts as many frames before its end
+        work->fadeFrame = frameCount - FX32_CONST(40);
         if (work->se != -1) {
             GFL_SndSEPlay(work->se);
         }
@@ -169,10 +171,10 @@ GameEventReturnCode EncEffModel_EventCallback(GameEvent *event, u32 *state, void
     case STEP_PLAY_MODEL:
         frame = GetAnimFrame(work->actor);
         if (!work->fadeStarted && frame >= work->fadeFrame) {
-            GFL_FadeSet(work->fadeMode, 0, 16, 3);
+            GFL_FadeSet(work->fadeMode, 0, 16, 1);
             work->fadeStarted = TRUE;
         }
-        if (!GFL_G3DActorStepAnmFrame(work->actor, 0, FX32_ONE) && !GFL_FadeIsRunning()) {
+        if (!GFL_G3DActorStepAnmFrame(work->actor, 0, 2 * FX32_ONE) && !GFL_FadeIsRunning()) {
             (*state)++;
         }
         break;

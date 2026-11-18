@@ -132,7 +132,6 @@ static BOOL PokeList_HasBackButton(PokeListWork *wk);
 static void PokeList_LearnMove(PokeListWork *wk, PartyPkm *pkm);
 static void PokeList_RaiseFriendship(PokeListWork *wk, PartyPkm *pkm);
 static void PokeList_LearnInSlot(PokeListWork *wk);
-static void PokeList_AskSwapItem(PokeListWork *wk);
 static void PokeList_ShareHpDone(PokeListWork *wk);
 static void PokeList_AskTakeMail(PokeListWork *wk);
 static void PokeList_MessageDoneDemo(PokeListWork *wk);
@@ -866,11 +865,8 @@ static void PokeList_InitMode(PokeListWork *wk) {
                 PokeListMessage_FreeWordSet(wk, wk->message);
                 wk->param->mode = POKELIST_MODE_FIELD;
             } else {
-                PokeListMessage_CreateWordSet(wk, wk->message);
-                PokeListMessage_SetPkmName(wk, wk->message, 0, wk->pkm);
-                PokeListMessage_SetItemTextName(wk, wk->message, 1, heldItem);
-                PokeList_ShowMessage(wk, PartyList_Text_AlreadyHoldingWouldLike, FALSE, PokeList_AskSwapItem);
-                PokeListMessage_FreeWordSet(wk, wk->message);
+                // Escape from Unova: swap without asking
+                PokeList_AnswerSwapItem(wk, POKELIST_MENU_YES);
             }
         }
         wk->nextState = POKELIST_STATE_MESSAGE;
@@ -1110,11 +1106,8 @@ static void PokeList_SelectPokemon(PokeListWork *wk) {
             wk->param->result = POKELIST_RESULT_ITEM_DONE;
             PokeList_ShowMessage(wk, PartyList_Text_MustRemoveMailBefore, TRUE, PokeList_MessageDoneExit);
         } else {
-            PokeListMessage_CreateWordSet(wk, wk->message);
-            PokeListMessage_SetPkmName(wk, wk->message, 0, wk->pkm);
-            PokeListMessage_SetItemTextName(wk, wk->message, 1, heldItem);
-            PokeList_ShowMessage(wk, PartyList_Text_AlreadyHoldingWouldLike, FALSE, PokeList_AskSwapItem);
-            PokeListMessage_FreeWordSet(wk, wk->message);
+            // Escape from Unova: swap without asking
+            PokeList_AnswerSwapItem(wk, POKELIST_MENU_YES);
         }
         break;
     }
@@ -2793,10 +2786,6 @@ static void PokeList_LearnInSlot(PokeListWork *wk) {
 }
 
 // Asks whether to swap the item held for the one given
-static void PokeList_AskSwapItem(PokeListWork *wk) {
-    PokeList_OpenSubMenu(wk, PokeList_AnswerSwapItem);
-}
-
 static void PokeList_AnswerSwapItem(PokeListWork *wk, u32 item) {
     if (item == POKELIST_MENU_YES) {
         u32 heldItem = PokeParty_GetParam(wk->pkm, PKM_PARAM_ITEM, NULL);

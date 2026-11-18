@@ -216,8 +216,7 @@ static void ItemMenu_StateTMBootUpSound(ItemMenuWork *work);
 static void ItemMenu_StateUseTM(ItemMenuWork *work);
 static void ItemMenu_StateReturnToList(ItemMenuWork *work);
 static void ItemMenu_StateWaitTossMessage(ItemMenuWork *work);
-static void ItemMenu_StateTossConfirm(ItemMenuWork *work);
-static void ItemMenu_StateTossAsk(ItemMenuWork *work);
+static void ItemMenu_TossNow(ItemMenuWork *work);
 static void ItemMenu_StateToss(ItemMenuWork *work);
 static void ItemMenu_StateTossQuantity(ItemMenuWork *work);
 static void ItemMenu_StateSell(ItemMenuWork *work);
@@ -1259,47 +1258,32 @@ static void ItemMenu_StateWaitTossMessage(ItemMenuWork *work) {
     }
 }
 
-// Whether to toss the items
-static void ItemMenu_StateTossConfirm(ItemMenuWork *work) {
-    u32 pos;
-
-    if (AppTaskMenu_IsFlashFinished(work->taskMenu)) {
-        pos = AppTaskMenu_GetCursorPos(work->taskMenu);
-        ItemMenuDisp_CloseMenu(work);
-        GFL_BGSysClearScr(3);
-        if (pos == ITEMMENU_CONFIRM_YES) {
-            GFL_SndSEPlay(SEQ_SE_SYS_08);
-            ItemMenu_SubItem(work, work->quantity);
-            // Escape from Unova: from the field, the item lands on the ground once the bag closes (EFU_SCRIPT_TOSS)
-            if (work->mode == BAG_MODE_NORMAL) {
-                *EventWork_GetWkPtr(GameData_GetEventWork(work->gameData), EFU_WORK_TOSSED_ITEM) = work->item;
-                FieldStatus_ReserveScript(GameData_GetFieldStatus(work->gameData), EFU_SCRIPT_TOSS);
-            }
-            GFL_MsgDataLoadStrbuf(work->msgData, BagMenu_Text_ThrewAway, work->strbuf);
-            ItemMenu_SetItemText(work, 0, work->item, work->quantity > 1, FALSE);
-            WordSetNumber(work->wordSet, 1, work->quantity, 3, 0, TRUE);
-            GFL_WordSetFormatStrbuf(work->wordSet, work->expandBuf, work->strbuf);
-            ItemMenuDisp_ShowMessageNow(work);
-            ItemMenu_SetState(work, ItemMenu_StateWaitTossMessage);
-        } else {
-            ClActor_SetAutoAnim(work->scrollBar, TRUE);
-            ItemMenuDisp_SetButtonsActive(work, TRUE);
-            ItemMenu_SetKeyMode(work, GCTX_HIDIsUsingTouch() ? FALSE : TRUE);
-            ItemMenu_ReturnToList(work);
-        }
+// Tosses work->quantity of the item and says so
+static void ItemMenu_TossNow(ItemMenuWork *work) {
+    GFL_SndSEPlay(SEQ_SE_SYS_08);
+    ItemMenu_SubItem(work, work->quantity);
+    // Escape from Unova: from the field, the item lands on the ground once the bag closes (EFU_SCRIPT_TOSS)
+    if (work->mode == BAG_MODE_NORMAL) {
+        *EventWork_GetWkPtr(GameData_GetEventWork(work->gameData), EFU_WORK_TOSSED_ITEM) = work->item;
+        FieldStatus_ReserveScript(GameData_GetFieldStatus(work->gameData), EFU_SCRIPT_TOSS);
     }
-}
-
-static void ItemMenu_StateTossAsk(ItemMenuWork *work) {
-    if (ItemMenuDisp_IsMessageDone(work)) {
-        ItemMenuDisp_OpenYesNoMenu(work);
-        ItemMenu_SetState(work, ItemMenu_StateTossConfirm);
-    }
+    GFL_MsgDataLoadStrbuf(work->msgData, BagMenu_Text_ThrewAway, work->strbuf);
+    ItemMenu_SetItemText(work, 0, work->item, work->quantity > 1, FALSE);
+    WordSetNumber(work->wordSet, 1, work->quantity, 3, 0, TRUE);
+    GFL_WordSetFormatStrbuf(work->wordSet, work->expandBuf, work->strbuf);
+    ItemMenuDisp_ShowMessageNow(work);
+    ItemMenu_SetState(work, ItemMenu_StateWaitTossMessage);
 }
 
 // Tossing an item: asks how many
 static void ItemMenu_StateToss(ItemMenuWork *work) {
     work->quantity = 1;
+    // Escape from Unova: a single item goes at once, without asking how many or whether it's OK
+    if (ItemMenu_GetSlot(work, ItemMenu_GetCursorIndex(work))->count == 1) {
+        ItemMenuDisp_SetButtonsActive(work, FALSE);
+        ItemMenu_TossNow(work);
+        return;
+    }
     ItemMenu_ShowQuantity(work, ITEMMENU_QUANTITY_TOSS);
     GFL_MsgDataLoadStrbuf(work->msgData, BagMenu_Text_ThrowAwayHowMany, work->strbuf);
     ItemMenu_SetItemText(work, 0, work->item, TRUE, FALSE);
@@ -1326,12 +1310,8 @@ static void ItemMenu_StateTossQuantity(ItemMenuWork *work) {
         if (result == ITEMMENU_QUANTITY_CONFIRM) {
             GFL_SndSEPlay(SEQ_SE_DECIDE1);
             ItemMenu_HideQuantity(work);
-            GFL_MsgDataLoadStrbuf(work->msgData, BagMenu_Text_OkThrowAway, work->strbuf);
-            ItemMenu_SetItemText(work, 0, work->item, work->quantity > 1, FALSE);
-            WordSetNumber(work->wordSet, 1, work->quantity, 3, 0, TRUE);
-            GFL_WordSetFormatStrbuf(work->wordSet, work->expandBuf, work->strbuf);
-            ItemMenuDisp_ShowMessageNow(work);
-            ItemMenu_SetState(work, ItemMenu_StateTossAsk);
+            // Escape from Unova: no "Is it OK to toss" question
+            ItemMenu_TossNow(work);
         } else if (result == ITEMMENU_QUANTITY_CANCEL) {
             GFL_SndSEPlay(SEQ_SE_CANCEL1);
             ItemMenu_PressButton(work, ITEMMENU_BUTTON_BACK, ItemMenu_StateTossCancel);

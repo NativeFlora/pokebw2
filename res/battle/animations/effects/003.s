@@ -5,6 +5,7 @@
     ScriptHeader 1
     ScriptVariant Effect003
 
+// Escape from Unova: the Pokémon grows out of its ball faster, and the send-out doesn't wait for its cry to end
 Effect003:
     McssReset TRUE
     SetValue 3
@@ -154,7 +155,7 @@ Effect003_060A:
     ParticleLoad 3
     EmitterAddAll 3, 0, 8, 0x4000, 0, 4096, 0x800, 0x1000, 0x800, 0x800
     McssPalFade 0, 16, 16, 0, 0x7fff
-    McssScale 0, 1, 0xb33, 0xb33, 32, 0, 0
+    McssScale 0, 1, 0xb33, 0xb33, 16, 0, 0
     McssSetMode 0, 4
     PlayCry 0, 0x80000000, 0, 0, 0, 0, 0
 
@@ -164,7 +165,7 @@ Effect003_06D6:
     ParticleLoad 3
     EmitterAddAll 3, 2, 8, 0x4000, 0, 4096, 0x800, 0x1000, 0x800, 0x800
     McssPalFade 2, 16, 16, 0, 0x7fff
-    McssScale 2, 1, 0xb33, 0xb33, 32, 0, 0
+    McssScale 2, 1, 0xb33, 0xb33, 16, 0, 0
     McssSetMode 2, 4
     PlayCry 2, 0x80000000, 0, 0, 0, 0, 0
 
@@ -174,7 +175,7 @@ Effect003_0776:
     ParticleLoad 3
     EmitterAddAll 3, 4, 8, 0x4000, 0, 4096, 0x800, 0x1000, 0x800, 0x800
     McssPalFade 4, 16, 16, 0, 0x7fff
-    McssScale 4, 1, 0xb33, 0xb33, 32, 0, 0
+    McssScale 4, 1, 0xb33, 0xb33, 16, 0, 0
     McssSetMode 4, 4
     PlayCry 4, 0x80000000, 0, 0, 0, 0, 0
 
@@ -184,7 +185,7 @@ Effect003_0816:
     ParticleLoad 3
     EmitterAddAll 3, 6, 8, 0x4000, 0, 4096, 0x800, 0x1000, 0x800, 0x800
     McssPalFade 6, 16, 16, 0, 0x7fff
-    McssScale 6, 1, 0xb33, 0xb33, 32, 0, 0
+    McssScale 6, 1, 0xb33, 0xb33, 16, 0, 0
     McssSetMode 6, 4
     PlayCry 6, 0x80000000, 0, 0, 0, 0, 0
 
@@ -342,7 +343,6 @@ Effect003_10F2:
     Wait EFFVM_WAIT_CAMERA
     CameraMove 2, 0, -0x400, 0, 0, -0x400, 0, 2, 0, 0
     Wait EFFVM_WAIT_CAMERA
-    Wait EFFVM_WAIT_CRY
 
 Effect003_116A:
     SetYield FALSE
