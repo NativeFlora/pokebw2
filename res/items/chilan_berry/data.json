@@ -13,7 +13,7 @@
     "natural_gift_type": "TYPE_NORMAL",
     "important": false,
     "registrable": false,
-    "field_pocket": "BAG_POCKET_BERRIES",
+    "field_pocket": "BAG_POCKET_ITEMS",
     "battle_pocket": [],
     "field_func": 8,
     "battle_func": 0,

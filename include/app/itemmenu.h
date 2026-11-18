@@ -240,6 +240,7 @@ struct ItemMenuWork {
     BagItemList itemList;
     u32 sortType;
     u32 freeSpaceFilter;
+    u32 efuItemPocket; // Escape from Unova: the pocket the bag shows as Items (efu_bag.h)
 };
 
 // The slot of an item of the list

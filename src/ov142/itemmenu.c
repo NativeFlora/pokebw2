@@ -7,6 +7,7 @@
 #include "constants/items.h"
 #include "constants/sound.h"
 #include "constants/text_banks.h"
+#include "efu_bag.h"
 #include "field/player_action.h"
 #include "gfl/arc.h"
 #include "gfl/bg_sys.h"
@@ -66,6 +67,21 @@ enum {
 
 // An action that is not offered by a menu
 #define ITEMMENU_ACTION_NONE 0xff
+
+// Escape from Unova: the bag has only the Items, TMs and HMs, and Key Items pockets, and no Free Space. The Items
+// pocket is whichever of the Items, Medicine and Berries pockets holds the bag's one holdable item (efu_bag.h), set
+// when the bag opens, in the work's efuItemPocket. Whether a pocket is one the bag shows
+static BOOL Efu_IsShownPocket(ItemMenuWork *work, s32 pocket) {
+    return pocket == work->efuItemPocket || pocket == BAG_POCKET_TMS_HMS || pocket == BAG_POCKET_KEY_ITEMS;
+}
+
+// The shown pocket a step to the right (step 1) or the left (step -1) of another, wrapping around
+static s32 Efu_StepPocket(ItemMenuWork *work, s32 pocket, s32 step) {
+    do {
+        pocket = (pocket + step + BAG_POCKET_NONE) % BAG_POCKET_NONE;
+    } while (!Efu_IsShownPocket(work, pocket));
+    return pocket;
+}
 
 // The sort menu's choices
 enum {
@@ -1132,16 +1148,12 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
     }
     if (GCTX_HIDGetTypedKeys() & PAD_KEY_RIGHT) {
         pocket = work->pocket;
-        if (++work->pocket >= BAG_POCKET_NONE) {
-            work->pocket = BAG_POCKET_ITEMS;
-        }
+        work->pocket = Efu_StepPocket(work, work->pocket, 1);
         GCTX_HIDSetUsingTouch(FALSE);
         ItemMenu_PressPocketArrow(work, pocket, TRUE, ItemMenu_StatePocketArrowDone);
     } else if (GCTX_HIDGetTypedKeys() & PAD_KEY_LEFT) {
         pocket = work->pocket;
-        if (--work->pocket < 0) {
-            work->pocket = BAG_POCKET_FREE_SPACE;
-        }
+        work->pocket = Efu_StepPocket(work, work->pocket, -1);
         GCTX_HIDSetUsingTouch(FALSE);
         ItemMenu_PressPocketArrow(work, pocket, FALSE, ItemMenu_StatePocketArrowDone);
     }
@@ -1992,11 +2004,7 @@ static void ItemMenu_GetItemActions(ItemMenuWork *work, u8 *actions) {
                 actions[2] = ITEMMENU_ACTION_REGISTER;
             }
         }
-        if (work->pocket != BAG_POCKET_FREE_SPACE) {
-            actions[3] = ITEMMENU_ACTION_MOVE_FREE_SPACE;
-        } else {
-            actions[3] = ITEMMENU_ACTION_RETURN_POCKET;
-        }
+        // Escape from Unova: no Free Space (the slot stays empty)
         actions[4] = ITEMMENU_ACTION_CANCEL;
         GFL_HeapFree(data);
     }
@@ -2071,6 +2079,12 @@ static void ItemMenu_ButtonCallback(u32 button, u32 event, void *data) {
             BAG_POCKET_KEY_ITEMS, BAG_POCKET_FREE_SPACE, BAG_POCKET_ITEMS,
         };
 
+        // Escape from Unova: the Items tab opens the Items pocket the bag shows, and the hidden pockets' tabs nothing
+        if (pockets[button] == BAG_POCKET_ITEMS) {
+            pockets[button] = work->efuItemPocket;
+        } else if (!Efu_IsShownPocket(work, pockets[button])) {
+            pockets[button] = work->pocket;
+        }
         if (work->pocket != pockets[button]) {
             newPocket = pockets[button];
             ItemMenu_SetKeyMode(work, FALSE);
@@ -2078,17 +2092,13 @@ static void ItemMenu_ButtonCallback(u32 button, u32 event, void *data) {
     } else if (button == ITEMMENU_TOUCH_POCKET_LEFT) {
         ItemMenu_SetKeyMode(work, FALSE);
         pocket = work->pocket;
-        if (--work->pocket < 0) {
-            work->pocket = BAG_POCKET_FREE_SPACE;
-        }
+        work->pocket = Efu_StepPocket(work, work->pocket, -1);
         ItemMenu_PressPocketArrow(work, pocket, FALSE, ItemMenu_StatePocketArrowDone);
         return;
     } else if (button == ITEMMENU_TOUCH_POCKET_RIGHT) {
         ItemMenu_SetKeyMode(work, FALSE);
         pocket = work->pocket;
-        if (++work->pocket >= BAG_POCKET_NONE) {
-            work->pocket = BAG_POCKET_ITEMS;
-        }
+        work->pocket = Efu_StepPocket(work, work->pocket, 1);
         ItemMenu_PressPocketArrow(work, pocket, TRUE, ItemMenu_StatePocketArrowDone);
         return;
     } else if (button == ITEMMENU_TOUCH_SORT) {
@@ -2265,6 +2275,10 @@ static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *dat
     sortItemBlocks(work->bag);
     BagItemList_Init(&work->itemList, bag->bag, work->freeSpaceFilter, work->heapId);
     work->pocket = BagCursor_GetPocket(work->cursor);
+    work->efuItemPocket = Efu_BagItemPocket(work->bag);
+    if (!Efu_IsShownPocket(work, work->pocket)) {
+        work->pocket = work->efuItemPocket;
+    }
     for (pocket = 0; pocket < BAG_POCKET_NONE; pocket++) {
         BagCursor_GetPocketPosition(work->cursor, pocket, &row, &scroll);
         count = BagItemList_CountShown(&work->itemList, pocket);

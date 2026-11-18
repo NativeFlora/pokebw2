@@ -27,4 +27,21 @@ static inline BOOL Efu_BagHasRoom(BagSave *bag, u16 item, u16 count) {
                                                 0;
 }
 
+// The bag shows the Items, Medicine and Berries pockets as one Items pocket: the one that holds the bag's one holdable
+// item, or Items when none does
+static inline u32 Efu_BagItemPocket(BagSave *bag) {
+    if (BagSave_GetPocketItemCountCore(bag, BAG_POCKET_MEDICINE, TRUE) > 0) {
+        return BAG_POCKET_MEDICINE;
+    }
+    if (BagSave_GetPocketItemCountCore(bag, BAG_POCKET_BERRIES, TRUE) > 0) {
+        return BAG_POCKET_BERRIES;
+    }
+    return BAG_POCKET_ITEMS;
+}
+
+// The pocket whose name and tab the bag shows for one of its pockets
+static inline u32 Efu_BagShownPocket(u32 pocket) {
+    return pocket == BAG_POCKET_MEDICINE || pocket == BAG_POCKET_BERRIES ? BAG_POCKET_ITEMS : pocket;
+}
+
 #endif // POKEBW2_EFU_BAG_H
