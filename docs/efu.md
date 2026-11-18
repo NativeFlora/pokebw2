@@ -20,7 +20,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   start where ov036's code and BSS end), so growing either moves those pointers, and main's compressed size, kept in
   the secure area, may change with them. It is luck: some sizes pass and some don't, so build after every change to
   them and, if the check fails, change the size a little (natural code, never padding) and try again. ov035 has stayed
-  at its v1 size (11520 bytes); ov036 is 354080 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
+  at its v1 size (11520 bytes); ov036 is 354176 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
 
 ## Where things are
@@ -39,6 +39,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | The base's beach and sea (Undella's sand and surf textures), and the grass filled in where cutting off the north left the ground bare | `tools/efu/build_coast.py`, run by `build_base.py` |
 | The first exploration zone's map (`MAP_MATRIX_EFU_ZONE_1`, which `ZONE_ROUTE_3` uses): Route 3 with Route 20 lowered into Striaton's place, forest everywhere else | `tools/efu/build_zone.py` |
 | The zone's events, wild Pokémon (2 to 15 on the route, 8 to 18 in the caves, 12 to 22 in the target), the scavs at 40 to 60 and their lines, the caves and the target, and the loot spots (`tools/efu/loot.json`) | `tools/efu/build_raid.py` |
+| The one-item bag (one item a Pokémon can hold at a time; Key Items and TMs are free) | `include/efu_bag.h`, used by `Scrcmd_Item_ItemCheckSpace` (`src/ov036/scrcmd_item.c`), taking a held item in `src/ov165/plist_sys.c` and in the PC in `src/ov255/box2_seq.c` |
 | The loot tables and the scripts that roll them | `LOOT` in `tools/efu/gen_efu.py`, `Script_Loot*` in `tools/efu/efu.s.in` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` in `src/ov036/event_trainer_eye.c`, called each step from `src/ov036/fieldmap_event.c` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs) |
@@ -124,6 +125,26 @@ Every item ball of the zone, its caves and its target runs a loot script of its 
 tier's empty chance comes up (40, 25 and 15 percent). The hidden items of these places are gone, since the dowsing
 table ties them to their original places. `FieldScript_CheckSCRID` (ov012) lets actors run the hack's scripts (above
 the original's last, 10913), or talking to a loot ball would do nothing.
+
+## The one-item bag
+
+The bag carries one item that a Pokémon can hold: one item of the Items, Medicine or Berries pockets (Poké Balls are
+in Items), counting each of a stack. Key Items and TMs and HMs are free. To carry more, give items to the team. Main's
+bag code can't change, so `Efu_BagHasRoom` (`include/efu_bag.h`) is asked where items come in:
+
+- `ItemCheckSpace` (script command), which the item ball script (7400), hidden items and most gifts ask first, so a
+  loot ball asks first too (`L_LootNoRoom`): with the bag's item carried it says so and stays shut, and what it holds
+  is rolled only when it can be taken, so it can't be peeked at and rolled again. `ItemAdd` isn't gated: ov036's size is luck, and every
+  way into the bag in the zone and the base asks `ItemCheckSpace` first.
+- Taking a held item, or a held mail, in the party menu, which says the bag is full.
+- Taking a held item in the PC, in either mode, which keeps it on the Pokémon.
+
+Giving an item to a Pokémon that holds one swaps them, which keeps the count, so it is allowed. In battle, an item
+chosen and then cancelled goes back to the bag, which is also allowed. Shops aren't gated, since none can be reached.
+
+The loot is cheap, since the first zone is free to travel to: on the route mostly Tiny Mushrooms and Poké Balls, with
+Oran Berries, Potions, status berries and Antidotes; in the caves Pearls and Stardust too, a Great Ball and a rare
+Nugget; in the target Pearls, Stardust, Super Potions, Great Balls and Nuggets more often.
 
 ## The scavs
 

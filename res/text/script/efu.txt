@@ -14,6 +14,7 @@ Efu_Text_RaidReturn = You made it back.{be01}
 Efu_Text_RaidLost = You never made it back.{be01}\nEvery Pokémon you took\nout there is gone.{be01}
 Efu_Text_LostSoul = A {0101:1} crept out of the dark,\nas lost as you are.{be01}\nIt stays close to you.{be01}
 Efu_Text_Blackout = Everything went black.{be01}\nYou woke up at home, alone.\nYour Pokémon are gone.{be01}
+Efu_Text_LootNoRoom = Your Bag only carries one item.\nA Pokémon could hold it for you.
 Efu_Text_Type_Normal_I = Normal I
 Efu_Text_Type_Normal_II = Normal II
 Efu_Text_Type_Fire = Fire

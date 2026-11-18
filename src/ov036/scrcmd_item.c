@@ -3,6 +3,7 @@
 // (https://github.com/ds-pokemon-hacking/swan, GPL-3.0)
 #include "types.h"
 #include "constants/items.h"
+#include "efu_bag.h"
 #include "field/field_script.h"
 #include "field/scrcmd_item.h"
 #include "pml/item.h"
@@ -41,7 +42,8 @@ BOOL Scrcmd_Item_ItemCheckSpace(VM *vm, FieldScriptEnv *env) {
     u16 count = ScriptReadAny(vm, env);
     u16 *result = ScriptReadVar(vm, env);
 
-    *result = BagSave_CheckAvailItemSpace(bag, item, count, heapId);
+    // Escape from Unova: the one-item bag (efu_bag.h)
+    *result = Efu_BagHasRoom(bag, item, count) && BagSave_CheckAvailItemSpace(bag, item, count, heapId);
     return FALSE;
 }
 

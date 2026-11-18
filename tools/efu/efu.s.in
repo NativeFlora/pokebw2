@@ -207,21 +207,40 @@ L_ConfirmStarter:
 // of the original (global 7400, which the original balls call with their item) gives it and hides the ball by its flag
 Script_LootRoute:
     ActorsPauseAll
+    ItemCheckSpace @POKE_BALL@, 1, 0x800c
+    WorkCmpConst 0x800c, 0
+    VMJumpIf CMP_EQ, L_LootNoRoom
     VMCall L_LootPickRoute
     VMJump L_LootGive
 
 Script_LootCave:
     ActorsPauseAll
+    ItemCheckSpace @POKE_BALL@, 1, 0x800c
+    WorkCmpConst 0x800c, 0
+    VMJumpIf CMP_EQ, L_LootNoRoom
     VMCall L_LootPickCave
     VMJump L_LootGive
 
 Script_LootTarget:
     ActorsPauseAll
+    ItemCheckSpace @POKE_BALL@, 1, 0x800c
+    WorkCmpConst 0x800c, 0
+    VMJumpIf CMP_EQ, L_LootNoRoom
     VMCall L_LootPickTarget
 L_LootGive:
     WorkSetConst 0x800d, 1
     RTCallGlobal 7400
     FinishAllEvents
+    ActorsUnpauseAll
+    VMHalt
+
+// The one-item bag (include/efu_bag.h): each loot script asks first, and with the bag's item already carried, the
+// ball stays shut, so what it holds is rolled only when it can be taken (every loot item can be held, so a Poke Ball
+// stands for them all)
+L_LootNoRoom:
+    SystemMsg Efu_Text_LootNoRoom, 2
+    LastKeyWait
+    SystemMsgClose
     ActorsUnpauseAll
     VMHalt
 

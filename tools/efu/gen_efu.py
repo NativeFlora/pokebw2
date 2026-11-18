@@ -57,15 +57,16 @@ def tree(lo, hi, label):
     tree(mid, hi, label + '_H')
 tree(0, len(pool), 'L_LostSoulPick')
 # Loot: each tier's table (items with their weights), and how often a spot of the tier comes up empty, in percent
+# The first zone is free to travel to, so its loot is cheap: mostly Tiny Mushrooms and Poke Balls on the route, with
+# Pearls, Stardust and the odd Nugget in the caves and the target. The bag carries one item a Pokemon can hold
+# (include/efu_bag.h), so every roll gives one
 LOOT = {
-    'Route': (40, {'POTION': 6, 'POKE_BALL': 5, 'ORAN_BERRY': 3, 'ANTIDOTE': 2, 'PARLYZ_HEAL': 2, 'REPEL': 2,
-                   'GREAT_BALL': 2, 'SUPER_POTION': 2, 'AWAKENING': 1, 'BURN_HEAL': 1, 'ICE_HEAL': 1}),
-    'Cave': (25, {'SUPER_POTION': 4, 'GREAT_BALL': 4, 'FULL_HEAL': 2, 'REVIVE': 2, 'ETHER': 2, 'HYPER_POTION': 2,
-                  'SITRUS_BERRY': 2, 'ULTRA_BALL': 1, 'X_ATTACK': 1, 'X_DEFEND': 1, 'FIRE_STONE': 1, 'WATER_STONE': 1,
-                  'THUNDERSTONE': 1, 'LEAF_STONE': 1, 'MOON_STONE': 1}),
-    'Target': (15, {'HYPER_POTION': 4, 'ULTRA_BALL': 4, 'REVIVE': 3, 'MAX_POTION': 2, 'FULL_RESTORE': 2,
-                    'RARE_CANDY': 2, 'ELIXIR': 2, 'MAX_REVIVE': 1, 'PP_UP': 1, 'LEFTOVERS': 1, 'SUN_STONE': 1,
-                    'SHINY_STONE': 1, 'DUSK_STONE': 1, 'DAWN_STONE': 1}),
+    'Route': (40, {'TINY_MUSHROOM': 6, 'POKE_BALL': 6, 'ORAN_BERRY': 3, 'POTION': 3, 'CHERI_BERRY': 1,
+                   'PECHA_BERRY': 1, 'RAWST_BERRY': 1, 'ANTIDOTE': 1}),
+    'Cave': (25, {'TINY_MUSHROOM': 4, 'POKE_BALL': 4, 'PEARL': 3, 'STARDUST': 2, 'POTION': 2, 'ORAN_BERRY': 2,
+                  'GREAT_BALL': 1, 'NUGGET': 1}),
+    'Target': (15, {'PEARL': 3, 'STARDUST': 3, 'POKE_BALL': 3, 'TINY_MUSHROOM': 2, 'SUPER_POTION': 2, 'GREAT_BALL': 2,
+                    'NUGGET': 2}),
 }
 items = [l.split('=')[0].strip() for l in open(root + '/generated/items.txt') if l.startswith('ITEM_')]
 loot = []
@@ -95,6 +96,7 @@ loot.append('    VMReturn\n')
 tmpl = open(os.path.join(here, 'efu.s.in')).read()
 tmpl = tmpl.replace('@LOST_SOUL@\n', ''.join(ls))
 tmpl = tmpl.replace('@LOOT@\n', ''.join(loot))
+tmpl = tmpl.replace('@POKE_BALL@', str(items.index('ITEM_POKE_BALL')))
 open(root + '/res/field/scripts/efu.s', 'w').write(tmpl.replace('@STARTER_MENUS@\n', ''.join(s)))
 hand = open(os.path.join(here, 'efu.txt.in'), encoding='utf-8').read()
 open(root + '/res/text/script/efu.txt', 'w', encoding='utf-8').write(hand + '\n'.join(text) + '\n')

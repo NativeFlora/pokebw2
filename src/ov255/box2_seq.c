@@ -9,6 +9,7 @@
 #include "constants/arc.h"
 #include "constants/pokemon.h"
 #include "constants/sound.h"
+#include "efu_bag.h"
 #include "gfl/arc.h"
 #include "gfl/graphics.h"
 #include "gfl/gx_layers.h"
@@ -6566,7 +6567,9 @@ static int Box2Seq_OpenYesNo(Box2SysWork *syswk, u32 type) {
 static int Box2Seq_YesTakeItem(Box2SysWork *syswk) {
     u32 item = Box2Main_GetPokeParam(syswk, syswk->pos, syswk->tray, PKM_PARAM_ITEM, NULL);
 
-    if (BagSave_AddItem(syswk->param->bag, item, 1, HEAPID_BOX2_APP) == TRUE) {
+    // Escape from Unova: the one-item bag (efu_bag.h)
+    if (Efu_BagHasRoom(syswk->param->bag, item, 1) &&
+        BagSave_AddItem(syswk->param->bag, item, 1, HEAPID_BOX2_APP) == TRUE) {
         BoxPkm *pkm = Box2Main_GetBoxPkm(syswk, syswk->tray, syswk->pos);
 
         Box2Bmp_PrintTookItem(syswk, item, BOX2_WIN_MESSAGE);
@@ -6635,7 +6638,9 @@ static int Box2Seq_YesItemToBag(Box2SysWork *syswk) {
         CursorMove_SetCursorVisible(syswk->app->cursorMove, TRUE);
         Box2Obj_ShowCursor(syswk, FALSE);
     }
-    if (BagSave_AddItem(syswk->param->bag, syswk->app->getItem, 1, HEAPID_BOX2_APP) == TRUE) {
+    // Escape from Unova: the one-item bag (efu_bag.h)
+    if (Efu_BagHasRoom(syswk->param->bag, syswk->app->getItem, 1) &&
+        BagSave_AddItem(syswk->param->bag, syswk->app->getItem, 1, HEAPID_BOX2_APP) == TRUE) {
         BoxPkm *pkm = Box2Main_GetBoxPkm(syswk, syswk->tray, syswk->pos);
 
         Box2Main_SetPokeParam(syswk, syswk->pos, syswk->tray, PKM_PARAM_ITEM, 0);
