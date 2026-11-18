@@ -1,18 +1,22 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Naoko",
-    "class": "TRAINER_CLASS_PKMN_RANGER_F",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC", "AI_FLAG_EVAL_ATTACK", "AI_FLAG_EXPERT" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC",
+        "AI_FLAG_EVAL_ATTACK",
+        "AI_FLAG_EXPERT"
+    ],
     "heals": false,
     "money": 15,
     "reward": "ITEM_SITRUS_BERRY",
     "party": [
         {
-            "species": "SPECIES_FOONGUS",
+            "species": "SPECIES_AMOONGUSS",
             "form": 0,
-            "level": 32,
+            "level": 45,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
@@ -20,7 +24,7 @@
         {
             "species": "SPECIES_LEAVANNY",
             "form": 0,
-            "level": 32,
+            "level": 46,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
@@ -29,19 +33,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Surprised? That's when I'll make my move!{be01}"
+            "text": "I used to protect this forest.\nNow it protects me!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Just as I'd expect!\nYou're ready for anything, aren't you?"
+            "text": "The forest let me down..."
         },
         {
-            "type": 15,
-            "text": "If you are prepared,\nyou don't have to worry!{be01}"
-        },
-        {
-            "type": 16,
-            "text": "I burrowed under the fallen leaves\nto become one with nature!"
+            "type": 2,
+            "text": "Rangers don't get paid anymore.\nSo I pay myself."
         }
     ]
 }

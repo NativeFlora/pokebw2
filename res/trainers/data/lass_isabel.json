@@ -1,18 +1,20 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Isabel",
-    "class": "TRAINER_CLASS_LASS",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 4,
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_PURRLOIN",
+            "species": "SPECIES_LIEPARD",
             "form": 0,
-            "level": 4,
+            "level": 41,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -21,15 +23,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Hey, you! Have you seen my cute\nPokémon? Take a look!{be01}"
+            "text": "Pretty bag you've got.\nIt'd look better on me!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "My Purrloin is cute even if it loses!"
+            "text": "Hmph! Keep it, then!"
         },
         {
             "type": 2,
-            "text": "Maybe I'll try a wild Pokémon next time\nso that I can win..."
+            "text": "Everything nice gets taken out\nhere. Sooner or later."
         }
     ]
 }

@@ -12,11 +12,15 @@ Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) an
 """
 import json, os, re, subprocess
 
+import build_zone as bz
+
 here = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(os.path.dirname(here))
 BASE_COMMIT = 'origin/main'
 
 WILD_LEVELS = (2, 15)
+# The caves' and the target's wild Pokémon, a little tougher than the route's
+PLACE_LEVELS = {'wellspring_cave': (8, 18), 'wellspring_cave_2': (8, 18), 'pinwheel_forest_2': (12, 22)}
 SCAV_LEVELS = (40, 60)
 efu_h = open(os.path.join(root, 'include/efu.h')).read()
 SCAV_SIGHT = int(re.search(r'#define EFU_SCAV_SIGHT (\d+)', efu_h).group(1))
@@ -46,6 +50,19 @@ SCAVS = {
                          "I must have carried a one\nsomewhere...", "The numbers only add up for\nthe strong out here."),
     'school_kid_marsha': (True, "Running? I've had my eye on you\nfor a while now!{be01}", "I should have been faster...",
                           "There's nothing left out here.\nJust us, and whatever you're carrying."),
+    # Route 20's
+    'youngster_petey': (False, "Fresh legs! Fresh pockets!\nLet's see what you've got!{be01}", "Okay, okay! I'm going!",
+                        "The forest past the old gate is\nfull of stuff. Full of trouble too."),
+    'youngster_terrell': (False, "I've been watching the path.\nYou're the first in days!{be01}", "I should've kept watching.",
+                          "Don't go into the caves alone.\nI went in with friends."),
+    'lass_isabel': (True, "Pretty bag you've got.\nIt'd look better on me!{be01}", "Hmph! Keep it, then!",
+                    "Everything nice gets taken out\nhere. Sooner or later."),
+    'nursery_aide_kimya': (True, "I have mouths to feed.\nI'm sorry, I really am.{be01}", "Please... Just go.",
+                           "They're waiting for me back\nthere. I'll find something else."),
+    'pkmn_ranger_naoko': (True, "I used to protect this forest.\nNow it protects me!{be01}", "The forest let me down...",
+                          "Rangers don't get paid anymore.\nSo I pay myself."),
+    'pkmn_ranger_bret': (False, "This is my patch.\nYou're trespassing!{be01}", "You can pass. This time.",
+                         "Stay off the high ground.\nThat's where we watch from."),
     'backers_may_mal': (True, "No more cheering! Only taking!\nHand over your stuff!{be01}", "Boo! Hiss!",
                         "I used to cheer on Trainers.\nNow I cheer when they drop things."),
 }
@@ -55,6 +72,24 @@ SCAV_MODEL = {False: 'OBJ_CODE_TEAM_PLASMA_GRUNT_M', True: 'OBJ_CODE_TEAM_PLASMA
 SCAV_CLASS_NAME = 'Scav'
 FLAG_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 SCAV_MAX = int(re.search(r'#define EFU_SCAV_MAX (\d+)', efu_h).group(1))
+FLAG_LOOT_FIRST = int(re.search(r'#define EFU_FLAG_LOOT_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+# The scripts that pick up loot, by tier (gen_efu.py writes them from loot.json and its item tables)
+LOOT_SCRIPTS = {t: 11000 + int(re.search(r'#define EFU_SCRIPT_LOOT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % t.upper(),
+                                         efu_h).group(1)) for t in ('route', 'cave', 'target')}
+# The original item balls' scripts (each gives its own item) and the hidden items'
+ITEM_SCRIPTS = (7000, 7799)
+HIDDEN_SCRIPTS = (8000, 8799)
+# The target, which Route 20's gate to Virbank now opens on
+TARGET_ZONE = 'ZONE_PINWHEEL_FOREST_2'
+# The caves and the target: each zone's loot tier, and which door of Route 3's leads in
+PLACES = {
+    'ZONE_WELLSPRING_CAVE': ('cave', 'ZONE_WELLSPRING_CAVE'),
+    'ZONE_WELLSPRING_CAVE_2': ('cave', 'ZONE_WELLSPRING_CAVE'),
+    'ZONE_CAVE_OF_BEING': ('cave', 'ZONE_CAVE_OF_BEING'),
+    TARGET_ZONE: ('target', TARGET_ZONE),
+}
+# New item balls, where nothing was: where the lake trio stood in the Cave of Being
+NEW_BALLS = {'ZONE_CAVE_OF_BEING': [(27, 18), (17, 7), (9, 16)]}
 
 
 def orig(path):
@@ -94,9 +129,9 @@ def at_level(name, level):
         name = evos[0]['species']
 
 
-def build_encounters():
-    e = json.loads(orig('res/field/encounters/route_3.json'))
-    lo, hi = WILD_LEVELS
+def build_encounters(name, levels):
+    e = json.loads(orig(f'res/field/encounters/{name}.json'))
+    lo, hi = levels
 
     def slots(lst):
         # Every slot over the whole range: the game picks the level at random between a slot's lowest and highest
@@ -112,7 +147,7 @@ def build_encounters():
                 e[season][kind] = {v: slots(l) for v, l in value.items()}
             else:
                 e[season][kind] = slots(value)
-    write('res/field/encounters/route_3.json', e)
+    write(f'res/field/encounters/{name}.json', e)
 
 
 def trainer_file(trainer_id):
@@ -134,7 +169,52 @@ def build_classes():
         write(path, c)
 
 
-def build_events():
+def chunk_of(x, z):
+    return (x // 32, z // 32)
+
+
+def moved(chunk, x, z):
+    zx, zz = bz.ZONE_CHUNKS[chunk]
+    return x + (zx - chunk[0]) * 32, z + (zz - chunk[1]) * 32
+
+
+def move_npc(n):
+    g = n['grid']
+    chunk = chunk_of(g['x'], g['z'])
+    x, z = moved(chunk, g['x'], g['z'])
+    return dict(n, grid=dict(g, x=x, z=z, y=g['y'] + bz.LOWERED.get(chunk, 0) * 4096))
+
+
+def move_warp(w):
+    g = w['grid']
+    chunk = chunk_of(g['x'] // 16, g['z'] // 16)
+    x, z = moved(chunk, g['x'] // 16, g['z'] // 16)
+    # The height is kept as 16 bits, a negative one wrapped
+    y = (g['y'] + bz.LOWERED.get(chunk, 0)) & 0xffff
+    return dict(w, grid=dict(g, x=x * 16 + g['x'] % 16, z=z * 16 + g['z'] % 16, y=y))
+
+
+def move_bg(b):
+    # A background event's grid is x, y (the row) and z (the height)
+    g = b['grid']
+    chunk = chunk_of(g['x'], g['y'])
+    x, z = moved(chunk, g['x'], g['y'])
+    return dict(b, grid=dict(g, x=x, y=z, z=g['z'] + bz.LOWERED.get(chunk, 0)))
+
+
+def move_trigger(t):
+    g = t['grid']
+    chunk = chunk_of(g['x'], g['z'])
+    x, z = moved(chunk, g['x'], g['z'])
+    return dict(t, grid=dict(g, x=x, z=z, y=g['y'] + bz.LOWERED.get(chunk, 0)))
+
+
+def is_item_ball(n):
+    return ITEM_SCRIPTS[0] <= n['script'] <= ITEM_SCRIPTS[1] and n['flag']
+
+
+def build_events(loot):
+    """Route 3's events and Route 20's item balls and doors, in the zone's coordinates; the item balls become loot."""
     e = json.loads(orig('res/field/events/route_3.json'))
     npcs = []
     scavs = []
@@ -150,14 +230,91 @@ def build_events():
                      flag='EVENT_FLAG_0x%04x' % (FLAG_SCAV_FIRST + len(scavs)),
                      area={'width': SCAV_WANDER, 'height': SCAV_WANDER})
             scavs.append(n['script'] - 3000)
-            npcs.append(n)
-        elif n['flag']:
-            # Item balls, which have their flag
-            npcs.append(n)
+            npcs.append(move_npc(n))
+        elif is_item_ball(n):
+            npcs.append(move_npc(loot.ball(n, 'route')))
+    r20 = json.loads(orig('res/field/events/route_20.json'))
+    next_id = max(n['id'] for n in e['npcs']) + 1
+    for n in r20['npcs']:
+        if (n['type'].startswith('ACTOR_EVENT_TYPE_TRAINER') and n['script'] < 5000
+                and scav_key(n['script'] - 3000) in SCAVS):
+            female = SCAVS[scav_key(n['script'] - 3000)][0]
+            n = dict(n, id=next_id, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM',
+                     params=[SCAV_SIGHT, 0, 0], flag='EVENT_FLAG_0x%04x' % (FLAG_SCAV_FIRST + len(scavs)),
+                     area={'width': SCAV_WANDER, 'height': SCAV_WANDER})
+            scavs.append(n['script'] - 3000)
+            npcs.append(move_npc(n))
+        elif is_item_ball(n):
+            npcs.append(move_npc(dict(loot.ball(n, 'route'), id=next_id)))
+        else:
+            continue
+        next_id += 1
     assert len(scavs) <= SCAV_MAX
     e['npcs'] = npcs
+    # Signs and the like stay (Route 3's own scripts); the hidden items go, since they can't be rolled again
+    e['bg_events'] = [move_bg(b) for b in e['bg_events'] if not HIDDEN_SCRIPTS[0] <= b['script'] <= HIDDEN_SCRIPTS[1]]
+    e['triggers'] = [move_trigger(t) for t in e['triggers']]
+    warps = [move_warp(w) for w in e['warps']]
+    # Route 20's doors: the gate to Virbank opens on the target, and the Cave of Being is a cave
+    for w in r20['warps']:
+        w = move_warp(w)
+        if w['zone'] == 'ZONE_VIRBANK_GATE':
+            warps.append(dict(w, zone=TARGET_ZONE, warp=0))
+        elif w['zone'] == 'ZONE_CAVE_OF_BEING':
+            warps.append(dict(w, zone='ZONE_CAVE_OF_BEING', warp=0))
+    e['warps'] = warps
     write('res/field/events/route_3.json', e)
-    return scavs
+    return scavs, {w['zone']: i for i, w in enumerate(warps)}
+
+
+def build_places(loot, route_warps):
+    """The caves and the target: only their item balls, as loot, and their way out to the zone."""
+    for zone, (tier, door) in PLACES.items():
+        name = zone[len('ZONE_'):].lower()
+        e = json.loads(orig(f'res/field/events/{name}.json'))
+        e['npcs'] = [loot.ball(n, tier) for n in e['npcs'] if is_item_ball(n)]
+        for i, (x, z) in enumerate(NEW_BALLS.get(zone, [])):
+            e['npcs'].append(loot.ball({'id': 100 + i, 'model': 'OBJ_CODE_110', 'movement': 'MOVE_CODE_NONE',
+                                        'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': loot.new_flag(), 'script': 0,
+                                        'direction': 'DIR_DOWN', 'params': [0, 0, 0],
+                                        'area': {'width': 0, 'height': 0}, 'grid': {'x': x, 'z': z, 'y': 0}}, tier))
+        e['bg_events'] = [b for b in e['bg_events'] if not HIDDEN_SCRIPTS[0] <= b['script'] <= HIDDEN_SCRIPTS[1]]
+        # Their story (the lake trio, the forest's rangers and scientists) doesn't happen
+        e['triggers'] = []
+        e['init_scripts'] = []
+        warps = []
+        for w in e['warps']:
+            if w['zone'] in ('ZONE_ROUTE_3', 'ZONE_ROUTE_20', 'ZONE_PINWHEEL_FOREST'):
+                warps.append(dict(w, zone='ZONE_ROUTE_3', warp=route_warps[door]))
+            elif w['zone'] in PLACES:
+                # Its other floors
+                warps.append(w)
+            else:
+                # Out anywhere else (the forest's ways to Skyarrow Bridge and Rumination Field) goes, and with it
+                # the warp: these come last, so no other warp's number changes
+                assert all(x['zone'] not in PLACES for x in e['warps'][e['warps'].index(w):])
+                break
+        e['warps'] = warps
+        write(f'res/field/events/{name}.json', e)
+
+
+class Loot:
+    """The loot spots: each item ball's flag and tier, for gen_efu.py's scripts (loot.json)."""
+
+    def __init__(self):
+        self.spots = []
+        self.flags = iter(range(FLAG_LOOT_FIRST, FLAG_LOOT_FIRST + 0x10))
+
+    def new_flag(self):
+        return 'EVENT_FLAG_0x%04x' % next(self.flags)
+
+    def ball(self, n, tier):
+        self.spots.append({'flag': n['flag'], 'tier': tier})
+        return dict(n, script=LOOT_SCRIPTS[tier])
+
+    def save(self):
+        with open(os.path.join(here, 'loot.json'), 'w') as f:
+            f.write(json.dumps(self.spots, indent=4) + '\n')
 
 
 def build_trainers(trainer_ids):
@@ -179,6 +336,12 @@ def build_trainers(trainer_ids):
 
 
 if __name__ == '__main__':
-    build_encounters()
+    build_encounters('route_3', WILD_LEVELS)
+    for place, levels in PLACE_LEVELS.items():
+        build_encounters(place, levels)
     build_classes()
-    build_trainers(build_events())
+    loot = Loot()
+    scavs, route_warps = build_events(loot)
+    build_places(loot, route_warps)
+    loot.save()
+    build_trainers(scavs)

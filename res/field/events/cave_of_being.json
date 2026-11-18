@@ -3,33 +3,18 @@
     "bg_events": [],
     "npcs": [
         {
-            "id": 0,
-            "model": "OBJ_CODE_105",
+            "id": 100,
+            "model": "OBJ_CODE_110",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0395",
-            "script": 3,
-            "direction": "DIR_UP",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 18,
-                "z": 20,
-                "y": 0
-            }
-        },
-        {
-            "id": 1,
-            "model": "OBJ_CODE_POKEMON_AZELF",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0394",
-            "script": 2000,
-            "direction": "DIR_LEFT",
-            "params": [ 0, 0, 0 ],
+            "flag": "EVENT_FLAG_0x0a90",
+            "script": 11009,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -41,14 +26,18 @@
             }
         },
         {
-            "id": 2,
-            "model": "OBJ_CODE_POKEMON_UXIE",
-            "movement": "MOVE_CODE_FACE_DOWN",
+            "id": 101,
+            "model": "OBJ_CODE_110",
+            "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0394",
-            "script": 2000,
+            "flag": "EVENT_FLAG_0x0a91",
+            "script": 11009,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -60,14 +49,18 @@
             }
         },
         {
-            "id": 3,
-            "model": "OBJ_CODE_POKEMON_MESPRIT",
+            "id": 102,
+            "model": "OBJ_CODE_110",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0394",
-            "script": 2000,
-            "direction": "DIR_RIGHT",
-            "params": [ 0, 0, 0 ],
+            "flag": "EVENT_FLAG_0x0a92",
+            "script": 11009,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -81,8 +74,8 @@
     ],
     "warps": [
         {
-            "zone": "ZONE_ROUTE_20",
-            "warp": 1,
+            "zone": "ZONE_ROUTE_3",
+            "warp": 5,
             "unk4": 1,
             "transition": 4,
             "grid": {
@@ -95,35 +88,6 @@
             }
         }
     ],
-    "triggers": [
-        {
-            "script": 1,
-            "var": "EVENT_WORK_0x4115",
-            "value": 2,
-            "type": 0,
-            "grid": {
-                "x": 16,
-                "z": 22,
-                "width": 5,
-                "height": 1,
-                "y": 0
-            },
-            "unk14": 0
-        },
-        {
-            "script": 2,
-            "var": "EVENT_WORK_0x4115",
-            "value": 3,
-            "type": 0,
-            "grid": {
-                "x": 14,
-                "z": 20,
-                "width": 9,
-                "height": 1,
-                "y": 0
-            },
-            "unk14": 0
-        }
-    ],
+    "triggers": [],
     "init_scripts": []
 }

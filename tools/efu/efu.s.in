@@ -20,6 +20,9 @@
     ScriptEntry Script_RaidReturn
     ScriptEntry Script_RaidLost
     ScriptEntry Script_Blackout
+    ScriptEntry Script_LootRoute
+    ScriptEntry Script_LootCave
+    ScriptEntry Script_LootTarget
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -96,6 +99,8 @@ Script_RaidDepart:
     .endr
     WorkSetConst EFU_WORK_EXPLORE_START, 0
     WorkSetConst EFU_WORK_SCAVS_OUT, 0
+    // New loot: each spot's item ball is out or not by its tier's chance (L_LootRoll, from loot.json)
+    VMCall L_LootRoll
     WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     SystemMsg Efu_Text_Saving, 2
     SaveDataWrite 0x8010
@@ -197,3 +202,27 @@ L_ConfirmStarter:
     LastKeyWait
     VMReturn
     .balign 4, 0
+
+// Picking up loot: what the ball holds is rolled from its tier's table (gen_efu.py's LOOT), and the item ball script
+// of the original (global 7400, which the original balls call with their item) gives it and hides the ball by its flag
+Script_LootRoute:
+    ActorsPauseAll
+    VMCall L_LootPickRoute
+    VMJump L_LootGive
+
+Script_LootCave:
+    ActorsPauseAll
+    VMCall L_LootPickCave
+    VMJump L_LootGive
+
+Script_LootTarget:
+    ActorsPauseAll
+    VMCall L_LootPickTarget
+L_LootGive:
+    WorkSetConst 0x800d, 1
+    RTCallGlobal 7400
+    FinishAllEvents
+    ActorsUnpauseAll
+    VMHalt
+
+@LOOT@

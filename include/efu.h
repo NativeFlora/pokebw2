@@ -19,6 +19,10 @@
 #define EFU_SCRIPT_RAID_RETURN (EFU_SCRIPT_FIRST + 5)
 #define EFU_SCRIPT_RAID_LOST (EFU_SCRIPT_FIRST + 6)
 #define EFU_SCRIPT_BLACKOUT (EFU_SCRIPT_FIRST + 7)
+// An item ball of an exploration zone, by the tier of its place: what it holds is rolled when it is picked up
+#define EFU_SCRIPT_LOOT_ROUTE (EFU_SCRIPT_FIRST + 8)
+#define EFU_SCRIPT_LOOT_CAVE (EFU_SCRIPT_FIRST + 9)
+#define EFU_SCRIPT_LOOT_TARGET (EFU_SCRIPT_FIRST + 10)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -54,6 +58,9 @@
 #define EFU_SCAV_SPAWN_SECONDS (10 * 60)
 #define EFU_FLAG_SCAV_FIRST 0xa80
 #define EFU_SCAV_MAX 16
+// The hide flags of the item balls placed where the original had none (build_raid.py's NEW_BALLS), from this one.
+// Heading out rolls every loot spot's flag again, these and the original balls' (tools/efu/loot.json)
+#define EFU_FLAG_LOOT_FIRST 0xa90
 
 // Fleeing (btl_server_flow.c): the original's cap on the escape attempts it counts, and the count that means the
 // player failed to get away this turn and gets away at its end

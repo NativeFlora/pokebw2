@@ -641,7 +641,8 @@ BOOL FieldScript_CheckSCRID(u16 scriptId) {
     if (scriptId == 0x7d0) {
         return FALSE;
     }
-    if (scriptId < 0x2aa2) {
+    // Escape from Unova: its own scripts (efu.s) above the original's last are actors' scripts too, the loot balls'
+    if (scriptId <= EFU_SCRIPT_LAST) {
         return TRUE;
     }
     return FALSE;

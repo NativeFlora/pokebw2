@@ -1,0 +1,25 @@
+{
+    "$schema": "../texture_imports.schema.json",
+    "textures": [
+        {
+            "texture": "54ki02ax",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_186"
+        },
+        {
+            "texture": "54ki02bx",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_186"
+        },
+        {
+            "texture": "54ki02c",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_186"
+        },
+        {
+            "texture": "54ki02dx",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_186"
+        },
+        {
+            "texture": "54ochigake",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_186"
+        }
+    ]
+}

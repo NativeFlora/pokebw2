@@ -1,0 +1,126 @@
+[
+    {
+        "flag": "EVENT_FLAG_0x055e",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x055f",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0560",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0561",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0562",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0563",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x044f",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0450",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0451",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0452",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0453",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0454",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0455",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0456",
+        "tier": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0565",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0569",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0566",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0567",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0568",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x056b",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0a90",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0a91",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0a92",
+        "tier": "cave"
+    },
+    {
+        "flag": "EVENT_FLAG_0x054f",
+        "tier": "target"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0556",
+        "tier": "target"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0555",
+        "tier": "target"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0554",
+        "tier": "target"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0553",
+        "tier": "target"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0552",
+        "tier": "target"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0550",
+        "tier": "target"
+    },
+    {
+        "flag": "EVENT_FLAG_0x054e",
+        "tier": "target"
+    }
+]

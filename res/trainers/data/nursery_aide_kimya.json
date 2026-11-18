@@ -1,10 +1,12 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Kimya",
-    "class": "TRAINER_CLASS_NURSERY_AIDE",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 10,
     "reward": "ITEM_NONE",
@@ -12,7 +14,7 @@
         {
             "species": "SPECIES_DUNSPARCE",
             "form": 0,
-            "level": 11,
+            "level": 42,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -21,15 +23,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "I always give it my best when I'm\naround kids and Pokémon!{be01}"
+            "text": "I have mouths to feed.\nI'm sorry, I really am.{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Oh no! I'm not being a very good\nexample to the kids, am I?"
+            "text": "Please... Just go."
         },
         {
             "type": 2,
-            "text": "Every day is full of amazing, new\ndiscoveries when I'm with children{be00}\nand Pokémon!"
+            "text": "They're waiting for me back\nthere. I'll find something else."
         }
     ]
 }

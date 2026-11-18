@@ -56,8 +56,45 @@ def tree(lo, hi, label):
     tree(lo, mid, label + '_L')
     tree(mid, hi, label + '_H')
 tree(0, len(pool), 'L_LostSoulPick')
+# Loot: each tier's table (items with their weights), and how often a spot of the tier comes up empty, in percent
+LOOT = {
+    'Route': (40, {'POTION': 6, 'POKE_BALL': 5, 'ORAN_BERRY': 3, 'ANTIDOTE': 2, 'PARLYZ_HEAL': 2, 'REPEL': 2,
+                   'GREAT_BALL': 2, 'SUPER_POTION': 2, 'AWAKENING': 1, 'BURN_HEAL': 1, 'ICE_HEAL': 1}),
+    'Cave': (25, {'SUPER_POTION': 4, 'GREAT_BALL': 4, 'FULL_HEAL': 2, 'REVIVE': 2, 'ETHER': 2, 'HYPER_POTION': 2,
+                  'SITRUS_BERRY': 2, 'ULTRA_BALL': 1, 'X_ATTACK': 1, 'X_DEFEND': 1, 'FIRE_STONE': 1, 'WATER_STONE': 1,
+                  'THUNDERSTONE': 1, 'LEAF_STONE': 1, 'MOON_STONE': 1}),
+    'Target': (15, {'HYPER_POTION': 4, 'ULTRA_BALL': 4, 'REVIVE': 3, 'MAX_POTION': 2, 'FULL_RESTORE': 2,
+                    'RARE_CANDY': 2, 'ELIXIR': 2, 'MAX_REVIVE': 1, 'PP_UP': 1, 'LEFTOVERS': 1, 'SUN_STONE': 1,
+                    'SHINY_STONE': 1, 'DUSK_STONE': 1, 'DAWN_STONE': 1}),
+}
+items = [l.split('=')[0].strip() for l in open(root + '/generated/items.txt') if l.startswith('ITEM_')]
+loot = []
+for tier, (empty, table) in LOOT.items():
+    # Random picks a slot of the table laid out by weight, and a binary search of comparisons finds its item
+    slots = [items.index('ITEM_' + i) for i, w in table.items() for _ in range(w)]
+    loot.append(f'L_LootPick{tier}:\n    Random 0x8020, {len(slots)}\n')
+    def pick(lo, hi, label):
+        if hi - lo == 1 or len(set(slots[lo:hi])) == 1:
+            loot.append(f'{label}:\n    WorkSetConst 0x800c, {slots[lo]}\n    VMReturn\n')
+            return
+        mid = (lo + hi) // 2
+        loot.append(f'{label}:\n    WorkCmpConst 0x8020, {mid}\n    VMJumpIf CMP_GE, {label}_H\n')
+        pick(lo, mid, label + '_L')
+        pick(mid, hi, label + '_H')
+    pick(0, len(slots), f'L_LootPick{tier}_')
+# Heading out: each spot's ball is out (its hide flag cleared) unless its tier's empty chance comes up
+spots = json.load(open(os.path.join(here, 'loot.json')))
+loot.append('L_LootRoll:\n')
+for i, spot in enumerate(spots):
+    flag = int(spot['flag'].split('0x')[1], 16)
+    empty = LOOT[spot['tier'].capitalize()][0]
+    loot.append(f'    Random 0x8020, 100\n    WorkCmpConst 0x8020, {empty}\n    VMJumpIf CMP_GE, L_LootOut_{i}\n'
+                f'    FlagSet {flag:#x}\n    VMJump L_LootNext_{i}\nL_LootOut_{i}:\n    FlagReset {flag:#x}\n'
+                f'L_LootNext_{i}:\n')
+loot.append('    VMReturn\n')
 tmpl = open(os.path.join(here, 'efu.s.in')).read()
 tmpl = tmpl.replace('@LOST_SOUL@\n', ''.join(ls))
+tmpl = tmpl.replace('@LOOT@\n', ''.join(loot))
 open(root + '/res/field/scripts/efu.s', 'w').write(tmpl.replace('@STARTER_MENUS@\n', ''.join(s)))
 hand = open(os.path.join(here, 'efu.txt.in'), encoding='utf-8').read()
 open(root + '/res/text/script/efu.txt', 'w', encoding='utf-8').write(hand + '\n'.join(text) + '\n')

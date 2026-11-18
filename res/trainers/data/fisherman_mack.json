@@ -14,7 +14,15 @@
         {
             "species": "SPECIES_GYARADOS",
             "form": 0,
-            "level": 57,
+            "level": 58,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_GYARADOS",
+            "form": 0,
+            "level": 59,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -30,7 +38,7 @@
         {
             "species": "SPECIES_GYARADOS",
             "form": 0,
-            "level": 57,
+            "level": 59,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -46,15 +54,7 @@
         {
             "species": "SPECIES_GYARADOS",
             "form": 0,
-            "level": 57,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_GYARADOS",
-            "form": 0,
-            "level": 58,
+            "level": 59,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
