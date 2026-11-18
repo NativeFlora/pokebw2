@@ -68,6 +68,12 @@ enum {
 // An action that is not offered by a menu
 #define ITEMMENU_ACTION_NONE 0xff
 
+// Escape from Unova: the bag's animations, made quick: the fades in and out (6 frames a step in the original), each
+// step of the cursor's flash when an item is picked (4) and the wait after a pocket arrow (6)
+#define EFU_BAG_FADE_FRAMES 1
+#define EFU_BAG_FLASH_FRAMES 1
+#define EFU_BAG_ARROW_FRAMES 2
+
 // Escape from Unova: the bag has only the Items, TMs and HMs, and Key Items pockets, and no Free Space. The Items
 // pocket is whichever of the Items, Medicine and Berries pockets holds the bag's one holdable item (efu_bag.h), set
 // when the bag opens, in the work's efuItemPocket. Whether a pocket is one the bag shows
@@ -1126,6 +1132,16 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
             ItemMenu_SetState(work, ItemMenu_StateFlashCursor);
             return;
         }
+        // Escape from Unova: A in the empty Items pocket opens the party screen, to take an item from a Pokémon. The
+        // bag leaves as if it had been opened from there (ItemMenuProc_Exit), which goes back to it
+        if (work->pocket == work->efuItemPocket && work->mode == BAG_MODE_NORMAL) {
+            work->result = BAG_RESULT_BACK;
+            work->item = ITEM_NONE;
+            work->efuOpenParty = TRUE;
+            GCTX_HIDSetUsingTouch(FALSE);
+            ItemMenu_PressButton(work, ITEMMENU_BUTTON_BACK, NULL);
+            return;
+        }
     } else if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_SELECT) {
         if (work->pocket == BAG_POCKET_FREE_SPACE) {
             return;
@@ -2004,7 +2020,12 @@ static void ItemMenu_GetItemActions(ItemMenuWork *work, u8 *actions) {
                 actions[2] = ITEMMENU_ACTION_REGISTER;
             }
         }
-        // Escape from Unova: no Free Space (the slot stays empty)
+        // Escape from Unova: no Free Space (the slot stays empty), and Give comes first, for moving the one item
+        // quickly
+        if (actions[1] == ITEMMENU_ACTION_GIVE) {
+            actions[1] = actions[0];
+            actions[0] = ITEMMENU_ACTION_GIVE;
+        }
         actions[4] = ITEMMENU_ACTION_CANCEL;
         GFL_HeapFree(data);
     }
@@ -2199,7 +2220,8 @@ static void ItemMenu_VBlank(TCB *tcb, void *data) {
 // Fades the bag in
 static void ItemMenu_StateFadeIn(ItemMenuWork *work) {
     if (PrintQueue_IsEmpty(work->printQueue)) {
-        GFL_WipeSet(WIPE_MODE_BOTH, WIPE_TYPE_FADE_IN, WIPE_TYPE_FADE_IN, WIPE_COLOR_BLACK, 6, 1, work->heapId);
+        GFL_WipeSet(WIPE_MODE_BOTH, WIPE_TYPE_FADE_IN, WIPE_TYPE_FADE_IN, WIPE_COLOR_BLACK, EFU_BAG_FADE_FRAMES, 1,
+                    work->heapId);
         GFL_SndSEPlay(SEQ_SE_SYS_90);
         ItemMenu_SetState(work, ItemMenu_StateWaitFadeIn);
     }
@@ -2336,7 +2358,8 @@ static BOOL ItemMenuProc_Main(GameProc *proc, u32 *state, void *param, void *dat
     ItemMenuWork *work = data;
 
     if (work->state == NULL) {
-        GFL_WipeSet(WIPE_MODE_BOTH, WIPE_TYPE_FADE_OUT, WIPE_TYPE_FADE_OUT, WIPE_COLOR_BLACK, 6, 1, work->heapId);
+        GFL_WipeSet(WIPE_MODE_BOTH, WIPE_TYPE_FADE_OUT, WIPE_TYPE_FADE_OUT, WIPE_COLOR_BLACK, EFU_BAG_FADE_FRAMES, 1,
+                    work->heapId);
         return TRUE;
     }
     work->drawnScroll = work->scroll;
@@ -2395,6 +2418,9 @@ static BOOL ItemMenuProc_Exit(GameProc *proc, u32 *state, void *param, void *dat
     GFL_BGSysFree();
     bag->result = work->result;
     bag->item = work->item;
+    if (work->efuOpenParty) {
+        bag->mode = BAG_MODE_GIVE_ITEM;
+    }
     ItemMenu_SaveFreeSpaceFilter(work->cursor, bag->mode, bag->result, work->freeSpaceFilter);
     setKeypressFramecounts(work->savedRepeatWait, work->savedRepeatStart);
     GFL_ProcReleaseSubsystem(proc);
@@ -2439,7 +2465,7 @@ static void ItemMenu_StateFlashCursor(ItemMenuWork *work) {
     case ITEMMENU_FLASH_WAIT_SECOND:
     case ITEMMENU_FLASH_WAIT_RESTORE:
         work->buttonAnimTimer++;
-        if (work->buttonAnimTimer == 4) {
+        if (work->buttonAnimTimer == EFU_BAG_FLASH_FRAMES) {
             work->buttonAnimTimer = 0;
             work->buttonAnim++;
         }
@@ -2508,7 +2534,7 @@ static void ItemMenu_PressPocketArrow(ItemMenuWork *work, s32 oldPocket, BOOL ri
         anim = ITEMMENU_TOUCHBAR_ANM_POCKET_LEFT_PRESS;
     }
     work->buttonAnim = right;
-    work->buttonAnimTimer = 6;
+    work->buttonAnimTimer = EFU_BAG_ARROW_FRAMES;
     ClActor_SetAnimTime(work->buttons[work->buttonAnim], 0);
     ClActor_SetSequence(work->buttons[work->buttonAnim], anim);
     ClActor_SetAutoAnim(work->buttons[work->buttonAnim], TRUE);
