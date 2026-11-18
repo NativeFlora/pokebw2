@@ -178,7 +178,7 @@ def build_interiors():
     e['npcs'] = [
         npc(1, 'OBJ_CODE_78', efu_script('NURSE'), efu_flag('BASE_JOY_HIDDEN'), 7, 10, 'DIR_DOWN', 'MOVE_CODE_FACE_DOWN'),
         npc(0, 'OBJ_CODE_77', efu_script('CLERK'), efu_flag('BASE_CLERK_HIDDEN'), 11, 16, 'DIR_LEFT', 'MOVE_CODE_FACE_LEFT'),
-        npc(8, 'OBJ_CODE_77', efu_script('CLERK_INTRO'), efu_flag('CLERK_MET'), 9, 12, 'DIR_DOWN'),
+        npc(8, 'OBJ_CODE_77', efu_script('CLERK_INTRO'), efu_flag('CLERK_MET'), 1, 13, 'DIR_RIGHT', 'MOVE_CODE_FACE_RIGHT'),
     ]
     e['init_scripts'] = [{'type': 2, 'script': efu_script('POKECEN_INIT')}]
     e['bg_events'] = [b for b in e['bg_events'] if b['script'] == 2108]
