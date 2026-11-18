@@ -6,7 +6,7 @@ Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) an
 - the route's Trainers (res/trainers/data): the scavs, single battles with their Pokémon at 40 to 60, evolved as far as
   that level takes them;
 - res/field/events/route_3.json: nobody but the scavs and the items; each scav, a Team Plasma Grunt to look at, is
-  hidden by its own flag from EFU_FLAG_SCAV_FIRST, wanders (MOVE_CODE_WALK_RANDOM) once it comes out and sees
+  hidden by its own flag from EFU_FLAG_SCAV_FIRST, stands looking around (MOVE_CODE_TURN_RANDOM) once it comes out, never stepping until it has seen the player, and sees
   EFU_SCAV_SIGHT tiles, and the pursuit (event_trainer_eye.c) does the rest;
 - the Grunts' Trainer classes, named Scav.
 """
@@ -146,7 +146,7 @@ def build_events():
                 continue
             # Hidden by their own flag until EventTrainerEye_EfuPursue brings them out
             female = SCAVS[scav_key(n['script'] - 3000)][0]
-            n = dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_WALK_RANDOM', params=[SCAV_SIGHT, 0, 0],
+            n = dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM', params=[SCAV_SIGHT, 0, 0],
                      flag='EVENT_FLAG_0x%04x' % (FLAG_SCAV_FIRST + len(scavs)),
                      area={'width': SCAV_WANDER, 'height': SCAV_WANDER})
             scavs.append(n['script'] - 3000)

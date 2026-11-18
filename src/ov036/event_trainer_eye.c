@@ -634,11 +634,12 @@ static GameEvent *CreateTrainerClashEvent(Field *field, FieldActor *actor) {
     return EventScriptCall_Create(gsys, SCRID_SPECIAL_TRAINER_CLASH, actor, 1);
 }
 
-// Escape from Unova: the scavs' pursuit. A raid's Trainers wander, and their sight range (user parameter 0) is
-// EFU_SCAV_SIGHT. A wandering scav notices the player with nothing in between, within EFU_SCAV_CATCH tiles whichever way
-// it faces or up to EFU_SCAV_SIGHT tiles away in the quarter it faces, and gives chase. While it chases, its user
-// parameter EFU_SCAV_PARAM_CHASE is 1 more than the steps the player has been out of its sight, and
-// EFU_SCAV_PARAM_MOVE_CODE keeps the move code it goes back to once it loses the player
+// Escape from Unova: the scavs' pursuit. A raid's Trainers stand looking around, never stepping until they have seen
+// the player, and their sight range (user parameter 0) is EFU_SCAV_SIGHT. A scav that isn't chasing notices the player
+// with nothing in between, within EFU_SCAV_CATCH tiles whichever way it faces or up to EFU_SCAV_SIGHT tiles away in the
+// quarter it faces, and gives chase. While it chases, its user parameter EFU_SCAV_PARAM_CHASE is 1 more than the steps
+// the player has been out of its sight, and EFU_SCAV_PARAM_MOVE_CODE keeps the move code it goes back to once it loses
+// the player
 
 static BOOL Efu_IsOnRaid(Field *field) {
     EventWork *eventWork = GameData_GetEventWork(GSYS_GetGameData(Field_GetGameSystem(field)));
@@ -754,9 +755,9 @@ static void EfuScav_Spawn(Field *field, const GridPos *playerPos) {
     }
 }
 
-// Each step the player takes: a wandering scav may notice the player, every scav on the chase takes one step the most
+// Each step the player takes: a scav that isn't chasing may notice the player, every scav on the chase takes one step the most
 // direct way it can toward the tile the player stepped onto, and one within EFU_SCAV_CATCH tiles starts its battle. One
-// that hasn't seen the player for EFU_SCAV_LOSE_STEPS steps in a row gives up and goes back to wandering
+// that hasn't seen the player for EFU_SCAV_LOSE_STEPS steps in a row gives up and goes back to looking around
 GameEvent *EventTrainerEye_EfuPursue(Field *field) {
     FieldActor *player;
     MMSys *actorSys;

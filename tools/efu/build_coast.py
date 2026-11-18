@@ -159,13 +159,36 @@ MATERIALS = {
         'extensions': {'KHR_materials_unlit': {}}, 'alphaMode': 'BLEND'},
     'sea_jimen': {'name': 'sea_jimen', 'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'metallicFactor': 0},
                   'extensions': {'KHR_materials_unlit': {}}},
+    'grass01ax': {'name': 'grass01ax', 'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'metallicFactor': 0},
+                  'extensions': {'KHR_materials_unlit': {}}},
     'sea_zanami': {'name': 'sea_zanami', 'pbrMetallicRoughness': {'baseColorTexture': {'index': 0},
                                                                   'metallicFactor': 0},
                    'extensions': {'KHR_materials_unlit': {}}, 'alphaMode': 'BLEND'},
 }
 # Where each new material's image is (the packer binds it by the file's name)
 IMAGE_SET = {'sea_mizu1': 'shared_dansa01a_10', 'sea_mizu1_1': 'shared_dansa01a_10',
-             'sea_jimen': 'shared_dansa01a_59', 'sea_zanami': 'shared_dansa01a_59'}
+             'sea_jimen': 'shared_dansa01a_59', 'sea_zanami': 'shared_dansa01a_59', 'grass01ax': 'shared_dansa01a_10'}
+
+
+def covered_tiles(triangles):
+    """The tiles whose centers flat triangles (ground, not trees) cover, as (x, z)."""
+    def side(p, a, b):
+        return (p[0] - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (p[1] - b[1])
+
+    tiles = set()
+    for t in triangles:
+        ys = [v[1] for v in t]
+        if max(ys) - min(ys) > 6 or sum(ys) / 3 > 12:
+            continue
+        a, b, c = [(v[0], v[2]) for v in t]
+        xs, zs = [v[0] for v in t], [v[2] for v in t]
+        for tz in range(max(0, int((min(zs) + 256) // TILE)), min(CHUNK, int((max(zs) + 256) // TILE) + 1)):
+            for tx in range(max(0, int((min(xs) + 256) // TILE)), min(CHUNK, int((max(xs) + 256) // TILE) + 1)):
+                p = (tx * TILE - 256 + TILE / 2, tz * TILE - 256 + TILE / 2)
+                d = (side(p, a, b), side(p, b, c), side(p, c, a))
+                if not (min(d) < 0 < max(d)):
+                    tiles.add((tx, tz))
+    return tiles
 
 
 def read_glb(path):
@@ -242,7 +265,9 @@ class Writer:
     def add_prims(self, prims):
         for name, (verts, tris) in prims.by_material.items():
             image = name.split('_1')[0] if name == 'sea_mizu1_1' else name
-            material = self.material(MATERIALS[name], f'../../textures/{IMAGE_SET[name]}/{image}.png')
+            names = [m['name'] for m in self.doc['materials']]
+            material = names.index(name) if name in names else self.material(
+                MATERIALS[name], f'../../textures/{IMAGE_SET[name]}/{image}.png')
             # Lit from straight above like the original ground (the writer turns light 0 on for shapes with normals),
             # so the beach and the sea darken at night with the rest of the map
             for chunk_start in range(0, len(tris), 20000):
@@ -312,6 +337,7 @@ def build_nacrene_chunk(pos, folder):
     mesh = doc['meshes'][0]
     w = Writer(mesh['name'])
     edge = NACRENE_SEA_ROWS * TILE - 256
+    ground = set()
     for prim in mesh['primitives']:
         att = prim['attributes']
         positions = accessor(doc, binary, att['POSITION'])
@@ -331,6 +357,8 @@ def build_nacrene_chunk(pos, folder):
         tris = [t for t in tris if keep(t)]
         if not tris:
             continue
+        if doc['materials'][prim['material']].get('alphaMode') != 'BLEND':
+            ground |= covered_tiles([[positions[i] for i in t] for t in tris])
         used = sorted({i for t in tris for i in t})
         remap = {old: new for new, old in enumerate(used)}
         old = doc['materials'][prim['material']]
@@ -351,6 +379,15 @@ def build_nacrene_chunk(pos, folder):
             x0, x1 = tx * TILE - 256, (tx + 1) * TILE - 256
             prims.quad('sea_jimen', [(x, -1.0, z, x / TILE, z / TILE) for x, z in ((x0, z0), (x1, z0), (x1, z1),
                                                                                   (x0, z1))])
+    # Grass under what the drop left bare further south: the trees in the north-west corner stood on ground that reached
+    # past the edge
+    for tz in range(NACRENE_SEA_ROWS + 2, CHUNK):
+        for tx in range(CHUNK):
+            if (tx, tz) not in ground:
+                x0, z0 = tx * TILE - 256, tz * TILE - 256
+                prims.quad('grass01ax', [(x, -0.5, z, x / TILE, z / TILE) for x, z in ((x0, z0), (x0 + TILE, z0),
+                                                                                     (x0 + TILE, z0 + TILE),
+                                                                                     (x0, z0 + TILE))])
     w.add_prims(prims)
     # The props: those north of the edge go (the rubble along it stays)
     for node in doc['nodes']:

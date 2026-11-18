@@ -36,7 +36,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | New game start, the lost-raid check on continue, and the seasons (one per raid from winter, not the clock) | `src/ov035/event_mapchange.c` (`Efu_GetSeason`) |
 | Blacking out: home, the team gone, a new Pokémon, a save | `src/ov012/event_battle_lose.c`, `FieldMapControl_LoadBlackoutZone` in `src/ov035/event_mapchange.c`, `Script_Blackout` |
 | Options on a new game (fastest text, Set battle style, no battle animations) | `Config_Init` in `src/system/config.c` |
-| The base's beach and sea (Undella's sand and surf textures) | `tools/efu/build_coast.py`, run by `build_base.py` |
+| The base's beach and sea (Undella's sand and surf textures), and the grass filled in where cutting off the north left the ground bare | `tools/efu/build_coast.py`, run by `build_base.py` |
 | Route 3, the first raid zone: wild Pokémon at 10 to 20, the scavs at 40 to 60 and their lines | `tools/efu/build_raid.py` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` in `src/ov036/event_trainer_eye.c`, called each step from `src/ov036/fieldmap_event.c` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs) |
@@ -105,13 +105,16 @@ Scav) and given new lines by `build_raid.py`, start hidden: heading out sets the
 - `EfuScav_Spawn` starts the exploration's clock on its first step, and once `EFU_SCAV_SPAWN_SECONDS` (10 minutes) of
   play time have passed, and again each time that much more has, brings out the hidden scav furthest from the player
   on the current map, with its defeat on an earlier exploration forgotten.
-- A wandering scav that sees the player (nothing in the way on the straight line between them) within
+- A scav that is out stands where it came out, looking around (`MOVE_CODE_TURN_RANDOM`), and never steps until it
+  has seen the player: a scav wandering by its move code could be caught between two tiles when a chase or battle
+  began, and the game locked up.
+- A scav that sees the player (nothing in the way on the straight line between them) within
   `EFU_SCAV_CATCH` tiles whichever way it faces, or up to `EFU_SCAV_SIGHT` (7) tiles away in the quarter it faces,
   shows a "!" and gives chase.
 - A chasing scav takes one walking step (`ACMD_WALK_8F`, so it falls behind a running player) toward the tile the
   player stepped onto, the longer way first, the other if that's blocked, or to the side when the player is straight
   ahead and the way is blocked. It moves only when the player steps. Within `EFU_SCAV_CATCH` tiles it starts its
-  battle, and after `EFU_SCAV_LOSE_STEPS` steps in a row out of sight it shows a "?" and goes back to wandering. The
+  battle, and after `EFU_SCAV_LOSE_STEPS` steps in a row out of sight it shows a "?" and goes back to looking around where it stopped. The
   chase lives in the actor's user parameters 1 and 2, which the event data leaves 0.
 
 ## Fleeing
