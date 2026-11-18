@@ -13,25 +13,25 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_JUMPLUFF",
+            "species": "SPECIES_HOPPIP",
             "form": 0,
-            "level": 50,
+            "level": 17,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_JUMPLUFF",
+            "species": "SPECIES_SKIPLOOM",
             "form": 0,
-            "level": 51,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_BELLOSSOM",
+            "species": "SPECIES_ODDISH",
             "form": 0,
-            "level": 50,
+            "level": 17,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

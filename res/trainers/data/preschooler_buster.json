@@ -10,9 +10,9 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_LUCARIO",
+            "species": "SPECIES_RIOLU",
             "form": 0,
-            "level": 53,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,7 +20,7 @@
         {
             "species": "SPECIES_LEDIAN",
             "form": 0,
-            "level": 54,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

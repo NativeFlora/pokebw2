@@ -661,19 +661,18 @@ static void EfuScav_StopChase(Field *field, FieldActor *actor) {
     FldeffEmotionBubble_StartHeld(Field_GetFieldEffects(field), actor, EMOTION_BUBBLE_QUESTION, TRUE);
 }
 
-// The direction of the longer way from one tile to another (across on a tie), and the steps between them with diagonal
-// ones allowed
+// The direction of the longer way from one tile to another (across on a tie), and the steps between them without
+// diagonal ones, so only a scav straight beside the player is next to it
 static u16 EfuScav_DirTo(const GridPos *from, const GridPos *to, int *dist) {
     int dx = to->x - from->x;
     int dz = to->z - from->z;
     int adx = dx < 0 ? -dx : dx;
     int adz = dz < 0 ? -dz : dz;
 
+    *dist = adx + adz;
     if (adx >= adz) {
-        *dist = adx;
         return dx < 0 ? DIR_LEFT : DIR_RIGHT;
     }
-    *dist = adz;
     return dz < 0 ? DIR_UP : DIR_DOWN;
 }
 

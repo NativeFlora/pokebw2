@@ -10,17 +10,41 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_METAGROSS",
+            "species": "SPECIES_BELDUM",
             "form": 0,
-            "level": 56,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_ZWEILOUS",
+            "species": "SPECIES_DEINO",
             "form": 0,
-            "level": 57,
+            "level": 19,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PETILIL",
+            "form": 0,
+            "level": 18,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_GOLDEEN",
+            "form": 0,
+            "level": 19,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_VIGOROTH",
+            "form": 0,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

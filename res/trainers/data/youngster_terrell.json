@@ -12,9 +12,17 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_WATCHOG",
+            "species": "SPECIES_PATRAT",
             "form": 0,
-            "level": 40,
+            "level": 14,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PANPOUR",
+            "form": 0,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

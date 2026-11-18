@@ -23,6 +23,7 @@
     ScriptEntry Script_LootRoute
     ScriptEntry Script_LootCave
     ScriptEntry Script_LootTarget
+    ScriptEntry Script_ScavDrop
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -1894,6 +1895,30 @@ L_LootNoRoom:
     LastKeyWait
     SystemMsgClose
     ActorsUnpauseAll
+    VMHalt
+
+// After a win against a scav (global_3000.s calls it): it drops an item from the target's table, which the player takes
+// if the bag has room
+Script_ScavDrop:
+    VMCall L_LootPickTarget
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    ItemCheckSpace 0x800c, 1, 0x8010
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_ScavDropFull
+    ItemAdd 0x800c, 1, 0x8010
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_ScavDrop, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+    RTEndGlobal
+    VMHalt
+
+L_ScavDropFull:
+    SystemMsg Efu_Text_ScavDropFull, 2
+    LastKeyWait
+    SystemMsgClose
+    RTEndGlobal
     VMHalt
 
 L_LootPickRoute:

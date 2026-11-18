@@ -23,6 +23,8 @@
 #define EFU_SCRIPT_LOOT_ROUTE (EFU_SCRIPT_FIRST + 8)
 #define EFU_SCRIPT_LOOT_CAVE (EFU_SCRIPT_FIRST + 9)
 #define EFU_SCRIPT_LOOT_TARGET (EFU_SCRIPT_FIRST + 10)
+// Run (RTCallGlobal) after each win against a scav (global_3000.s): it drops an item from the target's table
+#define EFU_SCRIPT_SCAV_DROP (EFU_SCRIPT_FIRST + 11)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -45,9 +47,10 @@
 #define EFU_SEASON(raids) ((SEASON_WINTER + (raids)) % SEASON_COUNT)
 
 // The scavs' pursuit (event_trainer_eye.c): how far they see, the distance at which they notice the player whichever
-// way they face and a chase becomes a battle, and the steps out of sight before they give up
+// way they face and a chase becomes a battle (straight beside them), and the steps out of sight before they give up.
+// Distances are in steps without diagonal ones
 #define EFU_SCAV_SIGHT 7
-#define EFU_SCAV_CATCH 3
+#define EFU_SCAV_CATCH 1
 #define EFU_SCAV_LOSE_STEPS 6
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
 #define EFU_SCAV_PARAM_CHASE 1

@@ -10,7 +10,7 @@ Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) an
   EFU_SCAV_SIGHT tiles, and the pursuit (event_trainer_eye.c) does the rest;
 - the Grunts' Trainer classes, named Scav.
 """
-import json, os, re, subprocess
+import json, os, random, re, subprocess
 
 import build_zone as bz
 
@@ -21,7 +21,10 @@ BASE_COMMIT = 'origin/main'
 WILD_LEVELS = (2, 15)
 # The caves' and the target's wild Pokémon, a little tougher than the route's
 PLACE_LEVELS = {'wellspring_cave': (8, 18), 'wellspring_cave_2': (8, 18), 'pinwheel_forest_2': (12, 22)}
-SCAV_LEVELS = (40, 60)
+# The zone's level cap, its highest wild level, and the scavs' Pokémon from 65% to 90% of it, two to six of them each
+LEVEL_CAP = max([WILD_LEVELS[1]] + [hi for lo, hi in PLACE_LEVELS.values()])
+SCAV_LEVELS = (round(LEVEL_CAP * 0.65), round(LEVEL_CAP * 0.9))
+SCAV_TEAM = (2, 6)
 efu_h = open(os.path.join(root, 'include/efu.h')).read()
 SCAV_SIGHT = int(re.search(r'#define EFU_SCAV_SIGHT (\d+)', efu_h).group(1))
 # How far a scav wanders from where it starts, in tiles either way
@@ -76,6 +79,7 @@ FLAG_LOOT_FIRST = int(re.search(r'#define EFU_FLAG_LOOT_FIRST (0x[0-9a-f]+)', ef
 # The scripts that pick up loot, by tier (gen_efu.py writes them from loot.json and its item tables)
 LOOT_SCRIPTS = {t: 11000 + int(re.search(r'#define EFU_SCRIPT_LOOT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % t.upper(),
                                          efu_h).group(1)) for t in ('route', 'cave', 'target')}
+SCRIPT_SCAV_DROP = 11000 + int(re.search(r'#define EFU_SCRIPT_SCAV_DROP \(EFU_SCRIPT_FIRST \+ (\d+)\)', efu_h).group(1))
 # The original item balls' scripts (each gives its own item) and the hidden items'
 ITEM_SCRIPTS = (7000, 7799)
 HIDDEN_SCRIPTS = (8000, 8799)
@@ -114,7 +118,10 @@ for name, data in species.items():
 
 
 def evolution_level(e):
-    return e['param'] if e['method'].startswith('EVO_METHOD_LEVEL') else OTHER_EVOLUTION_LEVEL
+    # A level evolution with no level (by a Moss Rock, an Ice Rock or a magnetic field) counts as the others do
+    if e['method'].startswith('EVO_METHOD_LEVEL') and isinstance(e['param'], int) and e['param'] > 0:
+        return e['param']
+    return OTHER_EVOLUTION_LEVEL
 
 
 def at_level(name, level):
@@ -317,22 +324,60 @@ class Loot:
             f.write(json.dumps(self.spots, indent=4) + '\n')
 
 
+def wild_species():
+    """The species found wild anywhere in the zone, as built (build_encounters)."""
+    found = set()
+
+    def walk(v):
+        if isinstance(v, list) and v and isinstance(v[0], str) and v[0].startswith('SPECIES_'):
+            found.add(v[0])
+        elif isinstance(v, (list, dict)):
+            for w in (v.values() if isinstance(v, dict) else v):
+                walk(w)
+
+    for name in ['route_3'] + list(PLACE_LEVELS):
+        walk(json.load(open(os.path.join(root, f'res/field/encounters/{name}.json'))))
+    found.discard('SPECIES_NONE')
+    return sorted(found)
+
+
 def build_trainers(trainer_ids):
     lo, hi = SCAV_LEVELS
+    pool = wild_species()
     for i, tid in enumerate(sorted(trainer_ids)):
         path = trainer_file(tid)
         t = json.loads(orig(path))
+        # Seeded by the Trainer, so a rebuild gives the same teams
+        rng = random.Random(tid)
         level = lo + (i * (hi - lo)) // max(1, len(trainer_ids) - 1)
+        size = rng.randint(*SCAV_TEAM)
         t['battle_style'] = 'BTL_STYLE_SINGLE'
+        # Defeating a scav drops loot from the target's table (Script_ScavDrop), not the Trainer's own reward
+        t['reward'] = 'ITEM_NONE'
         female, start, lose, after = SCAVS[scav_key(tid)]
         t['class'] = SCAV_CLASS[female]
         t['messages'] = [{'type': 'TRMSG_START', 'text': start}, {'type': 'TRMSG_LOSE', 'text': lose},
                          {'type': 2, 'text': after}]
-        for j, mon in enumerate(t['party']):
-            mon['level'] = min(100, level + j % 2)
+        # Their own Pokémon first, then the zone's wild ones
+        party = t['party'][:size]
+        while len(party) < size:
+            party.append(dict(t['party'][0], species=rng.choice(pool), gender=0, ability=0))
+        for j, mon in enumerate(party):
+            mon['level'] = min(hi, level + j % 2)
             mon['species'] = at_level(mon['species'], mon['level'])
+        t['party'] = party
         write(path, t)
-        print(path, level, [m['species'][8:] for m in t['party']])
+        print(path, [(m['species'][8:], m['level']) for m in t['party']])
+
+
+def build_trainer_scripts():
+    """The Trainers' global script (3000): each win against a scav, single or double, ends with its drop."""
+    path = 'res/field/scripts/global_3000.s'
+    text = orig(path)
+    drop = f'    CallTrainerBattleEnd\n    RTCallGlobal {SCRIPT_SCAV_DROP}\n'
+    assert text.count('    CallTrainerBattleEnd\n') == 5
+    with open(os.path.join(root, path), 'w', newline='\n') as f:
+        f.write(text.replace('    CallTrainerBattleEnd\n', drop))
 
 
 if __name__ == '__main__':
@@ -345,3 +390,4 @@ if __name__ == '__main__':
     build_places(loot, route_warps)
     loot.save()
     build_trainers(scavs)
+    build_trainer_scripts()

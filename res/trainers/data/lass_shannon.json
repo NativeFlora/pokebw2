@@ -12,17 +12,25 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_NINETALES",
+            "species": "SPECIES_VULPIX",
             "form": 0,
-            "level": 44,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_FLAREON",
+            "species": "SPECIES_EEVEE",
             "form": 0,
-            "level": 45,
+            "level": 16,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_POLIWAG",
+            "form": 0,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

@@ -14,25 +14,33 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_XATU",
+            "species": "SPECIES_NATU",
             "form": 0,
-            "level": 49,
+            "level": 16,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_XATU",
+            "species": "SPECIES_NATU",
             "form": 0,
-            "level": 50,
+            "level": 17,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_FEAROW",
+            "species": "SPECIES_SPEAROW",
             "form": 0,
-            "level": 49,
+            "level": 16,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PANSAGE",
+            "form": 0,
+            "level": 17,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

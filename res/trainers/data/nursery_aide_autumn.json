@@ -12,25 +12,33 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_WIGGLYTUFF",
+            "species": "SPECIES_IGGLYBUFF",
             "form": 0,
-            "level": 52,
+            "level": 17,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_PURUGLY",
+            "species": "SPECIES_GLAMEOW",
             "form": 0,
-            "level": 53,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_LICKILICKY",
+            "species": "SPECIES_LICKITUNG",
             "form": 0,
-            "level": 52,
+            "level": 17,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PANSAGE",
+            "form": 0,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

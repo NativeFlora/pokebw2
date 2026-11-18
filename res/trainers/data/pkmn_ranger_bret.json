@@ -11,12 +11,36 @@
     ],
     "heals": false,
     "money": 15,
-    "reward": "ITEM_LEPPA_BERRY",
+    "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_STOUTLAND",
+            "species": "SPECIES_HERDIER",
             "form": 0,
-            "level": 46,
+            "level": 16,
+            "difficulty": 50,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PANSEAR",
+            "form": 0,
+            "level": 17,
+            "difficulty": 50,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PANSEAR",
+            "form": 0,
+            "level": 16,
+            "difficulty": 50,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_WOOBAT",
+            "form": 0,
+            "level": 17,
             "difficulty": 50,
             "gender": 0,
             "ability": 0

@@ -12,9 +12,17 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_LIEPARD",
+            "species": "SPECIES_PURRLOIN",
             "form": 0,
-            "level": 41,
+            "level": 14,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_AZURILL",
+            "form": 0,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

@@ -12,25 +12,17 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_SLOWBRO",
+            "species": "SPECIES_SLOWPOKE",
             "form": 0,
-            "level": 57,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_SEAKING",
+            "species": "SPECIES_GOLDEEN",
             "form": 0,
-            "level": 58,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_SEAKING",
-            "form": 0,
-            "level": 57,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

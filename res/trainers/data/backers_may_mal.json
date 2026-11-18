@@ -15,7 +15,7 @@
         {
             "species": "SPECIES_PACHIRISU",
             "form": 0,
-            "level": 60,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -23,7 +23,23 @@
         {
             "species": "SPECIES_EMOLGA",
             "form": 0,
-            "level": 61,
+            "level": 20,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_BASCULIN",
+            "form": 0,
+            "level": 20,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_PANSAGE",
+            "form": 0,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

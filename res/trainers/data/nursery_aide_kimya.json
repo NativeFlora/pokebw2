@@ -14,7 +14,15 @@
         {
             "species": "SPECIES_DUNSPARCE",
             "form": 0,
-            "level": 42,
+            "level": 14,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_AZURILL",
+            "form": 0,
+            "level": 15,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

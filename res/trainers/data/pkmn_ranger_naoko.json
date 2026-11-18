@@ -11,20 +11,44 @@
     ],
     "heals": false,
     "money": 15,
-    "reward": "ITEM_SITRUS_BERRY",
+    "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_AMOONGUSS",
+            "species": "SPECIES_FOONGUS",
             "form": 0,
-            "level": 45,
+            "level": 15,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_LEAVANNY",
+            "species": "SPECIES_SEWADDLE",
             "form": 0,
-            "level": 46,
+            "level": 16,
+            "difficulty": 50,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_DRILBUR",
+            "form": 0,
+            "level": 15,
+            "difficulty": 50,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_AZURILL",
+            "form": 0,
+            "level": 16,
+            "difficulty": 50,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_COTTONEE",
+            "form": 0,
+            "level": 15,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
