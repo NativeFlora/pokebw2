@@ -42,6 +42,8 @@ EFU_SLOPE = 72
 SEA_FLOOR = -40
 SEA_SURFACE = -27
 SURF_WIDTH = 32
+# The width of the grass's fade into the sand along the land (world units)
+BLEND = 8
 
 # The land, as rectangles of matrix tiles [x0, x1) x [z0, z1): the base's strip of the two Nacrene chunks (their rows 16
 # and on), the Route 3 gate's chunk and the forest east of it, and the forest along the south
@@ -151,7 +153,32 @@ def coast_prims(cx, cz, sea_rows=None):
     for tx, tz in tiles:
         cs = [corner(tx + dx, tz + dz) for dx, dz in ((0, 0), (1, 0), (1, 1), (0, 1))]
         hs = [height(d) for _, _, d in cs]
-        if max(hs) > SEA_FLOOR:
+        # Next to the land the grass fades into the sand, as on Route 13: the half tile along each side that touches
+        # land is a strip of sea_grass (v 0 at the land, 1 toward the sea), and the sand fills the rest
+        gx, gz = cx * CHUNK + tx, cz * CHUNK + tz
+        x0, z0 = tx * TILE - 256, tz * TILE - 256
+        x1, z1 = x0 + TILE, z0 + TILE
+        sx0, sx1, sz0, sz1 = x0, x1, z0, z1
+        if is_land(gx - 1, gz):
+            sx0 += BLEND
+            p.quad('sea_grass', [(x0, 0.0, z0, z0 / TILE, 0.0), (x0, 0.0, z1, z1 / TILE, 0.0),
+                                 (x0 + BLEND, 0.0, z1, z1 / TILE, 1.0), (x0 + BLEND, 0.0, z0, z0 / TILE, 1.0)][::-1])
+        if is_land(gx + 1, gz):
+            sx1 -= BLEND
+            p.quad('sea_grass', [(x1 - BLEND, 0.0, z0, z0 / TILE, 1.0), (x1 - BLEND, 0.0, z1, z1 / TILE, 1.0),
+                                 (x1, 0.0, z1, z1 / TILE, 0.0), (x1, 0.0, z0, z0 / TILE, 0.0)][::-1])
+        if is_land(gx, gz - 1):
+            sz0 += BLEND
+            p.quad('sea_grass', [(sx0, 0.0, z0, sx0 / TILE, 0.0), (sx1, 0.0, z0, sx1 / TILE, 0.0),
+                                 (sx1, 0.0, z0 + BLEND, sx1 / TILE, 1.0), (sx0, 0.0, z0 + BLEND, sx0 / TILE, 1.0)])
+        if is_land(gx, gz + 1):
+            sz1 -= BLEND
+            p.quad('sea_grass', [(sx0, 0.0, z1 - BLEND, sx0 / TILE, 1.0), (sx1, 0.0, z1 - BLEND, sx1 / TILE, 1.0),
+                                 (sx1, 0.0, z1, sx1 / TILE, 0.0), (sx0, 0.0, z1, sx0 / TILE, 0.0)])
+        if (sx0, sx1, sz0, sz1) != (x0, x1, z0, z1):
+            p.quad('sea_jimen', [(x, 0.0, z, x / TILE, z / TILE) for x, z in ((sx0, sz0), (sx1, sz0), (sx1, sz1),
+                                                                              (sx0, sz1))])
+        elif max(hs) > SEA_FLOOR:
             p.quad('sea_jimen', [(x, h, z, x / TILE, z / TILE) for (x, z, _), h in zip(cs, hs)])
         # The surf: from where the sand goes under (v 0, the foam) out to SURF_WIDTH beyond (v 1, clear)
         shore = EFU_FLAT + EFU_SLOPE * (SEA_SURFACE / SEA_FLOOR)
@@ -172,13 +199,15 @@ MATERIALS = {
                   'extensions': {'KHR_materials_unlit': {}}},
     'grass01ax': {'name': 'grass01ax', 'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'metallicFactor': 0},
                   'extensions': {'KHR_materials_unlit': {}}},
+    'sea_grass': {'name': 'sea_grass', 'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'metallicFactor': 0},
+                  'extensions': {'KHR_materials_unlit': {}}},
     'sea_zanami': {'name': 'sea_zanami', 'pbrMetallicRoughness': {'baseColorTexture': {'index': 0},
                                                                   'metallicFactor': 0},
                    'extensions': {'KHR_materials_unlit': {}}, 'alphaMode': 'BLEND'},
 }
 # Where each new material's image is (the packer binds it by the file's name)
 IMAGE_SET = {'sea_mizu1': 'shared_dansa01a_10', 'sea_mizu1_1': 'shared_dansa01a_10',
-             'sea_jimen': 'shared_dansa01a_59', 'sea_zanami': 'shared_dansa01a_59', 'grass01ax': 'shared_dansa01a_10'}
+             'sea_jimen': 'shared_dansa01a_59', 'sea_grass': 'shared_dansa01a_10', 'sea_zanami': 'shared_dansa01a_59', 'grass01ax': 'shared_dansa01a_10'}
 
 
 def covered_tiles(triangles):

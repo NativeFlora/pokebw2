@@ -34,6 +34,10 @@ ZONE_CHUNKS = {
 MATRIX_SIZE = (29, 27)
 # The chunks copied lower, and by how much (world units): Route 20's ground at the seam is 32 above Route 3's
 LOWERED = {(4, 20): -32, (5, 20): -32, (4, 21): -32, (5, 21): -32}
+# Route 3 chunks copied with their ground changed where they meet Route 20: from the row given down to the chunk's
+# south edge, Route 3's paved path (michi02) turns into Route 20's dirt one (michi01), so the road ends inside Route 3
+# and dirt runs on across the seam into Route 20's path
+BLENDED = {(23, 17): {'row': 27, 'swap': {'michi02a': 'michi01a', 'michi02b': 'michi01b'}}}
 # The zone's texture sets by season (Striaton's area, which Route 3's zone uses) and Route 19's, which Route 20 uses
 ZONE_SETS = ['MAP_TEXTURE_SET_SHARED_DANSA01A_6', 'MAP_TEXTURE_SET_SHARED_DANSA01A_7',
              'MAP_TEXTURE_SET_SHARED_DANSA01A_8', 'MAP_TEXTURE_SET_SHARED_DANSA01A_9']
@@ -56,7 +60,7 @@ def constant_of_original(chunk):
 
 
 def constant(chunk):
-    if chunk in LOWERED:
+    if chunk in LOWERED or chunk in BLENDED:
         return 'MAP_MODEL_' + copy_folder(chunk).upper()
     return 'MAP_MODEL_OVERWORLD_2_MAP%02d_%02d' % chunk
 
@@ -138,6 +142,84 @@ def build_lowered(chunk, dy, props):
                              lineterminator='\n')
         out.writeheader()
         out.writerows(splits)
+    register('generated/map_models.txt', constant(chunk))
+
+
+def clip(tri, z):
+    """Splits a triangle (vertices as tuples whose index 2 is z) at a z: the polygons north and south of it."""
+    def lerp(a, b, t):
+        return tuple(x + (y - x) * t if isinstance(x, float) else round(x + (y - x) * t) for x, y in zip(a, b))
+
+    north, south = [], []
+    for i, a in enumerate(tri):
+        b = tri[(i + 1) % 3]
+        (north if a[2] < z else south).append(a)
+        if (a[2] < z) != (b[2] < z):
+            v = lerp(a, b, (z - a[2]) / (b[2] - a[2]))
+            north.append(v)
+            south.append(v)
+    return north, south
+
+
+def build_blended(chunk, spec):
+    """A copy of a Route 3 chunk whose paths change texture from a row south (BLENDED)."""
+    src = os.path.join(MODELS, folder(chunk))
+    dst = os.path.join(MODELS, copy_folder(chunk))
+    os.makedirs(dst, exist_ok=True)
+    doc, binary = bc.read_glb(os.path.join(src, 'model.glb'))
+    mesh = [n for n in doc['nodes'] if 'mesh' in n][0]
+    w = bc.Writer(mesh['name'])
+    edge = spec['row'] * bc.TILE - 256
+    set_folder = ZONE_SETS[0][len('MAP_TEXTURE_SET_'):].lower()
+
+    def material(old, name=None):
+        binding = old.get('pbrMetallicRoughness', {}).get('baseColorTexture')
+        uri = doc['images'][doc['textures'][binding['index']]['source']]['uri'] if binding else 'none.png'
+        if name:
+            old = dict(old, name=name)
+            uri = f'../../textures/{set_folder}/{name}.png'
+        names = [m['name'] for m in w.doc['materials']]
+        return names.index(old['name']) if old['name'] in names else w.material(old, uri)
+
+    for prim in doc['meshes'][mesh['mesh']]['primitives']:
+        att = prim['attributes']
+        positions = bc.accessor(doc, binary, att['POSITION'])
+        uvs = bc.accessor(doc, binary, att['TEXCOORD_0'])
+        colors = bc.accessor(doc, binary, att['COLOR_0'])
+        normals = bc.accessor(doc, binary, att['NORMAL']) if 'NORMAL' in att else [(0.0, 1.0, 0.0)] * len(positions)
+        idx = [i[0] for i in bc.accessor(doc, binary, prim['indices'])]
+        old = doc['materials'][prim['material']]
+        swap = spec['swap'].get(old['name'])
+        # Vertices as position, uv, color and normal in one tuple, so clipping interpolates them all
+        verts = [tuple(float(c) for c in positions[i]) + tuple(float(c) for c in uvs[i]) + tuple(colors[i][:3])
+                 + tuple(float(c) for c in normals[i]) for i in range(len(positions))]
+        parts = {old['name']: [], swap: []}
+        for k in range(0, len(idx), 3):
+            tri = [verts[i] for i in idx[k:k + 3]]
+            if not swap:
+                parts[old['name']].append(tri)
+                continue
+            north, south = clip(tri, edge)
+            for poly, key in ((north, old['name']), (south, swap)):
+                for j in range(1, len(poly) - 1):
+                    parts[key].append([poly[0], poly[j], poly[j + 1]])
+        for name, tris in parts.items():
+            if not name or not tris:
+                continue
+            m = material(old, name if name == swap else None)
+            vs = [v for t in tris for v in t]
+            w.primitive(m, [v[0:3] for v in vs], [v[3:5] for v in vs], [v[5:8] for v in vs], [v[8:11] for v in vs],
+                        [(3 * i, 3 * i + 1, 3 * i + 2) for i in range(len(tris))])
+    for node in doc['nodes']:
+        if node.get('name', '').startswith('bw2_prop_'):
+            w.doc['nodes'].append({k: node[k] for k in ('name', 'translation', 'rotation', 'scale') if k in node})
+            w.doc['scenes'][0]['nodes'].append(len(w.doc['nodes']) - 1)
+    w.save(os.path.join(dst, 'model.glb'))
+    with open(os.path.join(dst, 'data.json'), 'w') as f:
+        f.write(json.dumps({'$schema': '../map_model.schema.json', 'texture_set': ZONE_SETS[0], 'written': True,
+                            'template': constant_of_original(chunk)}, indent=4) + '\n')
+    for name in ('terrain_0.csv', 'terrain_0_splits.csv'):
+        shutil.copy(os.path.join(src, name), os.path.join(dst, name))
     register('generated/map_models.txt', constant(chunk))
 
 
@@ -247,6 +329,8 @@ if __name__ == '__main__':
     props = bundle_ids()
     for chunk, dy in LOWERED.items():
         build_lowered(chunk, dy, props)
+    for chunk, spec in BLENDED.items():
+        build_blended(chunk, spec)
     build_imports()
     build_matrix()
     build_zone()
