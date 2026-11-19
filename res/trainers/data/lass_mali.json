@@ -1,18 +1,20 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Mali",
-    "class": "TRAINER_CLASS_LASS",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 4,
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_PIDGEY",
+            "species": "SPECIES_PIDGEOTTO",
             "form": 0,
-            "level": 61,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,7 +22,7 @@
         {
             "species": "SPECIES_HOOTHOOT",
             "form": 0,
-            "level": 61,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -28,23 +30,23 @@
         {
             "species": "SPECIES_TAILLOW",
             "form": 0,
-            "level": 61,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_STARLY",
+            "species": "SPECIES_STARAVIA",
             "form": 0,
-            "level": 61,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_UNFEZANT",
+            "species": "SPECIES_PIDOVE",
             "form": 0,
-            "level": 61,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -53,15 +55,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Now dance gracefully!\nBring forth your beautiful moves!{be00}\nLet us perform, my lovely Pokémon!{be01}"
+            "text": "You look like you've got\nsomething to share!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Even though they lost,\nmy Pokémon are still cute!"
+            "text": "Okay, okay, I'll share mine..."
         },
         {
             "type": 2,
-            "text": "I'll make my cute Pokémon even stronger\nby having battles with lots of Trainers!"
+            "text": "I used to pick flowers here.\nNow I pick pockets."
         }
     ]
 }

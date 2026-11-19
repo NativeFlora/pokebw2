@@ -30,5 +30,10 @@
         }
     ],
     "triggers": [],
-    "init_scripts": []
+    "init_scripts": [
+        {
+            "type": 2,
+            "script": 11029
+        }
+    ]
 }

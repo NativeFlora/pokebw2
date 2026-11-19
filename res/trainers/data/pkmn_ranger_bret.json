@@ -22,7 +22,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_PANSEAR",
+            "species": "SPECIES_HERDIER",
             "form": 0,
             "level": 16,
             "difficulty": 50,
@@ -30,7 +30,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_PANSEAR",
+            "species": "SPECIES_LILLIPUP",
             "form": 0,
             "level": 15,
             "difficulty": 50,
@@ -38,7 +38,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_WOOBAT",
+            "species": "SPECIES_SEWADDLE",
             "form": 0,
             "level": 16,
             "difficulty": 50,

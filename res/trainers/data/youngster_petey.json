@@ -20,7 +20,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_PIDOVE",
+            "species": "SPECIES_PANSEAR",
             "form": 0,
             "level": 16,
             "difficulty": 0,
@@ -28,7 +28,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_PIDOVE",
+            "species": "SPECIES_PANSEAR",
             "form": 0,
             "level": 15,
             "difficulty": 0,
@@ -36,7 +36,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_SLAKOTH",
+            "species": "SPECIES_PURRLOIN",
             "form": 0,
             "level": 16,
             "difficulty": 0,
@@ -52,7 +52,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_DRILBUR",
+            "species": "SPECIES_SUNKERN",
             "form": 0,
             "level": 16,
             "difficulty": 0,

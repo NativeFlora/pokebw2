@@ -56,6 +56,42 @@
         "place": "route"
     },
     {
+        "flag": "EVENT_FLAG_0x0578",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x0579",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x057a",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x057b",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x057d",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x057e",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x044d",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x044e",
+        "place": "route"
+    },
+    {
+        "flag": "EVENT_FLAG_0x058f",
+        "place": "route"
+    },
+    {
         "flag": "EVENT_FLAG_0x0565",
         "place": "cave"
     },

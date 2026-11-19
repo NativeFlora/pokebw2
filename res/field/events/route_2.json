@@ -52,26 +52,6 @@
             }
         },
         {
-            "script": 8130,
-            "condition": 2,
-            "direction": 4,
-            "grid": {
-                "x": 775,
-                "y": 626,
-                "z": 0
-            }
-        },
-        {
-            "script": 8131,
-            "condition": 2,
-            "direction": 4,
-            "grid": {
-                "x": 759,
-                "y": 619,
-                "z": 0
-            }
-        },
-        {
             "script": 0,
             "condition": 4,
             "direction": 4,
@@ -274,55 +254,21 @@
     ],
     "npcs": [
         {
-            "id": 0,
-            "model": "OBJ_CODE_MODEL_3",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 10000,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 750,
-                "z": 653,
-                "y": 0
-            }
-        },
-        {
-            "id": 1,
-            "model": "OBJ_CODE_108",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 10004,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 773,
-                "z": 618,
-                "y": 0
-            }
-        },
-        {
             "id": 2,
-            "model": "OBJ_CODE_VETERAN_M",
-            "movement": "MOVE_CODE_FACE_RIGHT",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
+            "movement": "MOVE_CODE_TURN_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a49",
             "script": 3404,
             "direction": "DIR_RIGHT",
-            "params": [ 5, 0, 0 ],
+            "params": [
+                1,
+                0,
+                0
+            ],
             "area": {
-                "width": 0,
-                "height": 0
+                "width": 3,
+                "height": 3
             },
             "grid": {
                 "x": 773,
@@ -331,36 +277,21 @@
             }
         },
         {
-            "id": 3,
-            "model": "OBJ_CODE_YOUNGSTER",
-            "movement": "MOVE_CODE_FACE_LEFT",
-            "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
-            "script": 3401,
-            "direction": "DIR_LEFT",
-            "params": [ 3, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 784,
-                "z": 628,
-                "y": 0
-            }
-        },
-        {
             "id": 4,
-            "model": "OBJ_CODE_LASS",
-            "movement": "MOVE_CODE_TURN_RANDOM_DOWN_LEFT_RIGHT",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
+            "movement": "MOVE_CODE_TURN_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a4a",
             "script": 3408,
             "direction": "DIR_RIGHT",
-            "params": [ 4, 0, 0 ],
+            "params": [
+                1,
+                0,
+                0
+            ],
             "area": {
-                "width": 0,
-                "height": 0
+                "width": 3,
+                "height": 3
             },
             "grid": {
                 "x": 765,
@@ -370,16 +301,20 @@
         },
         {
             "id": 5,
-            "model": "OBJ_CODE_LASS",
-            "movement": "MOVE_CODE_TURN_RANDOM_DOWN_RIGHT",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
+            "movement": "MOVE_CODE_TURN_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a4b",
             "script": 3402,
             "direction": "DIR_RIGHT",
-            "params": [ 6, 0, 0 ],
+            "params": [
+                1,
+                0,
+                0
+            ],
             "area": {
-                "width": 0,
-                "height": 0
+                "width": 3,
+                "height": 3
             },
             "grid": {
                 "x": 755,
@@ -388,93 +323,21 @@
             }
         },
         {
-            "id": 6,
-            "model": "OBJ_CODE_YOUNGSTER",
-            "movement": "MOVE_CODE_FACE_DOWN",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 6,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 755,
-                "z": 642,
-                "y": 0
-            }
-        },
-        {
-            "id": 7,
-            "model": "OBJ_CODE_YOUNGSTER",
-            "movement": "MOVE_CODE_WALK_RANDOM",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 7,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 4,
-                "height": 0
-            },
-            "grid": {
-                "x": 761,
-                "z": 632,
-                "y": 0
-            }
-        },
-        {
-            "id": 8,
-            "model": "OBJ_CODE_LASS",
-            "movement": "MOVE_CODE_WALK_RANDOM",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 8,
-            "direction": "DIR_LEFT",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 751,
-                "z": 648,
-                "y": 0
-            }
-        },
-        {
-            "id": 9,
-            "model": "OBJ_CODE_WORK_00",
-            "movement": "MOVE_CODE_FACE_DOWN",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 5,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 797,
-                "z": 618,
-                "y": 131072
-            }
-        },
-        {
             "id": 10,
-            "model": "OBJ_CODE_YOUNGSTER",
-            "movement": "MOVE_CODE_WALK_BACK_AND_FORTH",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
+            "movement": "MOVE_CODE_TURN_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER_LOOK_AROUND",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a4c",
             "script": 3407,
             "direction": "DIR_RIGHT",
-            "params": [ 3, 5, 0 ],
+            "params": [
+                1,
+                0,
+                0
+            ],
             "area": {
-                "width": 5,
-                "height": 0
+                "width": 3,
+                "height": 3
             },
             "grid": {
                 "x": 785,
@@ -484,16 +347,20 @@
         },
         {
             "id": 11,
-            "model": "OBJ_CODE_VETERAN_F",
-            "movement": "MOVE_CODE_WALK_RANDOM",
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
+            "movement": "MOVE_CODE_TURN_RANDOM",
             "type": "ACTOR_EVENT_TYPE_TRAINER_LOOK_AROUND",
-            "flag": 0,
+            "flag": "EVENT_FLAG_0x0a4d",
             "script": 3403,
             "direction": "DIR_UP",
-            "params": [ 2, 0, 0 ],
+            "params": [
+                1,
+                0,
+                0
+            ],
             "area": {
-                "width": 0,
-                "height": 0
+                "width": 3,
+                "height": 3
             },
             "grid": {
                 "x": 748,
@@ -507,9 +374,13 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0578",
-            "script": 7300,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -526,9 +397,13 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x0579",
-            "script": 7301,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -545,9 +420,13 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x057a",
-            "script": 7302,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -564,9 +443,13 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x057b",
-            "script": 7303,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -583,9 +466,13 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x057d",
-            "script": 7305,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -602,9 +489,13 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x057e",
-            "script": 7306,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -618,8 +509,8 @@
     ],
     "warps": [
         {
-            "zone": "ZONE_ACCUMULA_GATE",
-            "warp": 1,
+            "zone": "ZONE_NACRENE_GATE",
+            "warp": 0,
             "unk4": 3,
             "transition": 4,
             "grid": {
@@ -630,13 +521,42 @@
                 "height": 3,
                 "unk0a": 0
             }
+        },
+        {
+            "zone": "ZONE_PINWHEEL_FOREST_2",
+            "warp": 0,
+            "unk4": 2,
+            "transition": 4,
+            "grid": {
+                "x": 12552,
+                "y": 0,
+                "z": 9720,
+                "width": 6,
+                "height": 1,
+                "unk0a": 0
+            }
         }
     ],
-    "triggers": [],
+    "triggers": [
+        {
+            "script": 11031,
+            "var": "EVENT_WORK_0x41ac",
+            "value": 1,
+            "type": 0,
+            "grid": {
+                "x": 760,
+                "z": 647,
+                "width": 1,
+                "height": 3,
+                "y": 0
+            },
+            "unk14": 0
+        }
+    ],
     "init_scripts": [
         {
             "type": 2,
-            "script": 1
+            "script": 11029
         }
     ]
 }

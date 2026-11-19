@@ -734,7 +734,8 @@ static void EfuScav_Spawn(Field *field, const GridPos *playerPos) {
         pos.x = npc->pos.grid.x;
         pos.z = npc->pos.grid.z;
         EfuScav_DirTo(playerPos, &pos, &dist);
-        if (npc->spawnFlag >= EFU_FLAG_SCAV_FIRST && npc->spawnFlag < EFU_FLAG_SCAV_FIRST + EFU_SCAV_MAX &&
+        if (((npc->spawnFlag >= EFU_FLAG_SCAV_FIRST && npc->spawnFlag < EFU_FLAG_SCAV_FIRST + EFU_SCAV_MAX) ||
+             (npc->spawnFlag >= EFU_FLAG_SCAV2_FIRST && npc->spawnFlag < EFU_FLAG_SCAV2_FIRST + EFU_SCAV2_MAX)) &&
             EventWork_FlagGet(eventWork, npc->spawnFlag) && dist > furthestDist) {
             furthest = npc;
             furthestDist = dist;

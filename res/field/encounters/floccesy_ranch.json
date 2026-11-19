@@ -16,66 +16,234 @@
         "shaking_grass": [],
         "surf": {
             "black2": [
-                [ "SPECIES_BASCULIN", 5, 15 ],
-                [ "SPECIES_AZURILL", 5, 15 ],
-                [ "SPECIES_BASCULIN", 5, 15 ],
-                [ "SPECIES_BASCULIN", 5, 15 ],
-                [ "SPECIES_BASCULIN", 5, 15 ]
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ]
             ],
             "white2": [
-                [ "SPECIES_BASCULIN", 5, 15, 1 ],
-                [ "SPECIES_AZURILL", 5, 15 ],
-                [ "SPECIES_BASCULIN", 5, 15, 1 ],
-                [ "SPECIES_BASCULIN", 5, 15, 1 ],
-                [ "SPECIES_BASCULIN", 5, 15, 1 ]
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ]
             ]
         },
         "rippling_surf": {
             "black2": [
-                [ "SPECIES_BASCULIN", 5, 15, 1 ],
-                [ "SPECIES_MARILL", 5, 15 ],
-                [ "SPECIES_BASCULIN", 5, 15, 1 ],
-                [ "SPECIES_AZUMARILL", 5, 15 ],
-                [ "SPECIES_AZUMARILL", 5, 15 ]
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ]
             ],
             "white2": [
-                [ "SPECIES_BASCULIN", 5, 15 ],
-                [ "SPECIES_MARILL", 5, 15 ],
-                [ "SPECIES_BASCULIN", 5, 15 ],
-                [ "SPECIES_AZUMARILL", 5, 15 ],
-                [ "SPECIES_AZUMARILL", 5, 15 ]
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_AZURILL",
+                    12,
+                    22
+                ]
             ]
         },
         "fishing": {
             "black2": [
-                [ "SPECIES_POLIWAG", 40, 60 ],
-                [ "SPECIES_BASCULIN", 40, 60 ],
-                [ "SPECIES_POLIWAG", 50, 70 ],
-                [ "SPECIES_POLIWAG", 50, 70 ],
-                [ "SPECIES_POLIWAG", 50, 70 ]
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ]
             ],
             "white2": [
-                [ "SPECIES_POLIWAG", 40, 60 ],
-                [ "SPECIES_BASCULIN", 40, 60, 1 ],
-                [ "SPECIES_POLIWAG", 50, 70 ],
-                [ "SPECIES_POLIWAG", 50, 70 ],
-                [ "SPECIES_POLIWAG", 50, 70 ]
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ]
             ]
         },
         "rippling_fishing": {
             "black2": [
-                [ "SPECIES_POLIWHIRL", 40, 60 ],
-                [ "SPECIES_BASCULIN", 40, 60, 1 ],
-                [ "SPECIES_POLIWHIRL", 50, 70 ],
-                [ "SPECIES_POLITOED", 50, 70 ],
-                [ "SPECIES_POLITOED", 50, 70 ]
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22,
+                    1
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ]
             ],
             "white2": [
-                [ "SPECIES_POLIWHIRL", 40, 60 ],
-                [ "SPECIES_BASCULIN", 40, 60 ],
-                [ "SPECIES_POLIWHIRL", 50, 70 ],
-                [ "SPECIES_POLITOED", 50, 70 ],
-                [ "SPECIES_POLITOED", 50, 70 ]
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_BASCULIN",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ],
+                [
+                    "SPECIES_POLIWAG",
+                    12,
+                    22
+                ]
             ]
         }
     }

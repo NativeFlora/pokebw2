@@ -1,13 +1,17 @@
-"""Escape from Unova: the first raid zone, Route 3.
+"""Escape from Unova: the first exploration zone's people, items and wild Pokémon (docs/efu.md).
 
 Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) and writes
-- res/field/encounters/route_3.json: every wild Pokémon at a random level from 2 to 15, each species at the stage it
-  has reached by the lowest;
-- the route's Trainers (res/trainers/data): the scavs, single battles with their Pokémon at 40 to 60, evolved as far as
-  that level takes them;
-- res/field/events/route_3.json: nobody but the scavs and the items; each scav, a Team Plasma Grunt to look at, is
-  hidden by its own flag from EFU_FLAG_SCAV_FIRST, stands looking around (MOVE_CODE_TURN_RANDOM) once it comes out, never stepping until it has seen the player, and its
-  Trainer sight is EFU_SCAV_CATCH tiles; the pursuit (event_trainer_eye.c), which sees EFU_SCAV_SIGHT, does the rest;
+- the encounters of its routes, caves and target (res/field/encounters): every wild Pokémon at a random level in the
+  place's range (WILD_LEVELS, PLACE_LEVELS), each species at the stage it has reached by the lowest;
+- the scavs' Trainers (res/trainers/data): single battles with two to six Pokémon at 65 to 90% of the level cap,
+  evolved as far as that level takes them, with new lines;
+- the events of its routes (Route 3, Route 2, Route 19, Route 20 and Floccesy Ranch, in their matrices' coordinates,
+  build_zone.py): nobody but the scavs and the items; each scav, a Team Plasma Grunt to look at, is hidden by its own
+  flag (EFU_FLAG_SCAV_FIRST, then EFU_FLAG_SCAV2_FIRST), stands looking around (MOVE_CODE_TURN_RANDOM) once it comes
+  out, never stepping until it has seen the player, and its Trainer sight is EFU_SCAV_CATCH tiles; the pursuit
+  (event_trainer_eye.c), which sees EFU_SCAV_SIGHT, does the rest. Their doors are rewired into the zone: Route 2's
+  north end into Pinwheel Forest, the forest out to Route 19, Route 2's and Route 20's gates home;
+- the caves' and the target's events, the childcare centre's and the Day Care's;
 - the Grunts' Trainer classes, named Scav.
 """
 import json, os, random, re, subprocess
@@ -19,8 +23,10 @@ root = os.path.dirname(os.path.dirname(here))
 BASE_COMMIT = 'origin/main'
 
 WILD_LEVELS = (2, 15)
-# The caves' and the target's wild Pokémon, a little tougher than the route's
-PLACE_LEVELS = {'wellspring_cave': (8, 18), 'wellspring_cave_2': (8, 18), 'pinwheel_forest_2': (12, 22)}
+# Each place's wild Pokémon: the routes further in, the caves and the target a little tougher than Route 3's
+PLACE_LEVELS = {'route_2': (4, 16), 'route_19': (10, 20), 'route_20': (10, 20), 'floccesy_ranch': (12, 22),
+                'wellspring_cave': (8, 18), 'wellspring_cave_2': (8, 18),
+                'pinwheel_forest_2': (12, 22)}
 # The zone's level cap, its highest wild level, and the scavs' Pokémon from 65% to 90% of it, two to six of them each
 LEVEL_CAP = max([WILD_LEVELS[1]] + [hi for lo, hi in PLACE_LEVELS.values()])
 assert LEVEL_CAP == int(re.search(r'#define EFU_LEVEL_CAP (\d+)', open(os.path.join(root, 'include/efu.h')).read()).group(1))
@@ -80,6 +86,17 @@ SCAVS = {
                             "The deeper you go, the more\nyou find. And the more find you."),
     'youngster_keita_2': (False, "I heard you coming a mile off.\nDrop the bag!{be01}", "Aw, man...",
                           "There's good stuff under these\ntrees. I'm not telling you where."),
+    # Route 2's (their hide flags from EFU_FLAG_SCAV2_FIRST)
+    'veteran_rayne': (False, "I've seen worse than you crawl\nout of that forest.{be01}", "Heh. Not bad, kid.",
+                      "The forest gate's up north.\nGo in light, come out heavy."),
+    'lass_henrietta': (True, "Nobody walks this road anymore.\nExcept people with stuff!{be01}", "Hmph! Lucky shot!",
+                       "The old gate south still works.\nFor a price."),
+    'lass_mali': (True, "You look like you've got\nsomething to share!{be01}", "Okay, okay, I'll share mine...",
+                  "I used to pick flowers here.\nNow I pick pockets."),
+    'youngster_mikey': (False, "This is my road!\nPay the toll!{be01}", "Toll waived... this time.",
+                        "Everybody heading north passes\nme. Everybody pays."),
+    'veteran_oriana': (True, "I've fought through three winters\nout here. You won't stop me!{be01}",
+                       "Maybe it's time to rest...", "Stay off the main path after\ndark. That's when we hunt."),
 }
 # The scavs' Trainer class, whichever it was: Team Plasma's Grunts, renamed
 SCAV_CLASS = {False: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_M', True: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_F'}
@@ -87,6 +104,8 @@ SCAV_MODEL = {False: 'OBJ_CODE_TEAM_PLASMA_GRUNT_M', True: 'OBJ_CODE_TEAM_PLASMA
 SCAV_CLASS_NAME = 'Scav'
 FLAG_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 SCAV_MAX = int(re.search(r'#define EFU_SCAV_MAX (\d+)', efu_h).group(1))
+FLAG_SCAV2_FIRST = int(re.search(r'#define EFU_FLAG_SCAV2_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+SCAV2_MAX = int(re.search(r'#define EFU_SCAV2_MAX (\d+)', efu_h).group(1))
 FLAG_DOOR_FIRST = int(re.search(r'#define EFU_FLAG_DOOR_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 assert int(re.search(r'#define EFU_DOOR_COUNT (\d+)', efu_h).group(1)) == 3
 FLAG_TARGET_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_TARGET_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
@@ -100,6 +119,7 @@ FLAG_CHILDCARE_SCAV = int(re.search(r'#define EFU_FLAG_CHILDCARE_SCAV (0x[0-9a-f
 # The Route 3 childcare centre's scav, a Trainer from Route 2 (which can't be reached), and its Rare Candy
 CHILDCARE_TRAINER = 401
 CHILDCARE_CANDY_SCRIPT = 7280
+EFU_WORK_RAID = int(re.search(r'#define EFU_WORK_RAID (0x[0-9a-f]+)', efu_h).group(1), 16)
 SCRIPT_SCAV_DROP = 11000 + int(re.search(r'#define EFU_SCRIPT_SCAV_DROP \(EFU_SCRIPT_FIRST \+ (\d+)\)', efu_h).group(1))
 def efu_script(name):
     return 11000 + int(re.search(r'#define EFU_SCRIPT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % name, efu_h).group(1))
@@ -116,7 +136,7 @@ JOY = {'id': 120, 'model': 'OBJ_CODE_78', 'movement': 'MOVE_CODE_FACE_DOWN', 'ty
 # The original item balls' scripts (each gives its own item) and the hidden items'
 ITEM_SCRIPTS = (7000, 7799)
 HIDDEN_SCRIPTS = (8000, 8799)
-# The target, which Route 20's gate to Virbank now opens on
+# The target, Pinwheel Forest's inner forest, between Route 2 and Route 19
 TARGET_ZONE = 'ZONE_PINWHEEL_FOREST_2'
 # The caves and the target: each zone's loot tier, and which door of Route 3's leads in
 PLACES = {
@@ -139,9 +159,13 @@ APPROACH = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
 GUIDE = {'id': 121, 'model': 'OBJ_CODE_76', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
          'flag': efu_flag('GUIDE_MET'), 'script': efu_script('GUIDE_MEET'), 'direction': 'DIR_DOWN',
          'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': {'x': 684, 'z': 594, 'y': 0}}
-# The target's way out to Skyarrow Bridge's gate takes the player home, as the east gate does: every gate out of a
-# zone is a way home
-EXIT_GATES = {'ZONE_BRIDGE_GATE'}
+# The inner forest's ways out, by the zone each led to: A, its way in from Route 2's north end (its old way out to the
+# outer forest), B, out to Route 19's old gate to Aspertia (its old gate to Skyarrow Bridge), and C, Rumination Field's
+# (unchanged)
+FOREST_WAYS = {
+    'ZONE_PINWHEEL_FOREST': lambda route_warps: {'zone': 'ZONE_ROUTE_2', 'warp': route_warps['route_2']},
+    'ZONE_BRIDGE_GATE': lambda route_warps: {'zone': 'ZONE_ROUTE_19', 'warp': 0},
+}
 # New item balls, where nothing was: where the lake trio stood in the Cave of Being
 NEW_BALLS = {'ZONE_CAVE_OF_BEING': [(27, 18), (17, 7), (9, 16)]}
 
@@ -239,7 +263,7 @@ def move_npc(n):
     g = n['grid']
     chunk = chunk_of(g['x'], g['z'])
     x, z = moved(chunk, g['x'], g['z'])
-    return dict(n, grid=dict(g, x=x, z=z, y=g['y'] + bz.LOWERED.get(chunk, 0) * 4096))
+    return dict(n, grid=dict(g, x=x, z=z, y=g['y'] + bz.RAISED.get(chunk, 0) * 4096))
 
 
 def move_warp(w):
@@ -247,7 +271,7 @@ def move_warp(w):
     chunk = chunk_of(g['x'] // 16, g['z'] // 16)
     x, z = moved(chunk, g['x'] // 16, g['z'] // 16)
     # The height is kept as 16 bits, a negative one wrapped
-    y = (g['y'] + bz.LOWERED.get(chunk, 0)) & 0xffff
+    y = (g['y'] + bz.RAISED.get(chunk, 0)) & 0xffff
     return dict(w, grid=dict(g, x=x * 16 + g['x'] % 16, z=z * 16 + g['z'] % 16, y=y))
 
 
@@ -256,89 +280,134 @@ def move_bg(b):
     g = b['grid']
     chunk = chunk_of(g['x'], g['y'])
     x, z = moved(chunk, g['x'], g['y'])
-    return dict(b, grid=dict(g, x=x, y=z, z=g['z'] + bz.LOWERED.get(chunk, 0)))
+    return dict(b, grid=dict(g, x=x, y=z, z=g['z'] + bz.RAISED.get(chunk, 0)))
 
 
 def move_trigger(t):
     g = t['grid']
     chunk = chunk_of(g['x'], g['z'])
     x, z = moved(chunk, g['x'], g['z'])
-    return dict(t, grid=dict(g, x=x, z=z, y=g['y'] + bz.LOWERED.get(chunk, 0)))
+    return dict(t, grid=dict(g, x=x, z=z, y=g['y'] + bz.RAISED.get(chunk, 0)))
 
 
 def is_item_ball(n):
     return ITEM_SCRIPTS[0] <= n['script'] <= ITEM_SCRIPTS[1] and n['flag']
 
 
-def build_events(loot):
-    """Route 3's events and Route 20's item balls and doors, in the zone's coordinates; the item balls become loot."""
-    e = json.loads(orig('res/field/events/route_3.json'))
+class Scavs:
+    """The route scavs' hide flags, handed out in order: the first range (EFU_FLAG_SCAV_FIRST), then the second."""
+
+    def __init__(self):
+        self.flags = [FLAG_SCAV_FIRST + i for i in range(SCAV_MAX)] + [FLAG_SCAV2_FIRST + i for i in range(SCAV2_MAX)]
+        self.trainers = []
+
+    def scav(self, n, **changes):
+        tid = n['script'] - 3000
+        female = SCAVS[scav_key(tid)][0]
+        # Hidden by their own flag until EventTrainerEye_EfuPursue brings them out
+        flag = self.flags[len(self.trainers)]
+        self.trainers.append(tid)
+        return dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM', params=[SCAV_SIGHT, 0, 0],
+                    flag='EVENT_FLAG_0x%04x' % flag, area={'width': SCAV_WANDER, 'height': SCAV_WANDER}, **changes)
+
+
+def is_scav(n):
+    # One Trainer of a double battle pair (the second's script is 2000 above the first's) goes; the scavs fight alone
+    return (n['type'].startswith('ACTOR_EVENT_TYPE_TRAINER') and n['script'] < 5000
+            and scav_key(n['script'] - 3000) in SCAVS and n['script'] - 3000 != CHILDCARE_TRAINER)
+
+
+def door_boulders(warps, zones, first_id, flag_of):
+    """A boulder in front of each door that can be shut (one for each tile of a wider way in), hidden while open."""
     npcs = []
-    scavs = []
-    for n in e['npcs']:
-        if n['type'] == 'ACTOR_EVENT_TYPE_TRAINER':
-            # One Trainer of a double battle pair (the second's script is 2000 above the first's) goes; the scavs
-            # fight alone
-            if n['script'] >= 5000:
-                continue
-            # Hidden by their own flag until EventTrainerEye_EfuPursue brings them out
-            female = SCAVS[scav_key(n['script'] - 3000)][0]
-            n = dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM', params=[SCAV_SIGHT, 0, 0],
-                     flag='EVENT_FLAG_0x%04x' % (FLAG_SCAV_FIRST + len(scavs)),
-                     area={'width': SCAV_WANDER, 'height': SCAV_WANDER})
-            scavs.append(n['script'] - 3000)
-            npcs.append(move_npc(n))
-        elif is_item_ball(n):
-            npcs.append(move_npc(loot.ball(n, 'route')))
-    r20 = json.loads(orig('res/field/events/route_20.json'))
-    next_id = max(n['id'] for n in e['npcs']) + 1
-    for n in r20['npcs']:
-        if (n['type'].startswith('ACTOR_EVENT_TYPE_TRAINER') and n['script'] < 5000
-                and scav_key(n['script'] - 3000) in SCAVS):
-            female = SCAVS[scav_key(n['script'] - 3000)][0]
-            n = dict(n, id=next_id, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM',
-                     params=[SCAV_SIGHT, 0, 0], flag='EVENT_FLAG_0x%04x' % (FLAG_SCAV_FIRST + len(scavs)),
-                     area={'width': SCAV_WANDER, 'height': SCAV_WANDER})
-            scavs.append(n['script'] - 3000)
-            npcs.append(move_npc(n))
-        elif is_item_ball(n):
-            npcs.append(move_npc(dict(loot.ball(n, 'route'), id=next_id)))
-        else:
-            continue
-        next_id += 1
-    assert len(scavs) <= SCAV_MAX
-    e['npcs'] = npcs
-    # Signs and the like stay (Route 3's own scripts); the hidden items go, since they can't be rolled again
-    e['bg_events'] = [move_bg(b) for b in e['bg_events'] if not HIDDEN_SCRIPTS[0] <= b['script'] <= HIDDEN_SCRIPTS[1]]
-    e['triggers'] = [move_trigger(t) for t in e['triggers']]
-    warps = [move_warp(w) for w in e['warps']]
-    # Route 20's doors: the gate to Virbank opens on the target, and the Cave of Being is a cave
-    for w in r20['warps']:
-        w = move_warp(w)
-        if w['zone'] == 'ZONE_VIRBANK_GATE':
-            warps.append(dict(w, zone=TARGET_ZONE, warp=0))
-        elif w['zone'] == 'ZONE_CAVE_OF_BEING':
-            warps.append(dict(w, zone='ZONE_CAVE_OF_BEING', warp=0))
-    e['warps'] = warps
-    # A boulder in front of each door that can be shut (one for each tile of a wider way in), hidden while it is open
-    next_id = max(n['id'] for n in npcs) + 1
-    for i, zone in enumerate(DOORS):
+    for zone in zones:
         w = next(w for w in warps if w['zone'] == zone)
         dx, dz = APPROACH[w['unk4']]
         g = w['grid']
         for tx in range(g['width']):
             for tz in range(g['height']):
-                npcs.append({'id': next_id, 'model': 'OBJ_CODE_MODEL_3', 'movement': 'MOVE_CODE_NONE',
-                             'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': 'EVENT_FLAG_0x%04x' % (FLAG_DOOR_FIRST + i),
+                npcs.append({'id': first_id + len(npcs), 'model': 'OBJ_CODE_MODEL_3', 'movement': 'MOVE_CODE_NONE',
+                             'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': flag_of(zone),
                              'script': efu_script('BLOCKED_DOOR'), 'direction': 'DIR_DOWN', 'params': [0, 0, 0],
                              'area': {'width': 0, 'height': 0},
-                             'grid': {'x': g['x'] // 16 + tx + dx, 'z': g['z'] // 16 + tz + dz, 'y': g['y'] * 4096}})
-                next_id += 1
-    npcs.append(GUIDE)
-    # Its scavs come out on coming back from a side area (Script_RouteEnter)
+                             'grid': {'x': g['x'] // 16 + tx + dx, 'z': g['z'] // 16 + tz + dz,
+                                      'y': ((g['y'] ^ 0x8000) - 0x8000) * 4096}})
+    return npcs
+
+
+def door_flag(zone):
+    return 'EVENT_FLAG_0x%04x' % (FLAG_DOOR_FIRST + DOORS.index(zone))
+
+
+def build_route(name, loot, scavs, warps=None, extra_npcs=(), triggers=None):
+    """A route of the zone: its scavs and item balls (loot), in the matrix's coordinates, its signs, and its doors
+    (warps: each original warp's new zone and warp, None to keep it); a scav may come out on each later entry
+    (Script_RouteEnter)."""
+    e = json.loads(orig(f'res/field/events/{name}.json'))
+    npcs = []
+    for n in e['npcs']:
+        if is_scav(n):
+            npcs.append(move_npc(scavs.scav(n)))
+        elif is_item_ball(n):
+            npcs.append(move_npc(loot.ball(n, 'route')))
+    # Signs and the like stay (the route's own scripts); the hidden items go, since they can't be rolled again
+    e['bg_events'] = [move_bg(b) for b in e['bg_events'] if not HIDDEN_SCRIPTS[0] <= b['script'] <= HIDDEN_SCRIPTS[1]]
+    # Their story's triggers (the rival's and Bianca's lessons) go, Route 3's aside
+    e['triggers'] = [move_trigger(t) for t in e['triggers']] if triggers is None else triggers
+    out = []
+    for i, w in enumerate(e['warps']):
+        w = move_warp(w)
+        if warps and i in warps:
+            if warps[i] is None:
+                continue
+            w = dict(w, **warps[i])
+        out.append(w)
+    for w in (warps or {}).get('new', []):
+        out.append(w)
+    e['warps'] = out
+    first = max([n['id'] for n in npcs] + [0]) + 1
+    npcs += door_boulders(out, [z for z in DOORS if any(w['zone'] == z for w in out)], first, door_flag)
+    npcs += list(extra_npcs)
+    e['npcs'] = npcs
     e['init_scripts'] = [{'type': 2, 'script': efu_script('ROUTE_ENTER')}]
-    write('res/field/events/route_3.json', e)
-    return scavs, {w['zone']: i for i, w in enumerate(warps)}
+    write(f'res/field/events/{name}.json', e)
+    return e['warps']
+
+
+# Route 2's way north out of the zone, where it met Striaton: the forest's way in (A on Tom's map), a warp walked into
+# (WARP_TRANSITION_WALK_IN, going up) on the forest's blocked row just north of the path's end (tiles 16 to 21 of chunk
+# 24, 19)
+ROUTE_2_NORTH = {'zone': 'ZONE_PINWHEEL_FOREST_2', 'warp': 0, 'unk4': 2, 'transition': 4,
+                 'grid': {'x': (24 * 32 + 16) * 16 + 8, 'y': 0, 'z': (19 * 32 - 1) * 16 + 8, 'width': 6, 'height': 1,
+                          'unk0a': 0}}
+
+
+def build_events(loot):
+    """The zone's routes: Route 3, Route 2, Route 19, Route 20 and Floccesy Ranch."""
+    scavs = Scavs()
+    route_3 = build_route('route_3', loot, scavs, extra_npcs=[GUIDE])
+    route_20 = build_route('route_20', loot, scavs, warps={
+        # The gate to Virbank is a way home, and the Cave of Being a cave
+        0: {'zone': 'ZONE_NACRENE_GATE', 'warp': 0}}, triggers=[])
+    # Route 2's Trainers take the second range of flags
+    assert len(scavs.trainers) <= SCAV_MAX
+    scavs.trainers += [None] * (SCAV_MAX - len(scavs.trainers))
+    gate = json.loads(orig('res/field/events/route_2.json'))['warps'][0]['grid']
+    dx, dz = APPROACH[3]
+    route_2 = build_route('route_2', loot, scavs, warps={
+        # Its old gate to Accumula Town is a ride home for a fee (Script_PaidExit, a trigger in front of it)
+        0: {'zone': 'ZONE_NACRENE_GATE', 'warp': 0}, 'new': [ROUTE_2_NORTH]},
+        triggers=[{'script': efu_script('PAID_EXIT'), 'var': 'EVENT_WORK_0x%04x' % EFU_WORK_RAID, 'value': 1,
+                   'type': 0, 'grid': {'x': gate['x'] // 16 + dx, 'z': gate['z'] // 16 + dz, 'width': 1,
+                                       'height': gate['height'], 'y': 0}, 'unk14': 0}])
+    # Route 19's gate to Aspertia is the forest's way out (B), now a path into the trees
+    build_route('route_19', loot, scavs, warps={0: {'zone': 'ZONE_PINWHEEL_FOREST_2', 'warp': 1}}, triggers=[])
+    build_route('floccesy_ranch', loot, scavs, triggers=[])
+    scavs.trainers = [t for t in scavs.trainers if t is not None]
+    assert len(scavs.trainers) <= SCAV_MAX + SCAV2_MAX
+    route_warps = {'route_3': {w['zone']: i for i, w in enumerate(route_3)},
+                   'route_2': len(route_2) - 1}
+    return scavs.trainers, route_warps
 
 
 def build_daycare():
@@ -395,19 +464,14 @@ def build_places(loot, route_warps):
         e['init_scripts'] = []
         warps = []
         for w in e['warps']:
-            if w['zone'] in ('ZONE_ROUTE_3', 'ZONE_ROUTE_20', 'ZONE_PINWHEEL_FOREST'):
-                warps.append(dict(w, zone='ZONE_ROUTE_3', warp=route_warps[door]))
-            elif w['zone'] in EXIT_GATES:
-                # Home: to the east gate's Route 3 door, from where the player walks into the base as from the route
-                warps.append(dict(w, zone='ZONE_NACRENE_GATE', warp=0))
-            elif w['zone'] in PLACES:
-                # Its other floors
-                warps.append(w)
+            if w['zone'] == 'ZONE_ROUTE_3':
+                warps.append(dict(w, warp=route_warps['route_3'][door]))
+            elif w['zone'] in FOREST_WAYS:
+                # The forest's ways: in from Route 2 (A), out to Route 19 (B) and Rumination Field (C)
+                warps.append(dict(w, **FOREST_WAYS[w['zone']](route_warps)))
             else:
-                # Out anywhere else (the forest's ways to Skyarrow Bridge and Rumination Field) goes, and with it
-                # the warp: these come last, so no other warp's number changes
-                assert all(x['zone'] not in PLACES for x in e['warps'][e['warps'].index(w):])
-                break
+                # Its other floors, and the Cave of Being's way back to Route 20, which keeps its warps' numbers
+                warps.append(w)
         e['warps'] = warps
         if zone == TARGET_ZONE:
             e['npcs'].append(JOY)

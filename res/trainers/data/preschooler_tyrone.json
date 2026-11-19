@@ -26,7 +26,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_PETILIL",
+            "species": "SPECIES_PANSAGE",
             "form": 0,
             "level": 17,
             "difficulty": 0,
@@ -34,7 +34,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_GOLDEEN",
+            "species": "SPECIES_DUNSPARCE",
             "form": 0,
             "level": 18,
             "difficulty": 0,
@@ -42,7 +42,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_SLAKOTH",
+            "species": "SPECIES_PURRLOIN",
             "form": 0,
             "level": 17,
             "difficulty": 0,

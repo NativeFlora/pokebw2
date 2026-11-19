@@ -53,6 +53,7 @@
     ScriptEntry Script_DayCareDoor
     ScriptEntry Script_RouteEnter
     ScriptEntry Script_ClerkCall
+    ScriptEntry Script_PaidExit
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -141,6 +142,9 @@ Script_RaidDepart:
     .irp i, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
     FlagSet EFU_FLAG_SCAV_FIRST + \i
     .endr
+    .irp i, 0,1,2,3,4,5
+    FlagSet EFU_FLAG_SCAV2_FIRST + \i
+    .endr
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
     FlagReset EFU_FLAG_ROUTE_ENTERED
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
@@ -194,6 +198,42 @@ L_RaidOver:
     WorkSetConst EFU_WORK_RAID_HOUR, 0
     FlagReset EFU_FLAG_DOWNFALL
     VMReturn
+
+// Stepping up to Route 2's old gate: a ride home for EFU_PAID_EXIT_PRICE, which ends the exploration as walking home
+// would, from the east gate's Route 3 door; or a step back
+Script_PaidExit:
+    ActorsPauseAll
+    MoneyWinDisp 31, 1
+    WorkSetConst 0x8020, EFU_PAID_EXIT_PRICE
+    WordSetNumber 0, 0x8020, 3
+    SystemMsg Efu_Text_PaidExitAsk, 2
+    YesNoWin 0x8021
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_PaidExitStay
+    MoneyCheck 0x8022, 0x8020
+    WorkCmpConst 0x8022, 0
+    VMJumpIf CMP_EQ, L_PaidExitPoor
+    MoneySub 0x8020
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_08
+    SystemMsg Efu_Text_PaidExitGo, 2
+    LastKeyWait
+    SystemMsgClose
+    MoneyWinClose
+    MapChangeWarp ZONE_NACRENE_GATE, 14, 5, 2
+    ActorsUnpauseAll
+    VMHalt
+
+L_PaidExitPoor:
+    SystemMsg Efu_Text_NotEnoughMoney, 2
+    LastKeyWait
+L_PaidExitStay:
+    SystemMsgClose
+    MoneyWinClose
+    ActorCmdExec 255, Movement_StepBackWest
+    ActorCmdWait
+    ActorsUnpauseAll
+    VMHalt
 
 // Stepping up to Nacrene's door in the east gate while out on a raid: home, and saved
 Script_RaidReturn:
@@ -3051,149 +3091,221 @@ L_LootOut_13:
     FlagReset 0x456
 L_LootNext_13:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_14
-    FlagSet 0x565
+    FlagSet 0x578
     VMJump L_LootNext_14
 L_LootOut_14:
-    FlagReset 0x565
+    FlagReset 0x578
 L_LootNext_14:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_15
-    FlagSet 0x569
+    FlagSet 0x579
     VMJump L_LootNext_15
 L_LootOut_15:
-    FlagReset 0x569
+    FlagReset 0x579
 L_LootNext_15:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_16
-    FlagSet 0x566
+    FlagSet 0x57a
     VMJump L_LootNext_16
 L_LootOut_16:
-    FlagReset 0x566
+    FlagReset 0x57a
 L_LootNext_16:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_17
-    FlagSet 0x567
+    FlagSet 0x57b
     VMJump L_LootNext_17
 L_LootOut_17:
-    FlagReset 0x567
+    FlagReset 0x57b
 L_LootNext_17:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_18
-    FlagSet 0x568
+    FlagSet 0x57d
     VMJump L_LootNext_18
 L_LootOut_18:
-    FlagReset 0x568
+    FlagReset 0x57d
 L_LootNext_18:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_19
-    FlagSet 0x56b
+    FlagSet 0x57e
     VMJump L_LootNext_19
 L_LootOut_19:
-    FlagReset 0x56b
+    FlagReset 0x57e
 L_LootNext_19:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_20
-    FlagSet 0xa90
+    FlagSet 0x44d
     VMJump L_LootNext_20
 L_LootOut_20:
-    FlagReset 0xa90
+    FlagReset 0x44d
 L_LootNext_20:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_21
-    FlagSet 0xa91
+    FlagSet 0x44e
     VMJump L_LootNext_21
 L_LootOut_21:
-    FlagReset 0xa91
+    FlagReset 0x44e
 L_LootNext_21:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 25
+    WorkCmpConst 0x8020, 40
     VMJumpIf CMP_GE, L_LootOut_22
-    FlagSet 0xa92
+    FlagSet 0x58f
     VMJump L_LootNext_22
 L_LootOut_22:
-    FlagReset 0xa92
+    FlagReset 0x58f
 L_LootNext_22:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_23
-    FlagSet 0x54f
+    FlagSet 0x565
     VMJump L_LootNext_23
 L_LootOut_23:
-    FlagReset 0x54f
+    FlagReset 0x565
 L_LootNext_23:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_24
-    FlagSet 0x556
+    FlagSet 0x569
     VMJump L_LootNext_24
 L_LootOut_24:
-    FlagReset 0x556
+    FlagReset 0x569
 L_LootNext_24:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_25
-    FlagSet 0x555
+    FlagSet 0x566
     VMJump L_LootNext_25
 L_LootOut_25:
-    FlagReset 0x555
+    FlagReset 0x566
 L_LootNext_25:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_26
-    FlagSet 0x554
+    FlagSet 0x567
     VMJump L_LootNext_26
 L_LootOut_26:
-    FlagReset 0x554
+    FlagReset 0x567
 L_LootNext_26:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_27
-    FlagSet 0x553
+    FlagSet 0x568
     VMJump L_LootNext_27
 L_LootOut_27:
-    FlagReset 0x553
+    FlagReset 0x568
 L_LootNext_27:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_28
-    FlagSet 0x552
+    FlagSet 0x56b
     VMJump L_LootNext_28
 L_LootOut_28:
-    FlagReset 0x552
+    FlagReset 0x56b
 L_LootNext_28:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_29
-    FlagSet 0x550
+    FlagSet 0xa90
     VMJump L_LootNext_29
 L_LootOut_29:
-    FlagReset 0x550
+    FlagReset 0xa90
 L_LootNext_29:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 15
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_30
-    FlagSet 0x54e
+    FlagSet 0xa91
     VMJump L_LootNext_30
 L_LootOut_30:
-    FlagReset 0x54e
+    FlagReset 0xa91
 L_LootNext_30:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 90
+    WorkCmpConst 0x8020, 25
     VMJumpIf CMP_GE, L_LootOut_31
-    FlagSet 0x564
+    FlagSet 0xa92
     VMJump L_LootNext_31
 L_LootOut_31:
-    FlagReset 0x564
+    FlagReset 0xa92
 L_LootNext_31:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_32
+    FlagSet 0x54f
+    VMJump L_LootNext_32
+L_LootOut_32:
+    FlagReset 0x54f
+L_LootNext_32:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_33
+    FlagSet 0x556
+    VMJump L_LootNext_33
+L_LootOut_33:
+    FlagReset 0x556
+L_LootNext_33:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_34
+    FlagSet 0x555
+    VMJump L_LootNext_34
+L_LootOut_34:
+    FlagReset 0x555
+L_LootNext_34:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_35
+    FlagSet 0x554
+    VMJump L_LootNext_35
+L_LootOut_35:
+    FlagReset 0x554
+L_LootNext_35:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_36
+    FlagSet 0x553
+    VMJump L_LootNext_36
+L_LootOut_36:
+    FlagReset 0x553
+L_LootNext_36:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_37
+    FlagSet 0x552
+    VMJump L_LootNext_37
+L_LootOut_37:
+    FlagReset 0x552
+L_LootNext_37:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_38
+    FlagSet 0x550
+    VMJump L_LootNext_38
+L_LootOut_38:
+    FlagReset 0x550
+L_LootNext_38:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 15
+    VMJumpIf CMP_GE, L_LootOut_39
+    FlagSet 0x54e
+    VMJump L_LootNext_39
+L_LootOut_39:
+    FlagReset 0x54e
+L_LootNext_39:
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, 90
+    VMJumpIf CMP_GE, L_LootOut_40
+    FlagSet 0x564
+    VMJump L_LootNext_40
+L_LootOut_40:
+    FlagReset 0x564
+L_LootNext_40:
     VMReturn
 
 // The locker, in the player's warehouse and by the Pokémon Center's Poké Mart counter (build_base.py), one store

@@ -1,16 +1,19 @@
-"""Escape from Unova: the first exploration zone's map, which ZONE_ROUTE_3 uses instead of the overworld's.
+"""Escape from Unova: the first exploration zone's maps, two matrices of the overworld's chunks.
 
-Idempotent, like build_base.py. It writes
-- res/field/matrices/efu_zone_1.json: Route 3's chunks with Route 20's south of its east end, in Striaton's place,
-  where Route 3's road south meets Route 20's north path, all walled in by forest. No chunk of a town is in
-  it, so nothing leads out of the zone but the gate home and the doors of its caves and its target;
-- copies of Route 20's chunks (res/field/maps/models/efu_zone_1_*), 32 units lower so that their ground meets Route 3's,
-  with each terrain plane moved to the height table's entry for the lowered plane;
-- the textures of Route 20 that Route 3's texture sets lack, imported from Route 19's sets season by season;
-- res/field/zones/route_3.json, for the matrix.
-build_raid.py moves the events of both routes into the matrix's coordinates (ZONE_CHUNKS).
+Idempotent, like build_base.py. The zone runs Route 3 → Route 2 → Pinwheel Forest → Route 19 → Route 20 (docs/efu.md):
+- MAP_MATRIX_EFU_ZONE_1 (res/field/matrices/efu_zone_1.json): Route 3, the west chunk of Striaton (its garden) and
+  Route 2, each where it is in the overworld, so their ground meets as it always did and their events keep their
+  coordinates. Striaton's other chunks are forest, and a path is cut through the trees between the garden and Route 2
+  (CUTS), the way on from Route 3's road south;
+- MAP_MATRIX_EFU_ZONE_2 (efu_zone_2.json): Route 19 moved one chunk east and one north, into Floccesy Town's place, and
+  raised 16 units, so its path east meets Route 20's path west; Route 20 and Floccesy Ranch where they are;
+- copies of the chunks that change (res/field/maps/models/efu_zone_*): cut, raised or with tiles blocked at a seam;
+- each matrix's zones, so that crossing from Route 3 into Route 2 (or Route 19 into Route 20) is a zone change that
+  runs the zone's init script, and the zones' headers (res/field/zones/*.json), for their matrix.
+Everything else in a matrix is forest (MAP_OUTTREE), all of it blocked. build_raid.py moves the events of the moved
+chunks into the matrix's coordinates (moved()).
 """
-import csv, json, os, re, shutil
+import csv, json, os, re
 
 import build_coast as bc
 
@@ -19,40 +22,72 @@ root = os.path.dirname(os.path.dirname(here))
 MODELS = os.path.join(root, 'res/field/maps/models')
 TEXTURES = os.path.join(root, 'res/field/maps/textures')
 TREE = 'MAP_MODEL_OVERWORLD_2_MAP_OUTTREE'
-MATRIX_CONST = 'MAP_MATRIX_EFU_ZONE_1'
-MATRIX_FILE = 'res/field/matrices/efu_zone_1.json'
-
-# The zone's chunks, by overworld chunk (column, row of MAP_MATRIX_OVERWORLD): where each goes in the matrix. Route 3
-# keeps its place, so the matrix is the overworld's size, forest wherever no chunk is, and a save made on Route 3 by
-# an older build still stands somewhere real; Route 20 takes Striaton's place, south of Route 3's east end
-ZONE_CHUNKS = {
-    (21, 17): (21, 17), (22, 17): (22, 17), (23, 17): (23, 17),
-    (21, 18): (21, 18), (22, 18): (22, 18),
-    (4, 20): (23, 18), (5, 20): (24, 18),
-    (4, 21): (23, 19), (5, 21): (24, 19),
-}
+# The overworld's size, so that every matrix keeps its chunks' overworld coordinates
 MATRIX_SIZE = (29, 27)
-# The chunks copied lower, and by how much (world units): Route 20's ground at the seam is 32 above Route 3's
-LOWERED = {(4, 20): -32, (5, 20): -32, (4, 21): -32, (5, 21): -32}
-# Route 3 chunks copied with their ground changed where they meet Route 20: from the row given down to the chunk's
-# south edge, Route 3's paved path (michi02) turns into Route 20's dirt one (michi01), so the road ends inside Route 3
-# and dirt runs on across the seam into Route 20's path
-BLENDED = {(23, 17): {'row': 27, 'swap': {'michi02a': 'michi01a', 'michi02b': 'michi01b'}}}
-# The zone's texture sets by season (Striaton's area, which Route 3's zone uses) and Route 19's, which Route 20 uses
-ZONE_SETS = ['MAP_TEXTURE_SET_SHARED_DANSA01A_6', 'MAP_TEXTURE_SET_SHARED_DANSA01A_7',
-             'MAP_TEXTURE_SET_SHARED_DANSA01A_8', 'MAP_TEXTURE_SET_SHARED_DANSA01A_9']
-ROUTE_20_SETS = ['MAP_TEXTURE_SET_SHARED_DANSA01A_183', 'MAP_TEXTURE_SET_SHARED_DANSA01A_184',
-                 'MAP_TEXTURE_SET_SHARED_DANSA01A_185', 'MAP_TEXTURE_SET_SHARED_DANSA01A_186']
-# The props of Striaton's bundle (FIELD_PROPS_EXTERIOR_SHARED_PC_01_2) a copied chunk may keep, by resource ID
-PROP_BUNDLE = 'shared_pc_01_2'
+
+# Each matrix: its file, the zone of its forest, and its chunks, by overworld chunk (column, row of
+# MAP_MATRIX_OVERWORLD): where each goes in the matrix and its zone there
+MATRICES = {
+    'MAP_MATRIX_EFU_ZONE_1': {
+        'file': 'res/field/matrices/efu_zone_1.json', 'name': 'efu_zone_1', 'forest_zone': 'ZONE_ROUTE_3',
+        'texture_set': 'MAP_TEXTURE_SET_SHARED_DANSA01A_6',
+        # Its area's sets by season (Striaton's)
+        'seasons': ['MAP_TEXTURE_SET_SHARED_DANSA01A_%d' % n for n in (6, 7, 8, 9)],
+        'zones': ['ZONE_ROUTE_3', 'ZONE_ROUTE_2'],
+        'chunks': {
+            (21, 17): ((21, 17), 'ZONE_ROUTE_3'), (22, 17): ((22, 17), 'ZONE_ROUTE_3'),
+            (23, 17): ((23, 17), 'ZONE_ROUTE_3'), (21, 18): ((21, 18), 'ZONE_ROUTE_3'),
+            (22, 18): ((22, 18), 'ZONE_ROUTE_3'),
+            # Striaton's garden, now the end of Route 3's road south
+            (23, 18): ((23, 18), 'ZONE_ROUTE_3'),
+            (23, 19): ((23, 19), 'ZONE_ROUTE_2'), (24, 19): ((24, 19), 'ZONE_ROUTE_2'),
+            (23, 20): ((23, 20), 'ZONE_ROUTE_2'),
+        },
+    },
+    'MAP_MATRIX_EFU_ZONE_2': {
+        'file': 'res/field/matrices/efu_zone_2.json', 'name': 'efu_zone_2', 'forest_zone': 'ZONE_ROUTE_20',
+        'texture_set': 'MAP_TEXTURE_SET_SHARED_DANSA01A_183',
+        # Route 19's area's, which lack the textures of Route 19's west chunk, drawn with Aspertia's
+        'seasons': ['MAP_TEXTURE_SET_SHARED_DANSA01A_%d' % n for n in (183, 184, 185, 186)],
+        'zones': ['ZONE_ROUTE_19', 'ZONE_ROUTE_20', 'ZONE_FLOCCESY_RANCH'],
+        'chunks': {
+            (1, 21): ((2, 20), 'ZONE_ROUTE_19'), (2, 21): ((3, 20), 'ZONE_ROUTE_19'),
+            (4, 19): ((4, 19), 'ZONE_FLOCCESY_RANCH'),
+            (4, 20): ((4, 20), 'ZONE_ROUTE_20'), (5, 20): ((5, 20), 'ZONE_ROUTE_20'),
+            (4, 21): ((4, 21), 'ZONE_ROUTE_20'), (5, 21): ((5, 21), 'ZONE_ROUTE_20'),
+        },
+    },
+}
+# Every chunk's place, by overworld chunk
+ZONE_CHUNKS = {c: pos for m in MATRICES.values() for c, (pos, zone) in m['chunks'].items()}
+# The chunks copied higher, and by how much (world units): Route 19's path east is at 16, Route 20's west at 32
+RAISED = {(1, 21): 16, (2, 21): 16}
+# The paths cut through the trees: in each chunk, a rectangle of tiles (x0, z0, x1, z1, the ends exclusive) where
+# everything above the ground goes, grass is laid and the tiles are walked on. Tree rows stand every 32 units from
+# x 16, so a cut from tile 17 to 20 keeps the rows at its sides as its walls
+CUTS = {(23, 18): [(17, 28, 21, 32)], (23, 19): [(17, 0, 21, 10)]}
+# Tiles blocked in a copy: Route 19's high ground at its east edge, which met Floccesy Town's and would let the player
+# step down onto Route 20's lower ground
+BLOCKED = {(2, 21): [(31, 0), (31, 1)]}
+GROUND_MATERIAL = 'grass01ax'
+WALL_MATERIAL = 'gake01a'
+BLOCKED_TILE = 0x10000
 
 
 def folder(chunk):
     return 'overworld_2_map%02d_%02d' % chunk
 
 
+def matrix_of(chunk):
+    return next(m for m in MATRICES.values() if chunk in m['chunks'])
+
+
+def copied(chunk):
+    return chunk in RAISED or chunk in CUTS or chunk in BLOCKED
+
+
 def copy_folder(chunk):
-    return 'efu_zone_1_%02d_%02d' % chunk
+    return '%s_%02d_%02d' % (matrix_of(chunk)['name'], *chunk)
 
 
 def constant_of_original(chunk):
@@ -60,9 +95,9 @@ def constant_of_original(chunk):
 
 
 def constant(chunk):
-    if chunk in LOWERED or chunk in BLENDED:
+    if copied(chunk):
         return 'MAP_MODEL_' + copy_folder(chunk).upper()
-    return 'MAP_MODEL_OVERWORLD_2_MAP%02d_%02d' % chunk
+    return constant_of_original(chunk)
 
 
 def tables():
@@ -78,109 +113,66 @@ def tables():
 SLOPES, OFFSETS = tables()
 
 
-def lowered_offset(slope, offset, dy):
+def moved_offset(slope, offset, dy):
     # A plane's height is -(offset + n.x * x + n.z * z) / n.y, so moving it by dy takes dy * n.y off its offset; the
     # table's nearest entry stands in (within a hundredth of a unit for the ground, about a unit on a few cliff faces)
     target = OFFSETS[offset] - dy * SLOPES[slope * 3 + 1]
     return min(range(len(OFFSETS)), key=lambda k: abs(OFFSETS[k] - target))
 
 
-def bundle_ids():
-    ids = set()
-    base = os.path.join(root, 'res/field/props/exterior/models', PROP_BUNDLE)
-    for d in os.listdir(base):
-        ids.add(json.load(open(os.path.join(base, d, 'data.json')))['res_id'])
-    return ids
+def clip_half(poly, axis, value, keep_below):
+    """Sutherland-Hodgman: the part of a polygon (vertices as tuples, position first) on one side of a plane
+    axis = value."""
+    out = []
+    for i, a in enumerate(poly):
+        b = poly[(i + 1) % len(poly)]
+        a_in = a[axis] <= value if keep_below else a[axis] >= value
+        b_in = b[axis] <= value if keep_below else b[axis] >= value
+        if a_in:
+            out.append(a)
+        if a_in != b_in:
+            t = (value - a[axis]) / (b[axis] - a[axis])
+            out.append(tuple(x + (y - x) * t for x, y in zip(a, b)))
+    return out if len(out) >= 3 else []
 
 
-def build_lowered(chunk, dy, props):
+def outside(poly, x0, z0, x1, z1):
+    """The parts of a polygon outside the column x0 < x < x1, z0 < z < z1 (one lying on a side of it is kept whole)."""
+    xs = [v[0] for v in poly]
+    zs = [v[2] for v in poly]
+    if max(xs) <= x0 or min(xs) >= x1 or max(zs) <= z0 or min(zs) >= z1:
+        return [poly]
+    parts = [clip_half(poly, 0, x0, True), clip_half(poly, 0, x1, False)]
+    middle = clip_half(clip_half(poly, 0, x0, False), 0, x1, True)
+    if middle:
+        parts += [clip_half(middle, 2, z0, True), clip_half(middle, 2, z1, False)]
+    return [p for p in parts if p and area(p) > 1e-3]
+
+
+def area(p):
+    total = [0.0, 0.0, 0.0]
+    for i in range(1, len(p) - 1):
+        a = [p[i][k] - p[0][k] for k in range(3)]
+        b = [p[i + 1][k] - p[0][k] for k in range(3)]
+        c = (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+        total = [t + v for t, v in zip(total, c)]
+    return sum(t * t for t in total) ** 0.5 / 2
+
+
+def build_copy(chunk):
+    """A copy of an overworld chunk, raised (RAISED), with paths cut through its trees (CUTS) and tiles blocked
+    (BLOCKED)."""
     src = os.path.join(MODELS, folder(chunk))
     dst = os.path.join(MODELS, copy_folder(chunk))
     os.makedirs(dst, exist_ok=True)
+    dy = RAISED.get(chunk, 0)
+    cuts = [(x0 * bc.TILE - 256, z0 * bc.TILE - 256, x1 * bc.TILE - 256, z1 * bc.TILE - 256)
+            for x0, z0, x1, z1 in CUTS.get(chunk, [])]
     doc, binary = bc.read_glb(os.path.join(src, 'model.glb'))
     mesh = [n for n in doc['nodes'] if 'mesh' in n][0]
     w = bc.Writer(mesh['name'])
     w.edge_low = {}
-    for prim in doc['meshes'][mesh['mesh']]['primitives']:
-        att = prim['attributes']
-        positions = [(x, y + dy, z) for x, y, z in bc.accessor(doc, binary, att['POSITION'])]
-        note_edges(w.edge_low, positions)
-        uvs = bc.accessor(doc, binary, att['TEXCOORD_0'])
-        colors = bc.accessor(doc, binary, att['COLOR_0'])
-        normals = bc.accessor(doc, binary, att['NORMAL']) if 'NORMAL' in att else None
-        idx = [i[0] for i in bc.accessor(doc, binary, prim['indices'])]
-        old = doc['materials'][prim['material']]
-        binding = old.get('pbrMetallicRoughness', {}).get('baseColorTexture')
-        uri = doc['images'][doc['textures'][binding['index']]['source']]['uri'] if binding else 'none.png'
-        names = [m['name'] for m in w.doc['materials']]
-        material = names.index(old['name']) if old['name'] in names else w.material(old, uri)
-        w.primitive(material, positions, uvs, colors, normals, [tuple(idx[k:k + 3]) for k in range(0, len(idx), 3)])
-    # The props Striaton's bundle has too, lowered with the ground
-    for node in doc['nodes']:
-        m = re.match(r'bw2_prop_\d+_id_(\d+)', node.get('name', ''))
-        if m and int(m.group(1)) in props:
-            n = {k: node[k] for k in ('name', 'translation', 'rotation', 'scale') if k in node}
-            n['translation'] = [n['translation'][0], n['translation'][1] + dy, n['translation'][2]]
-            w.doc['nodes'].append(n)
-            w.doc['scenes'][0]['nodes'].append(len(w.doc['nodes']) - 1)
-    add_edge_walls(w, chunk, dy)
-    w.save(os.path.join(dst, 'model.glb'))
-    with open(os.path.join(dst, 'data.json'), 'w') as f:
-        f.write(json.dumps({'$schema': '../map_model.schema.json', 'texture_set': ZONE_SETS[0], 'written': True,
-                            'template': constant_of_original(chunk)}, indent=4) + '\n')
-    rows = list(csv.DictReader(open(os.path.join(src, 'terrain_0.csv'))))
-    for r in rows:
-        if r['shape'] == '0':
-            r['offset'] = str(lowered_offset(int(r['slope']), int(r['offset']), dy))
-    bc.write_csv(os.path.join(dst, 'terrain_0.csv'), rows)
-    splits = list(csv.DictReader(open(os.path.join(src, 'terrain_0_splits.csv'))))
-    for r in splits:
-        r['offset0'] = str(lowered_offset(int(r['slope0']), int(r['offset0']), dy))
-        r['offset1'] = str(lowered_offset(int(r['slope1']), int(r['offset1']), dy))
-    with open(os.path.join(dst, 'terrain_0_splits.csv'), 'w', newline='\n') as f:
-        out = csv.DictWriter(f, fieldnames=['index', 'unused', 'slope0', 'slope1', 'offset0', 'offset1'],
-                             lineterminator='\n')
-        out.writeheader()
-        out.writerows(splits)
-    register('generated/map_models.txt', constant(chunk))
-
-
-def clip(tri, z):
-    """Splits a triangle (vertices as tuples whose index 2 is z) at a z: the polygons north and south of it."""
-    def lerp(a, b, t):
-        return tuple(x + (y - x) * t if isinstance(x, float) else round(x + (y - x) * t) for x, y in zip(a, b))
-
-    north, south = [], []
-    for i, a in enumerate(tri):
-        b = tri[(i + 1) % 3]
-        (north if a[2] < z else south).append(a)
-        if (a[2] < z) != (b[2] < z):
-            v = lerp(a, b, (z - a[2]) / (b[2] - a[2]))
-            north.append(v)
-            south.append(v)
-    return north, south
-
-
-def build_blended(chunk, spec):
-    """A copy of a Route 3 chunk whose paths change texture from a row south (BLENDED)."""
-    src = os.path.join(MODELS, folder(chunk))
-    dst = os.path.join(MODELS, copy_folder(chunk))
-    os.makedirs(dst, exist_ok=True)
-    doc, binary = bc.read_glb(os.path.join(src, 'model.glb'))
-    mesh = [n for n in doc['nodes'] if 'mesh' in n][0]
-    w = bc.Writer(mesh['name'])
-    edge = spec['row'] * bc.TILE - 256
-    set_folder = ZONE_SETS[0][len('MAP_TEXTURE_SET_'):].lower()
-
-    def material(old, name=None):
-        binding = old.get('pbrMetallicRoughness', {}).get('baseColorTexture')
-        uri = doc['images'][doc['textures'][binding['index']]['source']]['uri'] if binding else 'none.png'
-        if name:
-            old = dict(old, name=name)
-            uri = f'../../textures/{set_folder}/{name}.png'
-        names = [m['name'] for m in w.doc['materials']]
-        return names.index(old['name']) if old['name'] in names else w.material(old, uri)
-
+    ground = None
     for prim in doc['meshes'][mesh['mesh']]['primitives']:
         att = prim['attributes']
         positions = bc.accessor(doc, binary, att['POSITION'])
@@ -189,38 +181,85 @@ def build_blended(chunk, spec):
         normals = bc.accessor(doc, binary, att['NORMAL']) if 'NORMAL' in att else [(0.0, 1.0, 0.0)] * len(positions)
         idx = [i[0] for i in bc.accessor(doc, binary, prim['indices'])]
         old = doc['materials'][prim['material']]
-        swap = spec['swap'].get(old['name'])
+        binding = old.get('pbrMetallicRoughness', {}).get('baseColorTexture')
+        uri = doc['images'][doc['textures'][binding['index']]['source']]['uri'] if binding else 'none.png'
+        names = [m['name'] for m in w.doc['materials']]
+        material = names.index(old['name']) if old['name'] in names else w.material(old, uri)
+        if old['name'] == GROUND_MATERIAL:
+            ground = material
         # Vertices as position, uv, color and normal in one tuple, so clipping interpolates them all
-        verts = [tuple(float(c) for c in positions[i]) + tuple(float(c) for c in uvs[i]) + tuple(colors[i][:3])
-                 + tuple(float(c) for c in normals[i]) for i in range(len(positions))]
-        parts = {old['name']: [], swap: []}
-        for k in range(0, len(idx), 3):
-            tri = [verts[i] for i in idx[k:k + 3]]
-            if not swap:
-                parts[old['name']].append(tri)
-                continue
-            north, south = clip(tri, edge)
-            for poly, key in ((north, old['name']), (south, swap)):
-                for j in range(1, len(poly) - 1):
-                    parts[key].append([poly[0], poly[j], poly[j + 1]])
-        for name, tris in parts.items():
-            if not name or not tris:
-                continue
-            m = material(old, name if name == swap else None)
-            vs = [v for t in tris for v in t]
-            w.primitive(m, [v[0:3] for v in vs], [v[3:5] for v in vs], [v[5:8] for v in vs], [v[8:11] for v in vs],
-                        [(3 * i, 3 * i + 1, 3 * i + 2) for i in range(len(tris))])
+        verts = [tuple(float(c) for c in positions[i]) + tuple(float(c) for c in uvs[i])
+                 + tuple(float(c) for c in colors[i][:3]) + tuple(float(c) for c in normals[i])
+                 for i in range(len(positions))]
+        polys = [[verts[i] for i in idx[k:k + 3]] for k in range(0, len(idx), 3)]
+        for x0, z0, x1, z1 in cuts:
+            polys = [part for p in polys for part in outside(p, x0, z0, x1, z1)]
+        tris = [(p[0], p[j], p[j + 1]) for p in polys for j in range(1, len(p) - 1)]
+        if not tris:
+            continue
+        vs = [(v[0], v[1] + dy, v[2]) + v[3:] for t in tris for v in t]
+        bc_note_edges(w.edge_low, [v[:3] for v in vs])
+        w.primitive(material, [v[0:3] for v in vs], [v[3:5] for v in vs],
+                    [tuple(min(255, max(0, round(c))) for c in v[5:8]) for v in vs], [v[8:11] for v in vs],
+                    [(3 * i, 3 * i + 1, 3 * i + 2) for i in range(len(tris))])
+    # Grass on the cut paths, lit like the ground around
+    for x0, z0, x1, z1 in cuts:
+        if ground is None:
+            ground = w.material({'name': GROUND_MATERIAL, 'pbrMetallicRoughness': {
+                'baseColorTexture': {'index': 0}, 'metallicFactor': 0}, 'extensions': {'KHR_materials_unlit': {}}},
+                texture_uri(chunk, GROUND_MATERIAL))
+        corners = [(x0, dy, z0), (x1, dy, z0), (x1, dy, z1), (x0, dy, z1)]
+        w.primitive(ground, corners, [(x / 32, z / 32) for x, y, z in corners], [(254, 254, 254)] * 4,
+                    [(0.0, 1.0, 0.0)] * 4, [(0, 2, 1), (0, 3, 2)])
+    # The props, raised with the ground, but none where a path is cut
     for node in doc['nodes']:
-        if node.get('name', '').startswith('bw2_prop_'):
-            w.doc['nodes'].append({k: node[k] for k in ('name', 'translation', 'rotation', 'scale') if k in node})
-            w.doc['scenes'][0]['nodes'].append(len(w.doc['nodes']) - 1)
+        if not node.get('name', '').startswith('bw2_prop_'):
+            continue
+        n = {k: node[k] for k in ('name', 'translation', 'rotation', 'scale') if k in node}
+        x, y, z = n['translation']
+        if any(x0 - 8 < x < x1 + 8 and z0 - 8 < z < z1 + 8 for x0, z0, x1, z1 in cuts):
+            continue
+        n['translation'] = [x, y + dy, z]
+        w.doc['nodes'].append(n)
+        w.doc['scenes'][0]['nodes'].append(len(w.doc['nodes']) - 1)
+    if dy:
+        add_edge_walls(w, chunk, dy)
     w.save(os.path.join(dst, 'model.glb'))
     with open(os.path.join(dst, 'data.json'), 'w') as f:
-        f.write(json.dumps({'$schema': '../map_model.schema.json', 'texture_set': ZONE_SETS[0], 'written': True,
-                            'template': constant_of_original(chunk)}, indent=4) + '\n')
-    for name in ('terrain_0.csv', 'terrain_0_splits.csv'):
-        shutil.copy(os.path.join(src, name), os.path.join(dst, name))
+        f.write(json.dumps({'$schema': '../map_model.schema.json', 'texture_set': matrix_of(chunk)['texture_set'],
+                            'written': True, 'template': constant_of_original(chunk)}, indent=4) + '\n')
+    rows = list(csv.DictReader(open(os.path.join(src, 'terrain_0.csv'))))
+    at = {(int(r['x']), int(r['z'])): r for r in rows}
+    for x0, z0, x1, z1 in CUTS.get(chunk, []):
+        # Each tile of the path as the walkable ground tile nearest it
+        walkable = [r for r in rows if not int(r['tile_type']) & BLOCKED_TILE and r['shape'] == '0']
+        for x in range(x0, x1):
+            for z in range(z0, z1):
+                near = min(walkable, key=lambda r: abs(int(r['x']) - x) + abs(int(r['z']) - z))
+                at[x, z].update({k: near[k] for k in ('shape', 'slope', 'offset', 'tile_type')})
+    for x, z in BLOCKED.get(chunk, []):
+        at[x, z]['tile_type'] = str(int(at[x, z]['tile_type']) | BLOCKED_TILE)
+    if dy:
+        for r in rows:
+            if r['shape'] == '0':
+                r['offset'] = str(moved_offset(int(r['slope']), int(r['offset']), dy))
+    bc.write_csv(os.path.join(dst, 'terrain_0.csv'), rows)
+    splits = list(csv.DictReader(open(os.path.join(src, 'terrain_0_splits.csv'))))
+    if dy:
+        for r in splits:
+            r['offset0'] = str(moved_offset(int(r['slope0']), int(r['offset0']), dy))
+            r['offset1'] = str(moved_offset(int(r['slope1']), int(r['offset1']), dy))
+    with open(os.path.join(dst, 'terrain_0_splits.csv'), 'w', newline='\n') as f:
+        out = csv.DictWriter(f, fieldnames=['index', 'unused', 'slope0', 'slope1', 'offset0', 'offset1'],
+                             lineterminator='\n')
+        out.writeheader()
+        out.writerows(splits)
     register('generated/map_models.txt', constant(chunk))
+
+
+def texture_uri(chunk, name):
+    s = matrix_of(chunk)['texture_set'][len('MAP_TEXTURE_SET_'):].lower()
+    return f'../../textures/{s}/{name}.png'
 
 
 # The edges of a chunk: the neighbor's offset in chunks, and for a vertex, its distance from the edge and its place
@@ -231,52 +270,45 @@ EDGES = {
     'W': ((-1, 0), lambda x, z: x + 256, lambda x, z: z),
     'E': ((1, 0), lambda x, z: 256 - x, lambda x, z: z),
 }
-WALL_MATERIAL = 'gake01a'
 
 
-def note_edges(low, positions):
+def bc_note_edges(low, positions):
     for x, y, z in positions:
         for edge, (_, across, along) in EDGES.items():
             if abs(across(x, z)) < 0.6:
                 tile = min(31, max(0, int((along(x, z) + 256) // 16)))
-                low[edge, tile] = min(low.get((edge, tile), 0.0), y)
+                low[edge, tile] = min(low.get((edge, tile), 1e9), y)
 
 
 def add_edge_walls(w, chunk, dy):
-    """Cliff faces down from the zone's ground (0) along the edges a lowered chunk shares with a chunk that isn't
-    lowered with it: the river beds and cliffs that ran on into the next chunk of the overworld would leave a hole to
-    the sky there."""
-    lowered = {pos for c, pos in ZONE_CHUNKS.items() if c in LOWERED}
+    """Cliff faces down from a raised chunk's edges, where it meets a chunk that isn't raised with it, to below the
+    ground there: the ground that ran on into the next chunk of the overworld would otherwise leave a gap under its
+    edge."""
+    raised = {ZONE_CHUNKS[c] for c in RAISED}
     x0, z0 = ZONE_CHUNKS[chunk]
     names = [m['name'] for m in w.doc['materials']]
     material = None
     for edge, ((ox, oz), _, _) in EDGES.items():
-        if (x0 + ox, z0 + oz) in lowered:
+        if (x0 + ox, z0 + oz) in raised:
             continue
         for tile in range(32):
-            bottom = w.edge_low.get((edge, tile), 0.0)
-            if bottom > -1:
+            top = w.edge_low.get((edge, tile))
+            if top is None:
                 continue
+            bottom = -16.0
             if material is None:
                 material = (names.index(WALL_MATERIAL) if WALL_MATERIAL in names else w.material(
                     {'name': WALL_MATERIAL, 'pbrMetallicRoughness': {'baseColorTexture': {'index': 0},
                                                                       'metallicFactor': 0},
-                     'extensions': {'KHR_materials_unlit': {}}},
-                    '../../textures/%s/%s.png' % (ZONE_SETS[0][len('MAP_TEXTURE_SET_'):].lower(), WALL_MATERIAL)))
+                     'extensions': {'KHR_materials_unlit': {}}}, texture_uri(chunk, WALL_MATERIAL)))
             a, b = tile * 16 - 256, tile * 16 - 240
-            if edge == 'N':
-                ends = [(a, -256), (b, -256)]
-            elif edge == 'S':
-                ends = [(a, 256), (b, 256)]
-            elif edge == 'W':
-                ends = [(-256, a), (-256, b)]
-            else:
-                ends = [(256, a), (256, b)]
+            ends = {'N': [(a, -256), (b, -256)], 'S': [(a, 256), (b, 256)], 'W': [(-256, a), (-256, b)],
+                    'E': [(256, a), (256, b)]}[edge]
             (ax, az), (bx, bz) = ends
-            verts = [(ax, 0.0, az), (bx, 0.0, bz), (bx, bottom, bz), (ax, bottom, az)]
-            uvs = [(0.0, 0.0), (1.0, 0.0), (1.0, -bottom / 16), (0.0, -bottom / 16)]
-            # Both faces, so it shows from whichever side the camera is on
-            # Lit like the ground, so they darken at night with it
+            verts = [(ax, top, az), (bx, top, bz), (bx, bottom, bz), (ax, bottom, az)]
+            uvs = [(0.0, 0.0), (1.0, 0.0), (1.0, (top - bottom) / 16), (0.0, (top - bottom) / 16)]
+            # Both faces, so it shows from whichever side the camera is on, lit like the ground, so they darken at
+            # night with it
             w.primitive(material, verts, uvs, [(254, 254, 254)] * 4, [(0.0, 1.0, 0.0)] * 4,
                         [(0, 1, 2), (0, 2, 3), (0, 2, 1), (0, 3, 2)])
 
@@ -288,50 +320,60 @@ def register(path, name):
             f.write(name + '\n')
 
 
-def missing_textures():
-    """The textures the lowered chunks use that the zone's sets lack."""
-    have = {f[:-4] for f in os.listdir(os.path.join(TEXTURES, ZONE_SETS[0][len('MAP_TEXTURE_SET_'):].lower()))}
-    need = set()
-    for chunk in LOWERED:
+def set_folder(texture_set):
+    return texture_set[len('MAP_TEXTURE_SET_'):].lower()
+
+
+def build_imports(m):
+    """The textures a matrix's copies use that its area's sets lack, imported into each season's set from the set
+    the original chunk took them from (texture_imports.schema.json)."""
+    need = {}
+    for chunk in m['chunks']:
+        if not copied(chunk):
+            continue
         doc, _ = bc.read_glb(os.path.join(MODELS, copy_folder(chunk), 'model.glb'))
-        need |= {os.path.basename(i['uri'])[:-4] for i in doc['images']}
-    return sorted(need - have)
-
-
-def build_imports():
-    textures = missing_textures()
-    for zone_set, route_set in zip(ZONE_SETS, ROUTE_20_SETS):
-        path = os.path.join(TEXTURES, zone_set[len('MAP_TEXTURE_SET_'):].lower(), 'imports.json')
+        for image in doc['images']:
+            parts = image['uri'].split('/')
+            need.setdefault(parts[-1][:-len('.png')], 'MAP_TEXTURE_SET_' + parts[-2].upper())
+    for texture_set in m['seasons']:
+        path = os.path.join(TEXTURES, set_folder(texture_set), 'imports.json')
+        have = {f[:-4] for f in os.listdir(os.path.dirname(path)) if f.endswith('.png')}
+        imports = [{'texture': t, 'from': src} for t, src in sorted(need.items()) if t not in have]
+        if not imports:
+            continue
         with open(path, 'w') as f:
-            f.write(json.dumps({'$schema': '../texture_imports.schema.json',
-                                'textures': [{'texture': t, 'from': route_set} for t in textures]}, indent=4) + '\n')
+            f.write(json.dumps({'$schema': '../texture_imports.schema.json', 'textures': imports}, indent=4) + '\n')
 
 
-def build_matrix():
-    register('generated/map_matrices.txt', MATRIX_CONST)
-    at = {pos: chunk for chunk, pos in ZONE_CHUNKS.items()}
+def build_matrix(constant_name, m):
+    register('generated/map_matrices.txt', constant_name)
+    at = {pos: (chunk, zone) for chunk, (pos, zone) in m['chunks'].items()}
     width, height = MATRIX_SIZE
-    rows = ',\n'.join('        [ ' + ', '.join('"%s"' % (constant(at[x, z]) if (x, z) in at else TREE)
-                                               for x in range(width)) + ' ]' for z in range(height))
-    with open(os.path.join(root, MATRIX_FILE), 'w') as f:
-        f.write('{\n    "$schema": "map_matrix.schema.json",\n    "maps": [\n' + rows + '\n    ]\n}\n')
+
+    def rows(cell):
+        return ',\n'.join('        [ ' + ', '.join('"%s"' % cell(x, z) for x in range(width)) + ' ]'
+                          for z in range(height))
+
+    maps = rows(lambda x, z: constant(at[x, z][0]) if (x, z) in at else TREE)
+    zones = rows(lambda x, z: at[x, z][1] if (x, z) in at else m['forest_zone'])
+    with open(os.path.join(root, m['file']), 'w') as f:
+        f.write('{\n    "$schema": "map_matrix.schema.json",\n    "maps": [\n' + maps + '\n    ],\n    "zones": [\n'
+                + zones + '\n    ]\n}\n')
 
 
-def build_zone():
-    path = os.path.join(root, 'res/field/zones/route_3.json')
-    z = json.load(open(path))
-    z['matrix'] = MATRIX_CONST
-    with open(path, 'w') as f:
-        f.write(json.dumps(z, indent=4, ensure_ascii=False) + '\n')
+def build_zones(constant_name, m):
+    for zone in m['zones']:
+        path = os.path.join(root, 'res/field/zones', zone[len('ZONE_'):].lower() + '.json')
+        z = json.load(open(path))
+        z['matrix'] = constant_name
+        with open(path, 'w') as f:
+            f.write(json.dumps(z, indent=4, ensure_ascii=False) + '\n')
 
 
 if __name__ == '__main__':
-    props = bundle_ids()
-    for chunk, dy in LOWERED.items():
-        build_lowered(chunk, dy, props)
-    for chunk, spec in BLENDED.items():
-        build_blended(chunk, spec)
-    build_imports()
-    build_matrix()
-    build_zone()
-    print('imported', missing_textures())
+    for chunk in sorted({c for c in list(RAISED) + list(CUTS) + list(BLOCKED)}):
+        build_copy(chunk)
+    for constant_name, m in MATRICES.items():
+        build_matrix(constant_name, m)
+        build_zones(constant_name, m)
+        build_imports(m)

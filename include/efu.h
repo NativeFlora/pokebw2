@@ -63,6 +63,10 @@
 #define EFU_SCRIPT_CLERK_CALL (EFU_SCRIPT_FIRST + 30)
 #define EFU_CLERK_INTRO_ID 8
 #define EFU_CLERK_INTRO_X 1
+// Route 2's old gate to Accumula Town, an exit from the zone: a ride home for EFU_PAID_EXIT_PRICE (a trigger in front of
+// its door)
+#define EFU_SCRIPT_PAID_EXIT (EFU_SCRIPT_FIRST + 31)
+#define EFU_PAID_EXIT_PRICE 100
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -119,6 +123,9 @@
 #define EFU_DOWNFALL_CHANCE 30
 #define EFU_FLAG_SCAV_FIRST 0xa80
 #define EFU_SCAV_MAX 16
+// The second range of route scavs' hide flags, for the scavs past the first range's (Route 2's)
+#define EFU_FLAG_SCAV2_FIRST 0xa49
+#define EFU_SCAV2_MAX 6
 // The hide flags of the item balls placed where the original had none (build_raid.py's NEW_BALLS), from this one.
 // Heading out rolls every loot spot's flag again, these and the original balls' (tools/efu/loot.json)
 #define EFU_FLAG_LOOT_FIRST 0xa90

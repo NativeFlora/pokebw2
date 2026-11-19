@@ -1,0 +1,49 @@
+{
+    "$schema": "../texture_imports.schema.json",
+    "textures": [
+        {
+            "texture": "C12_isi01",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_isi02",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_isi03",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_ki01",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_ki02",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_mori_hasi",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_yama001",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_yama002",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_yama003",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "C12_yama004",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "c12_air",
+            "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        }
+    ]
+}

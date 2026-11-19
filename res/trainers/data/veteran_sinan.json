@@ -57,7 +57,7 @@
             ]
         },
         {
-            "species": "SPECIES_WATCHOG",
+            "species": "SPECIES_PANPOUR",
             "form": 0,
             "level": 20,
             "difficulty": 200,
@@ -71,7 +71,7 @@
             ]
         },
         {
-            "species": "SPECIES_PURRLOIN",
+            "species": "SPECIES_VENIPEDE",
             "form": 0,
             "level": 19,
             "difficulty": 200,
@@ -85,7 +85,7 @@
             ]
         },
         {
-            "species": "SPECIES_PANSAGE",
+            "species": "SPECIES_PETILIL",
             "form": 0,
             "level": 20,
             "difficulty": 200,

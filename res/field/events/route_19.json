@@ -6,9 +6,9 @@
             "condition": 0,
             "direction": 6,
             "grid": {
-                "x": 53,
-                "y": 694,
-                "z": 16
+                "x": 85,
+                "y": 662,
+                "z": 32
             }
         },
         {
@@ -16,9 +16,9 @@
             "condition": 0,
             "direction": 6,
             "grid": {
-                "x": 73,
-                "y": 687,
-                "z": 16
+                "x": 105,
+                "y": 655,
+                "z": 32
             }
         },
         {
@@ -26,9 +26,9 @@
             "condition": 0,
             "direction": 6,
             "grid": {
-                "x": 87,
-                "y": 694,
-                "z": 16
+                "x": 119,
+                "y": 662,
+                "z": 32
             }
         },
         {
@@ -36,9 +36,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 60,
-                "y": 690,
-                "z": 16
+                "x": 92,
+                "y": 658,
+                "z": 32
             }
         },
         {
@@ -46,9 +46,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 51,
-                "y": 692,
-                "z": 16
+                "x": 83,
+                "y": 660,
+                "z": 32
             }
         },
         {
@@ -56,9 +56,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 73,
-                "y": 686,
-                "z": 16
+                "x": 105,
+                "y": 654,
+                "z": 32
             }
         },
         {
@@ -66,9 +66,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 62,
-                "y": 696,
-                "z": 16
+                "x": 94,
+                "y": 664,
+                "z": 32
             }
         },
         {
@@ -76,9 +76,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 64,
-                "y": 692,
-                "z": 16
+                "x": 96,
+                "y": 660,
+                "z": 32
             }
         },
         {
@@ -86,9 +86,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 74,
-                "y": 694,
-                "z": 16
+                "x": 106,
+                "y": 662,
+                "z": 32
             }
         },
         {
@@ -96,9 +96,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 82,
-                "y": 692,
-                "z": 16
+                "x": 114,
+                "y": 660,
+                "z": 32
             }
         },
         {
@@ -106,9 +106,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 87,
-                "y": 687,
-                "z": 16
+                "x": 119,
+                "y": 655,
+                "z": 32
             }
         },
         {
@@ -116,9 +116,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 72,
-                "y": 690,
-                "z": 16
+                "x": 104,
+                "y": 658,
+                "z": 32
             }
         },
         {
@@ -126,9 +126,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 91,
-                "y": 685,
-                "z": 96
+                "x": 123,
+                "y": 653,
+                "z": 112
             }
         },
         {
@@ -136,9 +136,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 91,
-                "y": 689,
-                "z": 96
+                "x": 123,
+                "y": 657,
+                "z": 112
             }
         },
         {
@@ -146,9 +146,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 91,
-                "y": 691,
-                "z": 96
+                "x": 123,
+                "y": 659,
+                "z": 112
             }
         },
         {
@@ -156,9 +156,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 91,
-                "y": 674,
-                "z": 96
+                "x": 123,
+                "y": 642,
+                "z": 112
             }
         },
         {
@@ -166,9 +166,9 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 91,
-                "y": 687,
-                "z": 96
+                "x": 123,
+                "y": 655,
+                "z": 112
             }
         },
         {
@@ -176,78 +176,34 @@
             "condition": 4,
             "direction": 4,
             "grid": {
-                "x": 81,
-                "y": 697,
-                "z": 16
-            }
-        },
-        {
-            "script": 8192,
-            "condition": 2,
-            "direction": 4,
-            "grid": {
-                "x": 93,
-                "y": 691,
-                "z": 96
+                "x": 113,
+                "y": 665,
+                "z": 32
             }
         }
     ],
     "npcs": [
-        {
-            "id": 0,
-            "model": "OBJ_CODE_YOUNGSTER",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 3,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 81,
-                "z": 690,
-                "y": 65536
-            }
-        },
-        {
-            "id": 1,
-            "model": "OBJ_CODE_97",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x02e2",
-            "script": 2000,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 93,
-                "z": 691,
-                "y": 393216
-            }
-        },
         {
             "id": 2,
             "model": "OBJ_CODE_110",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x044d",
-            "script": 7001,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
             },
             "grid": {
-                "x": 61,
-                "z": 676,
-                "y": 65536
+                "x": 93,
+                "z": 644,
+                "y": 131072
             }
         },
         {
@@ -256,55 +212,21 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x044e",
-            "script": 7002,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
             },
             "grid": {
-                "x": 79,
-                "z": 674,
-                "y": 393216
-            }
-        },
-        {
-            "id": 4,
-            "model": "OBJ_CODE_LASS",
-            "movement": "MOVE_CODE_WALK_RANDOM_LEFT_RIGHT",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 9,
-            "direction": "DIR_LEFT",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 77,
-                "z": 697,
-                "y": 65536
-            }
-        },
-        {
-            "id": 5,
-            "model": "OBJ_CODE_249",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x03db",
-            "script": 2000,
-            "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 53,
-                "z": 696,
-                "y": 65536
+                "x": 111,
+                "z": 642,
+                "y": 458752
             }
         },
         {
@@ -313,98 +235,45 @@
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
             "flag": "EVENT_FLAG_0x058f",
-            "script": 7323,
+            "script": 11008,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
             },
             "grid": {
-                "x": 85,
-                "z": 687,
-                "y": 65536
-            }
-        },
-        {
-            "id": 7,
-            "model": "OBJ_CODE_YOUNGSTER",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x03f7",
-            "script": 10,
-            "direction": "DIR_UP",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 91,
-                "z": 679,
-                "y": 393216
+                "x": 117,
+                "z": 655,
+                "y": 131072
             }
         }
     ],
     "warps": [
         {
-            "zone": "ZONE_ASPERTIA_GATE",
+            "zone": "ZONE_PINWHEEL_FOREST_2",
             "warp": 1,
             "unk4": 1,
             "transition": 4,
             "grid": {
-                "x": 840,
-                "y": 16,
-                "z": 11256,
+                "x": 1352,
+                "y": 32,
+                "z": 10744,
                 "width": 3,
                 "height": 1,
                 "unk0a": 0
             }
         }
     ],
-    "triggers": [
+    "triggers": [],
+    "init_scripts": [
         {
-            "script": 1,
-            "var": "EVENT_WORK_0x40a3",
-            "value": 0,
-            "type": 0,
-            "grid": {
-                "x": 51,
-                "z": 699,
-                "width": 5,
-                "height": 1,
-                "y": 16
-            },
-            "unk14": 0
-        },
-        {
-            "script": 2,
-            "var": "EVENT_WORK_0x40a3",
-            "value": 1,
-            "type": 0,
-            "grid": {
-                "x": 91,
-                "z": 693,
-                "width": 1,
-                "height": 6,
-                "y": 16
-            },
-            "unk14": 0
-        },
-        {
-            "script": 7,
-            "var": "EVENT_WORK_0x40a3",
-            "value": 3,
-            "type": 0,
-            "grid": {
-                "x": 90,
-                "z": 693,
-                "width": 1,
-                "height": 6,
-                "y": 16
-            },
-            "unk14": 0
+            "type": 2,
+            "script": 11029
         }
-    ],
-    "init_scripts": []
+    ]
 }

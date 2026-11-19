@@ -3,7 +3,7 @@
     "map_type": 0,
     "npc_cache": 1,
     "area": "AREA_STRIATON_CITY",
-    "matrix": "MAP_MATRIX_OVERWORLD",
+    "matrix": "MAP_MATRIX_EFU_ZONE_1",
     "scripts": "SCRIPTS_ROUTE_2",
     "text": "SCRIPT_TEXT_ROUTE_2",
     "bgm": {

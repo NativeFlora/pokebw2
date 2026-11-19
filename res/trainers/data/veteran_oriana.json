@@ -1,63 +1,73 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Oriana",
-    "class": "TRAINER_CLASS_VETERAN_F",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_F",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC", "AI_FLAG_EVAL_ATTACK", "AI_FLAG_EXPERT" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC",
+        "AI_FLAG_EVAL_ATTACK",
+        "AI_FLAG_EXPERT"
+    ],
     "heals": false,
     "money": 20,
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_WORMADAM",
+            "species": "SPECIES_BURMY",
             "form": 1,
-            "level": 66,
+            "level": 18,
             "difficulty": 200,
             "gender": 0,
             "ability": 0,
-            "moves": [ "MOVE_BUG_BITE", "MOVE_ROCK_BLAST", "MOVE_EARTHQUAKE", "MOVE_SUNNY_DAY" ]
+            "moves": [
+                "MOVE_BUG_BITE",
+                "MOVE_ROCK_BLAST",
+                "MOVE_EARTHQUAKE",
+                "MOVE_SUNNY_DAY"
+            ]
         },
         {
-            "species": "SPECIES_MAGCARGO",
+            "species": "SPECIES_SLUGMA",
             "form": 0,
-            "level": 66,
+            "level": 19,
             "difficulty": 200,
             "gender": 0,
             "ability": 0,
-            "moves": [ "MOVE_FIRE_BLAST", "MOVE_SOLAR_BEAM", "MOVE_ANCIENT_POWER", "MOVE_SHELL_SMASH" ]
+            "moves": [
+                "MOVE_FIRE_BLAST",
+                "MOVE_SOLAR_BEAM",
+                "MOVE_ANCIENT_POWER",
+                "MOVE_SHELL_SMASH"
+            ]
         },
         {
-            "species": "SPECIES_EXPLOUD",
+            "species": "SPECIES_WHISMUR",
             "form": 0,
-            "level": 66,
+            "level": 18,
             "difficulty": 200,
             "gender": 0,
             "ability": 0,
-            "moves": [ "MOVE_FIRE_BLAST", "MOVE_HYPER_VOICE", "MOVE_EARTHQUAKE", "MOVE_SUNNY_DAY" ]
-        },
-        {
-            "species": "SPECIES_JUMPLUFF",
-            "form": 0,
-            "level": 66,
-            "difficulty": 200,
-            "gender": 0,
-            "ability": 1,
-            "moves": [ "MOVE_SOLAR_BEAM", "MOVE_ACROBATICS", "MOVE_LEECH_SEED", "MOVE_MEMENTO" ]
+            "moves": [
+                "MOVE_FIRE_BLAST",
+                "MOVE_HYPER_VOICE",
+                "MOVE_EARTHQUAKE",
+                "MOVE_SUNNY_DAY"
+            ]
         }
     ],
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Two years ago I parted ways with\nmy Pokémon...{be01}\nYet in my heart, I've never stopped being\na Pokémon Trainer!{be01}"
+            "text": "I've fought through three winters\nout here. You won't stop me!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "This is the type of defeat that only a\nPokémon Trainer can experience!"
+            "text": "Maybe it's time to rest..."
         },
         {
             "type": 2,
-            "text": "Those lives that come into our world\nas Pokémon...{be01}\nFor me, being unsure if they really\nwanted to live with humans, I parted{be00}\nways with my Pokémon.{be01}\nBut as it turns out, the time we spent\ntogether seems to be the best of all."
+            "text": "Stay off the main path after\ndark. That's when we hunt."
         }
     ]
 }

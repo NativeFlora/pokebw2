@@ -53,6 +53,7 @@
     ScriptEntry Script_DayCareDoor
     ScriptEntry Script_RouteEnter
     ScriptEntry Script_ClerkCall
+    ScriptEntry Script_PaidExit
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -141,6 +142,9 @@ Script_RaidDepart:
     .irp i, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
     FlagSet EFU_FLAG_SCAV_FIRST + \i
     .endr
+    .irp i, 0,1,2,3,4,5
+    FlagSet EFU_FLAG_SCAV2_FIRST + \i
+    .endr
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
     FlagReset EFU_FLAG_ROUTE_ENTERED
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
@@ -194,6 +198,42 @@ L_RaidOver:
     WorkSetConst EFU_WORK_RAID_HOUR, 0
     FlagReset EFU_FLAG_DOWNFALL
     VMReturn
+
+// Stepping up to Route 2's old gate: a ride home for EFU_PAID_EXIT_PRICE, which ends the exploration as walking home
+// would, from the east gate's Route 3 door; or a step back
+Script_PaidExit:
+    ActorsPauseAll
+    MoneyWinDisp 31, 1
+    WorkSetConst 0x8020, EFU_PAID_EXIT_PRICE
+    WordSetNumber 0, 0x8020, 3
+    SystemMsg Efu_Text_PaidExitAsk, 2
+    YesNoWin 0x8021
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_PaidExitStay
+    MoneyCheck 0x8022, 0x8020
+    WorkCmpConst 0x8022, 0
+    VMJumpIf CMP_EQ, L_PaidExitPoor
+    MoneySub 0x8020
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_08
+    SystemMsg Efu_Text_PaidExitGo, 2
+    LastKeyWait
+    SystemMsgClose
+    MoneyWinClose
+    MapChangeWarp ZONE_NACRENE_GATE, 14, 5, 2
+    ActorsUnpauseAll
+    VMHalt
+
+L_PaidExitPoor:
+    SystemMsg Efu_Text_NotEnoughMoney, 2
+    LastKeyWait
+L_PaidExitStay:
+    SystemMsgClose
+    MoneyWinClose
+    ActorCmdExec 255, Movement_StepBackWest
+    ActorCmdWait
+    ActorsUnpauseAll
+    VMHalt
 
 // Stepping up to Nacrene's door in the east gate while out on a raid: home, and saved
 Script_RaidReturn:

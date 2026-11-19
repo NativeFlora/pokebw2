@@ -1,10 +1,12 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Mikey",
-    "class": "TRAINER_CLASS_YOUNGSTER",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 4,
     "reward": "ITEM_NONE",
@@ -12,7 +14,7 @@
         {
             "species": "SPECIES_BEEDRILL",
             "form": 0,
-            "level": 61,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,31 +22,7 @@
         {
             "species": "SPECIES_VOLBEAT",
             "form": 0,
-            "level": 61,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_DUSTOX",
-            "form": 0,
-            "level": 61,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_MOTHIM",
-            "form": 0,
-            "level": 61,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_SCOLIPEDE",
-            "form": 0,
-            "level": 61,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -53,15 +31,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Beedrill! Volbeat!\nGo, my beastly Bug-type Pokémon!{be01}"
+            "text": "This is my road!\nPay the toll!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Your Pokémon uses those kinds of moves?!"
+            "text": "Toll waived... this time."
         },
         {
             "type": 2,
-            "text": "Different Trainers use\ndifferent kinds of Pokémon!{be00}\nThat's fun to see, isn't it?"
+            "text": "Everybody heading north passes\nme. Everybody pays."
         }
     ]
 }

@@ -46,3 +46,5 @@ Efu_Text_LockerBagFull = Your Bag only carries one item.\nGive it to a Pokémon 
 Efu_Text_LockerNoSale = Nobody would pay for that.
 Efu_Text_LockerStoredFull = Stored {0201:0}. The locker is full,\nso {0201:1} didn't fit.
 Efu_Text_LockerNothing = There's nothing to store.
+Efu_Text_PaidExitAsk = A driver is idling by the old gate.{be01}\n"Back to the coast? It'll cost you\n${0204:0}. Fuel isn't free anymore."
+Efu_Text_PaidExitGo = "Hop in. Keep your head down."

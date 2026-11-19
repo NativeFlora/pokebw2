@@ -14,15 +14,7 @@
         {
             "species": "SPECIES_MAGIKARP",
             "form": 0,
-            "level": 18,
-            "difficulty": 0,
-            "gender": 0,
-            "ability": 0
-        },
-        {
-            "species": "SPECIES_MAGIKARP",
-            "form": 0,
-            "level": 19,
+            "level": 17,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -38,7 +30,15 @@
         {
             "species": "SPECIES_MAGIKARP",
             "form": 0,
-            "level": 19,
+            "level": 17,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_MAGIKARP",
+            "form": 0,
+            "level": 18,
             "difficulty": 0,
             "gender": 0,
             "ability": 0

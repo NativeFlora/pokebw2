@@ -3,7 +3,7 @@
     "map_type": 0,
     "npc_cache": 18,
     "area": "AREA_ROUTE_19",
-    "matrix": "MAP_MATRIX_OVERWORLD",
+    "matrix": "MAP_MATRIX_EFU_ZONE_2",
     "scripts": "SCRIPTS_FLOCCESY_RANCH",
     "text": "SCRIPT_TEXT_FLOCCESY_RANCH",
     "bgm": {
