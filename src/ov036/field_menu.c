@@ -8,6 +8,7 @@
 #include "constants/flags.h"
 #include "constants/sound.h"
 #include "constants/text_banks.h"
+#include "efu.h"
 #include "field/field.h"
 #include "field/field_menu.h"
 #include "field/field_msgbg.h"
@@ -568,7 +569,8 @@ u8 FieldMenu_GetMenuType(GameData *gameData, EventWork *eventWork, u32 zoneId) {
 
     if (GetZoneIsUnionRoom(zoneId) || IsZone150Or151(zoneId)) {
         type = FIELD_MENU_TYPE_UNION_ROOM;
-    } else if (IsZoneRoyalUnova(zoneId)) {
+    } else if (*EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) != 0 || IsZoneRoyalUnova(zoneId)) {
+        // Escape from Unova: out on a raid, the menu is Royal Unova's, without Save
         type = FIELD_MENU_TYPE_ROYAL_UNOVA;
     } else if (GameData_IsForceSeasonSync(gameData)) {
         type = FIELD_MENU_TYPE_FORCE_SEASON_SYNC;

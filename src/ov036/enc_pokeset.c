@@ -9,6 +9,8 @@
 #include "constants/pokemon.h"
 #include "constants/types.h"
 #include "constants/zones.h"
+#include "efu.h"
+#include "efu_wild_swap.h"
 #include "field/enc_pokeset.h"
 #include "field/encounter.h"
 #include "field/event_wild_battle.h"
@@ -510,6 +512,7 @@ static u8 FieldEncount_PrepareActiveSlots(EncData *encData, EncountManager *mana
     u8 count = 0;
     const WildEncSlot *src;
     u32 funcIndex = 0;
+    u32 i;
 
     if (createSwarm(encData, manager, zoneId, slots)) {
         return manager->slotCount;
@@ -554,7 +557,36 @@ static u8 FieldEncount_PrepareActiveSlots(EncData *encData, EncountManager *mana
     manager->slotFuncIndex = funcIndex;
     manager->slotCount = count;
     MI_CpuCopy8(src, slots, count * sizeof(WildEncSlot));
+    // Escape from Unova: the exploration's swaps
+    for (i = 0; i < count; i++) {
+        u16 species = slots[i].species;
+
+        slots[i].species = Efu_WildSwap(manager->gameData, zoneId, src - encData->grass + i, species);
+        if (slots[i].species != species) {
+            slots[i].form = 0;
+        }
+    }
     return count;
+}
+
+// Escape from Unova: each exploration swaps every wild slot's species for one of its wild group's of about its strength
+// (EFU_SWAP_CANDIDATES, build_raid.py), chosen by the exploration's count, the zone and the slot, so the zone stays the
+// same through an exploration and after a reload
+u16 Efu_WildSwap(GameData *gameData, u16 zoneId, u32 slot, u16 species) {
+    u32 seed;
+    u32 i;
+
+    for (i = 0; i < EFU_SWAP_SPECIES_COUNT; i++) {
+        if (EFU_SWAP_SPECIES[i] == species) {
+            break;
+        }
+    }
+    if (i == EFU_SWAP_SPECIES_COUNT) {
+        return species;
+    }
+    seed = *EventWork_GetWkPtr(GameData_GetEventWork(gameData), EFU_WORK_RAID_COUNT) * 0x10000 + zoneId * 64 + slot;
+    seed = seed * 1103515245 + 12345;
+    return EFU_SWAP_CANDIDATES[EFU_SWAP_FIRST[i] + (seed >> 16) % (EFU_SWAP_FIRST[i + 1] - EFU_SWAP_FIRST[i])];
 }
 
 static void FieldEncount_SetupFromData(const WildEncSlot *slot, WildPkmParam *param) {

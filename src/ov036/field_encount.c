@@ -397,15 +397,17 @@ static void FieldEncount_SetupNPoke(EncountSystem *system, EncountManager *manag
     GFL_HeapFree(party);
 }
 
-// Escape from Unova: the species of a slot of the zone's wild Pokémon, counting every table's slots one after another
-// (three of grass, then four of water and fishing), or SPECIES_NONE when its table isn't used here
-static u16 Efu_WildSlotSpecies(EncData *encData, u32 slot) {
+// Escape from Unova: the species of a slot of the zone's wild Pokémon on this exploration (Efu_WildSwap), counting
+// every table's slots one after another (three of grass, then four of water and fishing), or SPECIES_NONE when its
+// table isn't used here
+static u16 Efu_WildSlotSpecies(EncountSystem *system, u32 slot) {
+    EncData *encData = system->encData;
     u32 table = slot < 36 ? slot / 12 : 3 + (slot - 36) / 5;
 
     if (encData->userData[table] == 0) {
         return SPECIES_NONE;
     }
-    return encData->grass[slot].species;
+    return Efu_WildSwap(system->gameData, Field_GetPlayerStateZoneID(system->field), slot, encData->grass[slot].species);
 }
 
 // Escape from Unova: a scavenger's team, made again for each exploration from the wild Pokémon of the place they fight
@@ -431,7 +433,7 @@ static void Efu_ScavParty(EncountSystem *system, BtlSetup *setup, u32 trainerId,
     }
     wild = 0;
     for (j = 0; j < EFU_WILD_SLOTS; j++) {
-        if (Efu_WildSlotSpecies(system->encData, j) != SPECIES_NONE) {
+        if (Efu_WildSlotSpecies(system, j) != SPECIES_NONE) {
             wild++;
         }
     }
@@ -449,7 +451,7 @@ static void Efu_ScavParty(EncountSystem *system, BtlSetup *setup, u32 trainerId,
         seed = seed * 1103515245 + 12345;
         pick = (seed >> 16) % wild;
         for (j = 0; j < EFU_WILD_SLOTS; j++) {
-            species[i] = Efu_WildSlotSpecies(system->encData, j);
+            species[i] = Efu_WildSlotSpecies(system, j);
             if (species[i] != SPECIES_NONE && pick-- == 0) {
                 break;
             }

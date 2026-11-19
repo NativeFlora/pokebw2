@@ -16,7 +16,7 @@
         {
             "species": "SPECIES_FOONGUS",
             "form": 0,
-            "level": 15,
+            "level": 14,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
@@ -24,7 +24,7 @@
         {
             "species": "SPECIES_SEWADDLE",
             "form": 0,
-            "level": 16,
+            "level": 15,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
@@ -32,7 +32,7 @@
         {
             "species": "SPECIES_DRILBUR",
             "form": 0,
-            "level": 15,
+            "level": 14,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
@@ -40,7 +40,7 @@
         {
             "species": "SPECIES_AZURILL",
             "form": 0,
-            "level": 16,
+            "level": 15,
             "difficulty": 50,
             "gender": 0,
             "ability": 0
@@ -48,7 +48,7 @@
         {
             "species": "SPECIES_WOOBAT",
             "form": 0,
-            "level": 15,
+            "level": 14,
             "difficulty": 50,
             "gender": 0,
             "ability": 0

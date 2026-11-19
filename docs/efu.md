@@ -21,7 +21,10 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   inside the secure area. So any change to a signed overlay's bytes (ov035, ov036, ov162, ov167 and the rest) can
   change main's compressed size, and the build passes only when it comes out at the original's 0x736cc bytes. It is
   luck, about which overlay bytes come out and not their size: build after every change to an overlay and, if the
-  check fails, write the new code a little differently (natural code, never padding) and build again. Files outside
+  check fails, write the new code a little differently (natural code, never padding) and build again. The respelling
+  must change a function's size in ov036, not just its bytes: about 140 other overlays call into ov036, so a shift
+  there re-rolls all their signatures and passes about one time in five, while a same-size respelling only re-rolls
+  ov036's own and almost never passes (alpha 8 failed 36 such rolls before a size change passed). Files outside
   the overlays (scripts, text, event data) never affect it. ov035 has stayed at its v1 size (11520 bytes); ov036 is
   356352 bytes now (the original's 352672), ov162 (the title menu) 19680 (the original's 19648), and ov167 (battle)
   grew for fleeing.
@@ -97,6 +100,12 @@ Taken so far:
 | `EVENT_FLAG_0x0a4f` (`EFU_FLAG_GARDEN_SCAV`) | The garden's scav's hide flag: cleared on heading out, set when it is beaten. |
 | `EVENT_FLAG_0x0a90` to `0x0a92` (`EFU_FLAG_LOOT_FIRST`) | The hide flags of the item balls put where the original had none (the Cave of Being's three). Rolled on heading out. |
 | `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | Billy's hide flag, the childcare centre's named scavenger: out on each entry while the Day Care Lady's quest is open, set on heading out, when he is beaten and on every entry after the quest. |
+| `EVENT_FLAG_0x091f` (`EFU_FLAG_BRIDGE_CUT`), `0x0920` (`EFU_FLAG_BRIDGE_BOULDER`) | The hide flags of the Cut tree before the inner forest's left bridge and the Strength boulder before its right one, each put there on `EFU_BRIDGE_BLOCK_CHANCE` (70) percent of explorations (`L_DoorRoll`). |
+| `EVENT_FLAG_0x0921` (`EFU_FLAG_FOREST_SCAV`) | The hide flag of the scavenger always in the inner forest's grass patch right of the road: cleared on heading out, set when they are beaten. |
+| `EVENT_FLAG_0x0922` to `0x0927` (`EFU_FLAG_RANCH_SCAV_FIRST`) | Floccesy Ranch's six scavengers' hide flags: set on heading out, then each still hidden comes out by chance on an entry like the target's (`Script_RanchEnter`); set again when beaten. |
+| `EVENT_FLAG_0x0928` (`EFU_FLAG_RANCH_ENTERED`) | Set on the first entry to Floccesy Ranch on an exploration, cleared on heading out. |
+| `EVENT_FLAG_0x0929` (`EFU_FLAG_BURGH_BEATEN`) | Burgh has been beaten: he stays gone, the guide is free, and the first zone's story is done. |
+| `EVENT_FLAG_0x092a` (`EFU_FLAG_RUMINATION_SCAV`) | The hide flag of the generic scavenger who may hold Rumination Field once Burgh is beaten (on `EFU_SIDE_SCAV_CHANCE`, 75%, of explorations); set on heading out and when they are beaten. |
 | `EVENT_FLAG_0x091e` (`EFU_FLAG_CHILDCARE_GENERIC`) | The hide flag of the generic scavenger who takes Billy's place once the quest is done: out by chance as the target's (75% on the first entry, 25% after); set on heading out and when they are beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
 | `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
@@ -122,7 +131,7 @@ Taken so far:
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x091f to 0x095f; take them upward from 0x091f. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x092b to 0x095f; take them upward from 0x092b. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
 0x4156 to 0x415c. Take the next from the end of the list back, and move it into the table above.
@@ -139,8 +148,11 @@ Free event work values (no script, source file or event data refers to them): 0x
   alone, since main's size is held by the secure area. The downfall is `GetDefaultWeatherValue`'s
   (`src/ov012/field_encount_st.c`, a stub in the original): rain, or snow in winter, in every zone the player can fly
   from whose own weather is clear. Coming home, losing the raid or blacking out puts both back (`L_RaidOver`).
-- Continuing a save with the raid set (the game was switched off before coming back, or saved from the menu while
-  out) runs `Script_RaidLost`: it empties the party, says so, clears the raid, gives a new Pokémon, saves and sends
+- Out on a raid the field menu has no Save: `FieldMenu_GetMenuType` (`src/ov036/field_menu.c`) gives it Royal
+  Unova's menu, the normal one without Save, so the only saves are the gate's. And a PC out there only takes Pokémon in:
+  `build_raid.py`'s `build_pc` leaves the PC's menu (global 10090) only Deposit and Log Off while `EFU_WORK_RAID` is set.
+  Only the base's PC gives Pokémon back.
+- Continuing a save with the raid set (the game was switched off before coming back) runs `Script_RaidLost`: it empties the party, says so, clears the raid, gives a new Pokémon, saves and sends
   the player home.
 - Blacking out sends the player home (`FieldMapControl_LoadBlackoutZone`), and `Script_Blackout` fades in, clears the
   raid, empties the party, gives a new Pokémon and saves.
@@ -192,7 +204,20 @@ never is): heading out
 childcare centre's while the Day Care Lady's quest to beat its scav is open. The boulders
 are `OBJ_CODE_MODEL_3`, the strength boulder with a drawn model (the other rock codes draw nothing), one for each
 tile of a wide way in. Strength can push one aside; the game saves no position for them outside its own puzzle rooms,
-so the next zone load puts it back.
+so the next zone load puts it back. Wellspring Cave's way in has Cut trees instead, always there (`CUT_DOORS`, the
+original's Cut tree, `OBJ_CODE_108` with global 10004); its door flag (0x0a9b) is still rolled, and nothing reads it.
+
+The inner forest's road north crosses the stream on two bridges, each two tiles wide. Heading out puts a Cut tree
+before the left one (`BRIDGE_CUT`) and a Strength boulder before the right one (`BRIDGE_BOULDER`), each on
+`EFU_BRIDGE_BLOCK_CHANCE` (70) percent of explorations, so without Cut or Strength the forest's west path may be the
+only way through.
+
+Burgh holds Rumination Field (`build_rumination`, `Script_Burgh`), the zone's boss. He fights as `LEADER_BURGH`, with
+six Bug types: his Challenge Mode team (`leader_burgh_2`, two levels up as Castelia's Gym gives it, 24 to 26) and
+Swadloon and Whirlipede. Beating him gives the Blank HM, sets `EFU_FLAG_BURGH_BEATEN` (he stays gone, and the gate's
+guide says the way on is open), and the game says the first zone is done. From then on a generic scavenger may hold
+the field in his place. The Blank HM is Gram 1 renamed, a key item drawn as HM01 is (`build_bag.py`'s `BLANK_HM`); it
+does nothing yet.
 
 The guide waits on Route 3 near the gate (`GUIDE`, `Script_GuideMeet`). Meeting them sets `EFU_FLAG_GUIDE_MET`, and
 from then on they stand behind the east gate's counter (`Script_GateInit`). The gate's news board says how many
@@ -338,13 +363,19 @@ in the wild into groups that count as equivalent, by first egg group: 13 groups,
 leave out are placed by hand: a baby goes with its evolution (Pichu with Pikachu, in Field), Nidorina and Nidoqueen
 with Nidoran F (Monster), Ditto with the shapeless Pokémon (Amorphous) and Unown with the living objects (Mineral).
 The 48 legendary and mythical Pokémon (Undiscovered with no evolution, and Manaphy and Phione) are in none, since none
-can be caught in the wild. Nothing in the game reads the groups yet.
+can be caught in the wild.
+
+Each exploration swaps every wild slot's species for one of its group's whose base stat total is within
+`SWAP_BST_BAND` (60) of its own, its own among them (`Efu_WildSwap` in `src/ov036/enc_pokeset.c`, from the table
+`build_raid.py`'s `build_wild_swap` writes to `include/efu_wild_swap.h`). The choice is seeded by the exploration's
+count, the zone and the slot, so nothing new is saved and a zone's Pokémon stay the same through an exploration and
+after a reload. The scavengers' teams draw from the swapped slots too.
 
 ## The scavs
 
 Each route has a scav at every spot where one of its own people stood in the original (its Trainers and passers-by,
 not objects or Pokémon; Route 3's include Striaton's people in the garden; 47 spots in all), each fighting as one of
-its route's Trainers in turn (Route 19, with none, takes Route 20's; Floccesy Ranch has none yet). The Trainers are
+its route's Trainers in turn (Route 19, with none, takes Route 20's). The Trainers are
 made single battles with two to six Pokémon from the zone's wild ones at 65 to 90% of its level cap (14 to 20),
 evolved to their levels, dressed as Team Plasma Grunts (the classes renamed Scavenger) and given new lines by
 `build_raid.py`. In battle, `Efu_ScavParty` (`src/ov036/field_encount.c`) replaces a scavenger's team with 2 to 5
@@ -353,7 +384,8 @@ grass, rustling grass, surfing and fishing alike, at the levels of the built tea
 a scavenger keeps one team through an exploration and gets a new one on the next. Billy, the childcare centre's named
 scavenger, keeps his built team, drawn from the starters' pool (`starters.json`). Named scavengers come out only until
 they are beaten: after Billy, a generic scavenger (trainer 398) takes his place. Every spot's scav starts hidden: heading out sets their flags (`EFU_FLAG_SPOT_FIRST`). The garden's
-own scav, on the Pokémon Breeder's spot, is out from the start of every raid (`EFU_FLAG_GARDEN_SCAV`). Each step the
+own scav, on the Pokémon Breeder's spot, is out from the start of every raid (`EFU_FLAG_GARDEN_SCAV`), and so is the
+inner forest's, in the grass patch right of the road (`FOREST_SCAV`, `EFU_FLAG_FOREST_SCAV`). Each step the
 player takes, `EventTrainerEye_EfuPursue` runs before the original sight check:
 
 - Every entry to a route, the first from the east gate too, `Script_RouteEnter` (every route's init script) asks for
@@ -361,7 +393,8 @@ player takes, `EventTrainerEye_EfuPursue` runs before the original sight check:
   spot of the route's that can take one: hidden, at least `EFU_SCAV_SPAWN_DIST` (6) steps from the player, and with
   no scav of the same Trainer out. None comes out while `EFU_ROUTE_SCAV_MAX` (3) are out on the route already, the
   garden's counting on Route 3. Its defeat on an earlier exploration is forgotten. The side areas' own scavs (the
-  target's three and the childcare centre's) each come out on `EFU_SIDE_SCAV_CHANCE` (75%) of first entries and
+  target's three, the childcare centre's and Floccesy Ranch's six, `RANCH_SPOTS`, which is overrun and has no route
+  spots) each come out on `EFU_SIDE_SCAV_CHANCE` (75%) of first entries and
   `EFU_ROUTE_SCAV_CHANCE` (25%) of later ones.
 - Scavs only ever add up over an exploration: leaving an area and coming back never hides one that is out. Only
   beating one takes it away (`EFU_SPECIAL_SCAV_GONE`, from `Script_ScavDrop`, sets its hide flag and removes its

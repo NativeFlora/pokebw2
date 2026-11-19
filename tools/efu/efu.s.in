@@ -54,6 +54,8 @@
     ScriptEntry Script_RouteEnter
     ScriptEntry Script_ClerkCall
     ScriptEntry Script_PaidExit
+    ScriptEntry Script_RanchEnter
+    ScriptEntry Script_Burgh
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -148,6 +150,19 @@ Script_RaidDepart:
     .endr
     FlagReset EFU_FLAG_GARDEN_SCAV
     TrainerFlagReset @GARDEN_SCAV@
+    FlagReset EFU_FLAG_FOREST_SCAV
+    TrainerFlagReset @FOREST_SCAV@
+    // Once Burgh is beaten, a generic scavenger may hold Rumination Field in his place
+    FlagSet EFU_FLAG_RUMINATION_SCAV
+    TrainerFlagReset @RUMINATION_SCAV@
+    FlagGet EFU_FLAG_BURGH_BEATEN, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_RuminationScavEnd
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_SIDE_SCAV_CHANCE
+    VMJumpIf CMP_GE, L_RuminationScavEnd
+    FlagReset EFU_FLAG_RUMINATION_SCAV
+L_RuminationScavEnd:
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
     .irp i, 0,1,2
@@ -155,6 +170,10 @@ Script_RaidDepart:
     .endr
     FlagSet EFU_FLAG_CHILDCARE_SCAV
     FlagSet EFU_FLAG_CHILDCARE_GENERIC
+    .irp i, 0,1,2,3,4,5
+    FlagSet EFU_FLAG_RANCH_SCAV_FIRST + \i
+    .endr
+    FlagReset EFU_FLAG_RANCH_ENTERED
     FlagReset EFU_FLAG_TARGET_ENTERED
     FlagReset EFU_FLAG_CHILDCARE_ENTERED
     WorkSetConst EFU_WORK_SCAVS_OUT, 0
@@ -832,6 +851,65 @@ L_TargetScavNext\i:
 @TARGET_SCAV_RESET@
     VMHalt
 
+// Entering Floccesy Ranch, overrun (its init script): its scavengers come out like the target's
+Script_RanchEnter:
+    WorkSetConst 0x8021, EFU_ROUTE_SCAV_CHANCE
+    FlagGet EFU_FLAG_RANCH_ENTERED, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_RanchRoll
+    FlagSet EFU_FLAG_RANCH_ENTERED
+    WorkSetConst 0x8021, EFU_SIDE_SCAV_CHANCE
+L_RanchRoll:
+    .irp i, 0,1,2,3,4,5
+    Random 0x8020, 100
+    WorkCmpWork 0x8020, 0x8021
+    VMJumpIf CMP_GE, L_RanchScavNext\i
+    FlagReset EFU_FLAG_RANCH_SCAV_FIRST + \i
+L_RanchScavNext\i:
+    .endr
+@RANCH_SCAV_RESET@
+    VMHalt
+
+// Burgh, holding Rumination Field at the forest's heart: beating him gives the Blank HM, frees the guide and ends the
+// zone's story. He doesn't come back (EFU_FLAG_BURGH_BEATEN hides him)
+Script_Burgh:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_BurghIntro, 0x8011, 2, 0
+    ActorMsgClose
+    CallTrainerBattle TRAINER_LEADER_BURGH, 0, 0
+    // 1 for a win, 0 for a loss
+    TrainerBattleIsVictory 0x8010
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_BurghLost
+    CallTrainerBattleEnd
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_BurghBeaten, 0x8011, 2, 0
+    ActorMsgClose
+    WorkSetConst 0x800c, EFU_ITEM_BLANK_HM
+    ItemAdd 0x800c, 1, 0x8010
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_BurghReward, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_BurghLeave, 0x8011, 2, 0
+    ActorMsgClose
+    FlagSet EFU_FLAG_BURGH_BEATEN
+    ActorDelete 0x8011
+    MEPlay SEQ_ME_ASA
+    SystemMsg Efu_Text_ZoneCleared, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_BurghLost:
+    CallTrainerLose
+    VMHalt
+
 // Heading out: each door that can be shut is, on EFU_DOOR_SHUT_CHANCE percent of explorations (its boulder out)
 L_DoorRoll:
     .irp i, 0,1,2
@@ -848,6 +926,20 @@ L_DoorNext\i:
     VMJumpIf CMP_EQ, L_DoorRollEnd
     FlagSet EFU_FLAG_DOOR_FIRST
 L_DoorRollEnd:
+    // The inner forest's bridges: a Cut tree before the left one, a Strength boulder before the right one, each on
+    // EFU_BRIDGE_BLOCK_CHANCE percent
+    FlagSet EFU_FLAG_BRIDGE_CUT
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_BRIDGE_BLOCK_CHANCE
+    VMJumpIf CMP_GE, L_BridgeBoulder
+    FlagReset EFU_FLAG_BRIDGE_CUT
+L_BridgeBoulder:
+    FlagSet EFU_FLAG_BRIDGE_BOULDER
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_BRIDGE_BLOCK_CHANCE
+    VMJumpIf CMP_GE, L_BridgeEnd
+    FlagReset EFU_FLAG_BRIDGE_BOULDER
+L_BridgeEnd:
     VMReturn
 
 // The east gate's guide: one day, the way to the farther zones
@@ -855,7 +947,14 @@ Script_GateGuide:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
+    FlagGet EFU_FLAG_BURGH_BEATEN, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_GateGuideFree
     ActorMsg MSGFILE_SCRIPT, Efu_Text_GateGuide, 0x8011, 2, 0
+    VMJump L_GateGuideEnd
+L_GateGuideFree:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GateGuideFree, 0x8011, 2, 0
+L_GateGuideEnd:
     LastKeyWait
     ActorMsgClose
     ActorsUnpauseAll
