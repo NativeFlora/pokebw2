@@ -1,6 +1,7 @@
 // Names from swan (https://github.com/ds-pokemon-hacking/swan, GPL-3.0).
 // Additional helper and table names are our descriptive guesses.
 #include "types.h"
+#include "efu.h"
 #include "constants/arc.h"
 #include "constants/sound.h"
 #include "constants/zones.h"
@@ -87,6 +88,7 @@
 #include "system/iss_sys.h"
 #include "system/main.h"
 #include "system/resort_work.h"
+#include "save/event_work.h"
 #include "system/rtc.h"
 #include "system/season.h"
 #include "system/zone_weather.h"
@@ -387,7 +389,7 @@ u32 FieldRoutine_MapLoad(GameSystem *gsys, Field *field) {
                                  GetZoneStaticLightDataIndex(field->zoneId), TRUE);
         {
             u32 lightsId = AreaData_GetLightsID(field->areaData);
-            u32 daySeconds = RTC_ConvertDaySecondsCached();
+            u32 daySeconds = Efu_GetDaySeconds(field->gameData);
 
             field->lightSystem = FieldLight_Create(lightsId, daySeconds, GameSystem_GetSeason(gsys), field->fog,
                                                    field->g3dLights, field->heapId);
@@ -961,7 +963,7 @@ void FieldG3D_Update(Field *field) {
     FieldWeather_Update(field->weatherSystem, HEAPID_FIELD_WEATHER);
     FieldLensFlare_Update(field->lensFlare, field->cameraSystem);
     FieldFog_Update(field->fog);
-    FieldLight_Update(field->lightSystem, RTC_ConvertDaySecondsCached());
+    FieldLight_Update(field->lightSystem, Efu_GetDaySeconds(field->gameData));
     MI_SetMainMemoryPriority(MI_PROCESSOR_ARM9);
     loading = FieldG3DMapper_Update(field->g3DMapper);
     MI_SetMainMemoryPriority(MI_PROCESSOR_ARM7);
@@ -1441,7 +1443,18 @@ BOOL Field_IsEventRunning(Field *field) {
 }
 
 u16 Field_GetDayPeriod(Field *field) {
-    return GetRealTimeDayPeriod(GameData_GetSeason(field->gameData));
+    return GetDayPeriod(GameData_GetSeason(field->gameData), Efu_GetDaySeconds(field->gameData) / 3600);
+}
+
+int Efu_GetDaySeconds(GameData *gameData) {
+    // The hour plus 1, or 0 for the real clock's
+    u16 hour = *EventWork_GetWkPtr(GameData_GetEventWork(gameData), EFU_WORK_RAID_HOUR);
+    int seconds = RTC_ConvertDaySecondsCached();
+
+    if (hour != 0) {
+        seconds = seconds % 3600 + (hour - 1) * 3600;
+    }
+    return seconds;
 }
 
 BOOL Field_GetSeasonBannerOverdrawFlag(Field *field) {

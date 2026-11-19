@@ -39,6 +39,8 @@ void Field_SetRenderMode(Field *field, u32 mode);
 FieldSceneArea *Field_GetSceneArea(Field *field);
 void Field_SetFadeFlag(Field *field, BOOL flag);
 u16 Field_GetDayPeriod(Field *field);
+// Escape from Unova: the clock's seconds into the day, at a raid's own hour when one has it (EFU_WORK_RAID_HOUR)
+int Efu_GetDaySeconds(GameData *gameData);
 BOOL Field_GetSeasonBannerOverdrawFlag(Field *field);
 void Field_SetEffectRunningFlag(Field *field, BOOL flag);
 FaceUpWork **Field_GetNDemoDataHandle(Field *field);

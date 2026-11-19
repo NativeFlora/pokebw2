@@ -36,8 +36,8 @@
             "condition": 0,
             "direction": 4,
             "grid": {
-                "x": 9,
-                "y": 17,
+                "x": 13,
+                "y": 12,
                 "z": -4
             }
         },
@@ -46,8 +46,8 @@
             "condition": 0,
             "direction": 4,
             "grid": {
-                "x": 9,
-                "y": 17,
+                "x": 13,
+                "y": 12,
                 "z": 0
             }
         },
@@ -56,8 +56,8 @@
             "condition": 0,
             "direction": 4,
             "grid": {
-                "x": 9,
-                "y": 17,
+                "x": 13,
+                "y": 12,
                 "z": 4
             }
         },
@@ -66,8 +66,8 @@
             "condition": 0,
             "direction": 4,
             "grid": {
-                "x": 9,
-                "y": 18,
+                "x": 13,
+                "y": 13,
                 "z": -4
             }
         },
@@ -76,8 +76,8 @@
             "condition": 0,
             "direction": 4,
             "grid": {
-                "x": 9,
-                "y": 18,
+                "x": 13,
+                "y": 13,
                 "z": 0
             }
         },
@@ -86,8 +86,8 @@
             "condition": 0,
             "direction": 4,
             "grid": {
-                "x": 9,
-                "y": 18,
+                "x": 13,
+                "y": 13,
                 "z": 4
             }
         }
@@ -179,7 +179,22 @@
             }
         }
     ],
-    "triggers": [],
+    "triggers": [
+        {
+            "script": 11030,
+            "var": "EVENT_WORK_0x4163",
+            "value": 0,
+            "type": 0,
+            "grid": {
+                "x": 0,
+                "z": 18,
+                "width": 10,
+                "height": 1,
+                "y": 0
+            },
+            "unk14": 0
+        }
+    ],
     "init_scripts": [
         {
             "type": 2,

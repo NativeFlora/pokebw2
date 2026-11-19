@@ -79,7 +79,7 @@ def npc(i, model, script, flag, x, z, direction, movement='MOVE_CODE_NONE', y=0)
             'grid': {'x': x, 'z': z, 'y': y}}
 
 
-# The base clerk's stock (EFU_MART_SHOP_ID's list; the clerk charges EFU_MART_PRICE_FACTOR times the price)
+# The base clerk's stock (EFU_MART_SHOP_ID's list, at the normal prices)
 MART = ['ITEM_POKE_BALL', 'ITEM_GREAT_BALL', 'ITEM_POTION', 'ITEM_SUPER_POTION', 'ITEM_REVIVE', 'ITEM_FULL_HEAL',
         'ITEM_REPEL', 'ITEM_ESCAPE_ROPE']
 DAYCARE_DOOR = int(re.search(r'#define EFU_DAYCARE_WARP (\d+)', efu_h).group(1))
@@ -190,11 +190,10 @@ LOCKERS = {
     # Upstairs in the player's warehouse, against the back wall right of the bed
     'nacrene_city_8': {'model': 'nacrene_city_6_m_whouse01_00_00', 'folder': 'efu_home', 'matrix': 'MAP_MATRIX_EFU_HOME',
                        'at': (11.0, 2.5), 'y': 48, 'rotation': FACE_SOUTH, 'tiles': [(10, 2), (11, 2)]},
-    # In the Pokémon Center, its back to the Poké Mart counter's west side, south of where the player talks to the clerk
-    # (by the right wall north of the counter, the counter's back piece hid it)
+    # In the Pokémon Center, against the right wall just north of the Poké Mart counter
     'nacrene_city_pokemon_center': {'model': 'black_city_pokemon_center_m_pc01_00_00', 'folder': None,
-                                    'matrix': None, 'at': (9.5, 18.0), 'y': 0,
-                                    'rotation': FACE_WEST, 'tiles': [(9, 17), (9, 18)]},
+                                    'matrix': None, 'at': (13.5, 13.0), 'y': 0,
+                                    'rotation': FACE_WEST, 'tiles': [(13, 12), (13, 13)]},
     # In the base's route gate, in its northwest corner, in place of the bin (dust01) and the two chairs (chair01);
     # its model is edited in place, since only this gate uses it
     'nacrene_gate': {'model': 'nacrene_gate_m_gate02_00_00', 'folder': None, 'matrix': None, 'at': (3.5, 1.5),
@@ -312,6 +311,9 @@ def build_interiors():
     e['init_scripts'] = [{'type': 2, 'script': efu_script('POKECEN_INIT')}]
     e['bg_events'] = [b for b in e['bg_events'] if b['script'] == 2108]
     e['bg_events'] += locker_events('nacrene_city_pokemon_center')
+    # Across the room one step inside the door, until the clerk has met the player (Script_ClerkCall)
+    e['triggers'] = [{'script': efu_script('CLERK_CALL'), 'var': 'EVENT_WORK_0x4163', 'value': 0, 'type': 0,
+                      'grid': {'x': 0, 'z': 18, 'width': 10, 'height': 1, 'y': 0}, 'unk14': 0}]
     write('res/field/events/nacrene_city_pokemon_center.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
     # The east gate, where raids start: nobody there. The hall runs from Nacrene's door (x 1) to Route 3's (x 15) over
     # rows 4 to 6. Stepping onto column 14, by Route 3's door, while home asks to leave (and saves); stepping onto

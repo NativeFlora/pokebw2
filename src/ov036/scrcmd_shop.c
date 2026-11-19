@@ -1143,10 +1143,6 @@ static void ShopUI_LoadPokeMartItems(ShopUIWork *wk, u32 shopId, u32 fileId, u32
         ShopUI_AppendOption(wk, i, wk->listMode, item, msgData);
         wk->entries[i].item = item;
         wk->entries[i].price = PassPower_ApplyBargain(GetItemParam(item, ITEM_PARAM_PRICE, wk->heapId));
-        // Escape from Unova: the base's clerk sources everything at a steep markup
-        if (shopId == EFU_MART_SHOP_ID) {
-            wk->entries[i].price *= EFU_MART_PRICE_FACTOR;
-        }
     }
     wk->entryCount = i;
     ShopUI_CheckSellingTMHM(wk->entries, wk->entryCount);

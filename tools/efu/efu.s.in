@@ -52,6 +52,7 @@
     ScriptEntry Script_Locker
     ScriptEntry Script_DayCareDoor
     ScriptEntry Script_RouteEnter
+    ScriptEntry Script_ClerkCall
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -142,7 +143,21 @@ Script_RaidDepart:
     .endr
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
     FlagReset EFU_FLAG_ROUTE_ENTERED
+    // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
+    .irp i, 0,1,2
+    FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
+    .endr
+    FlagSet EFU_FLAG_CHILDCARE_SCAV
+    FlagReset EFU_FLAG_TARGET_ENTERED
+    FlagReset EFU_FLAG_CHILDCARE_ENTERED
     WorkSetConst EFU_WORK_SCAVS_OUT, 0
+    // Any time of day, and downfall on EFU_DOWNFALL_CHANCE percent of raids (L_RaidOver puts both back)
+    Random EFU_WORK_RAID_HOUR, 24
+    WorkAdd EFU_WORK_RAID_HOUR, 1
+    FlagReset EFU_FLAG_DOWNFALL
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_DOWNFALL_CHANCE
+    VMCallIf CMP_LT, L_Downfall
     // New loot: each spot's item ball is out or not by its tier's chance (L_LootRoll, from loot.json)
     VMCall L_LootRoll
     VMCall L_DoorRoll
@@ -169,10 +184,21 @@ Movement_StepBackWest:
     Move 14, 1
     MoveEnd
 
+L_Downfall:
+    FlagSet EFU_FLAG_DOWNFALL
+    VMReturn
+
+// The end of a raid, however it went: the real clock and no downfall
+L_RaidOver:
+    WorkSetConst EFU_WORK_RAID, 0
+    WorkSetConst EFU_WORK_RAID_HOUR, 0
+    FlagReset EFU_FLAG_DOWNFALL
+    VMReturn
+
 // Stepping up to Nacrene's door in the east gate while out on a raid: home, and saved
 Script_RaidReturn:
     ActorsPauseAll
-    WorkSetConst EFU_WORK_RAID, 0
+    VMCall L_RaidOver
     // The Day Care's Pokémon grow a level with each raid
     EfuSpecial EFU_SPECIAL_DAYCARE_GROW, 0, 0, 0, 0x8010
     SystemMsg Efu_Text_RaidReturn, 2
@@ -186,7 +212,7 @@ Script_RaidReturn:
 // before this runs), once the field has faded in
 Script_RaidLost:
     ActorsPauseAll
-    WorkSetConst EFU_WORK_RAID, 0
+    VMCall L_RaidOver
     EfuPokePartyClear
     SystemMsg Efu_Text_RaidLost, 2
     LastKeyWait
@@ -202,7 +228,7 @@ Script_RaidLost:
 // over, a new Pokémon turns up, and the game saves
 Script_Blackout:
     ActorsPauseAll
-    WorkSetConst EFU_WORK_RAID, 0
+    VMCall L_RaidOver
     EfuPokePartyClear
     // The battle lost left the screen black (event_battle_lose.c), and the field shows nothing until it fades in
     FadeInBlackQ
@@ -316,6 +342,8 @@ L_ItemDone:
 // After a win against a scav (global_3000.s calls it): it drops an item from the target's table, which the player takes
 // if the bag has room
 Script_ScavDrop:
+    // The scav leaves the area (0x8020 holds the Trainer, global_3000.s)
+    EfuSpecial EFU_SPECIAL_SCAV_GONE, 0x8020, 0, 0, 0x8010
     VMCall L_LootPickScav
     WordSetItemNameEx 0, 0x800c, 1, 0
     ItemCheckSpace 0x800c, 1, 0x8010
@@ -348,22 +376,30 @@ L_ScavDropLost:
     RTEndGlobal
     VMHalt
 
-// Entering Route 3's childcare centre (its init script): a scav waits there, always while the Day Care Lady's quest is
-// open and on EFU_SIDE_SCAV_CHANCE percent of entries after, ready to fight again. Beating it once ends her quest (L_DayCareQuestCheck)
+// Entering Route 3's childcare centre (its init script): a scav waits there always while the Day Care Lady's quest is
+// open; after that, like the target's (Script_TargetEnter), it comes out on EFU_SIDE_SCAV_CHANCE percent of the
+// exploration's first entries and EFU_ROUTE_SCAV_CHANCE percent of the later ones, and stays until it is beaten.
+// Beating it once ends her quest (L_DayCareQuestCheck)
 Script_ChildcareEnter:
     VMCall L_DayCareQuestCheck
+    TrainerFlagReset 401
     FlagGet EFU_FLAG_DAYCARE_QUEST_DONE, 0x8020
     WorkCmpConst 0x8020, 0
     VMJumpIf CMP_EQ, L_ChildcareScav
+    WorkSetConst 0x8021, EFU_ROUTE_SCAV_CHANCE
+    FlagGet EFU_FLAG_CHILDCARE_ENTERED, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_ChildcareRoll
+    FlagSet EFU_FLAG_CHILDCARE_ENTERED
+    WorkSetConst 0x8021, EFU_SIDE_SCAV_CHANCE
+L_ChildcareRoll:
     Random 0x8020, 100
-    WorkCmpConst 0x8020, EFU_SIDE_SCAV_CHANCE
+    WorkCmpWork 0x8020, 0x8021
     VMJumpIf CMP_LT, L_ChildcareScav
-    FlagSet EFU_FLAG_CHILDCARE_SCAV
     VMHalt
 
 L_ChildcareScav:
     FlagReset EFU_FLAG_CHILDCARE_SCAV
-    TrainerFlagReset 401
     VMHalt
 
 // The Day Care Lady's quest is done once the childcare centre's scav (trainer 401) has been beaten, which its trainer
@@ -540,10 +576,12 @@ Script_ClerkIntro:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
+L_ClerkIntroTalk:
     ActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkIntro, 0x8011, 2, 0
     LastKeyWait
     ActorMsgClose
     FlagSet EFU_FLAG_CLERK_MET
+    WorkSetConst EFU_WORK_CLERK_CALLED, 1
     FlagReset EFU_FLAG_BASE_CLERK_HIDDEN
     FadeEx 3, 0, 16, 2
     FadeExWait
@@ -554,7 +592,53 @@ Script_ClerkIntro:
     ActorsUnpauseAll
     VMHalt
 
-// The clerk at the counter: the Poké Mart of EFU_MART_SHOP_ID's list, at EFU_MART_PRICE_FACTOR times the prices
+// Stepping into the Pokémon Center while the clerk is in its waiting area (a trigger by the door, while
+// EFU_WORK_CLERK_CALLED is 0): the clerk sees the player, comes over along the row above and down to them, and talks
+// (Script_ClerkIntro). A save where they have met already only has the work set
+Script_ClerkCall:
+    FlagGet EFU_FLAG_CLERK_MET, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_ClerkCallMet
+    ActorsPauseAll
+    ActorCmdExec EFU_CLERK_INTRO_ID, Movement_ClerkNotice
+    ActorCmdWait
+    PlayerGetGPos 0x8020, 0x8021
+    WorkSetConst 0x8022, EFU_CLERK_INTRO_X
+L_ClerkCallWalk:
+    WorkCmpWork 0x8022, 0x8020
+    VMJumpIf CMP_GE, L_ClerkCallDown
+    ActorCmdExec EFU_CLERK_INTRO_ID, Movement_ClerkRight
+    ActorCmdWait
+    WorkAdd 0x8022, 1
+    VMJump L_ClerkCallWalk
+
+L_ClerkCallDown:
+    ActorCmdExec EFU_CLERK_INTRO_ID, Movement_ClerkDown
+    ActorCmdWait
+    SEPlay SEQ_SE_MESSAGE
+    WorkSetConst 0x8011, EFU_CLERK_INTRO_ID
+    VMJump L_ClerkIntroTalk
+
+L_ClerkCallMet:
+    WorkSetConst EFU_WORK_CLERK_CALLED, 1
+    VMHalt
+
+    .balign 4, 0
+Movement_ClerkNotice:
+    Move 3, 1
+    Move 75, 1
+    MoveEnd
+
+Movement_ClerkRight:
+    Move 15, 1
+    MoveEnd
+
+// From the waiting area's row (13) to the one above the trigger's (16), facing the player
+Movement_ClerkDown:
+    Move 13, 4
+    MoveEnd
+
+// The clerk at the counter: the Poké Mart of EFU_MART_SHOP_ID's list, at the normal prices
 // (scrcmd_shop.c), through the original clerk's script (global 10110), as Nacrene's Pokémon Center ran it
 Script_Clerk:
     ActorsPauseAll
@@ -697,13 +781,20 @@ Script_BlockedDoor:
     ActorsUnpauseAll
     VMHalt
 
-// Entering the target (its init script): each of its scavs is out on EFU_SIDE_SCAV_CHANCE percent of entries, ready
-// to fight again
+// Entering the target (its init script): the first time on an exploration, each of its scavs comes out on
+// EFU_SIDE_SCAV_CHANCE percent; after that, each that isn't out comes out on EFU_ROUTE_SCAV_CHANCE percent. One that is
+// out stays until it is beaten (EFU_SPECIAL_SCAV_GONE), so coming back only ever adds scavs. All are ready to fight
 Script_TargetEnter:
+    WorkSetConst 0x8021, EFU_ROUTE_SCAV_CHANCE
+    FlagGet EFU_FLAG_TARGET_ENTERED, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_TargetRoll
+    FlagSet EFU_FLAG_TARGET_ENTERED
+    WorkSetConst 0x8021, EFU_SIDE_SCAV_CHANCE
+L_TargetRoll:
     .irp i, 0,1,2
-    FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
     Random 0x8020, 100
-    WorkCmpConst 0x8020, EFU_SIDE_SCAV_CHANCE
+    WorkCmpWork 0x8020, 0x8021
     VMJumpIf CMP_GE, L_TargetScavNext\i
     FlagReset EFU_FLAG_TARGET_SCAV_FIRST + \i
 L_TargetScavNext\i:

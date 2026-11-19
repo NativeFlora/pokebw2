@@ -16,6 +16,7 @@
 #include "efu_bag.h"
 #include "field/event_action_call.h"
 #include "field/event_actor_move.h"
+#include "field/event_data.h"
 #include "field/event_dive.h"
 #include "field/field.h"
 #include "field/field_acmd.h"
@@ -29,12 +30,14 @@
 #include "field/field_task.h"
 #include "field/player_state.h"
 #include "field/scrcmd_field_actor.h"
+#include "field/trainer_script.h"
 #include "field/zone.h"
 #include "gfl/heap.h"
 #include "gfl/sound.h"
 #include "nitro/fx.h"
 #include "pml/item.h"
 #include "pml/poke_party.h"
+#include "save/event_work.h"
 #include "save/pokedex_savedata.h"
 #include "system/game_data.h"
 #include "system/game_system.h"
@@ -1170,6 +1173,23 @@ BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
 
             PokeDex_RegistPkm(pokedex, pkm);
             GFL_HeapFree(pkm);
+        }
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_SCAV_GONE) {
+        EventData *eventData = GameData_GetEventData(FieldScriptEnv_GetGameData(env));
+        EventWork *eventWork = GameData_GetEventWork(FieldScriptEnv_GetGameData(env));
+        ZoneNPC *npc = GetZoneNPCs(eventData);
+        u32 count;
+
+        for (count = GetZoneNPCsCount(eventData); count != 0; npc++, count--) {
+            if (npc->spawnFlag != 0 && GetNPCTrainerIDFromSCRID(npc->scrId) == item) {
+                EventWork_FlagSet(eventWork, npc->spawnFlag);
+                ball = FindFieldActor(mmSys, npc->uid);
+                if (ball != NULL) {
+                    DeleteActor(ball);
+                }
+            }
         }
         return FALSE;
     }

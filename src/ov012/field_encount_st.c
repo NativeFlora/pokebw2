@@ -1,6 +1,7 @@
 // Names from swan (https://github.com/ds-pokemon-hacking/swan, GPL-3.0)
 #include "types.h"
 #include "constants/zones.h"
+#include "efu.h"
 #include "field/encounter.h"
 #include "field/field.h"
 #include "field/field_player.h"
@@ -10,6 +11,7 @@
 #include "gfl/std.h"
 #include "nitro/os.h"
 #include "save/encounter.h"
+#include "save/event_work.h"
 #include "system/game_data.h"
 #include "system/zone_weather.h"
 
@@ -117,6 +119,15 @@ void EncountSave_SpawnPendingEntries(GameData *gameData) {
 }
 
 u32 GetDefaultWeatherValue(GameData *gameData, u16 zoneId) {
+    // Escape from Unova: a raid that drew downfall (EFU_FLAG_DOWNFALL) has it wherever the sky is open and clear, snow
+    // in winter and rain otherwise
+    if (EventWork_FlagGet(GameData_GetEventWork(gameData), EFU_FLAG_DOWNFALL) && GetZoneFlagsEnableFlyFrom(zoneId)
+        && GetZoneEnvFlagsWeather(zoneId) == WEATHER_SUNNY) {
+        if (GameData_GetSeason(gameData) == SEASON_WINTER) {
+            return WEATHER_FLAKE;
+        }
+        return WEATHER_RAIN;
+    }
     return WEATHER_NONE;
 }
 

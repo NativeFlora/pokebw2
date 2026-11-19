@@ -20,7 +20,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   start where ov036's code and BSS end), so growing either moves those pointers, and main's compressed size, kept in
   the secure area, may change with them. It is luck: some sizes pass and some don't, so build after every change to
   them and, if the check fails, change the size a little (natural code, never padding) and try again. ov035 has stayed
-  at its v1 size (11520 bytes); ov036 is 355360 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
+  at its v1 size (11520 bytes); ov036 is 355552 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
 
 ## Where things are
@@ -34,6 +34,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | Nacrene base: matrix, zone, doors, rubble, interiors, gate | `tools/efu/build_base.py` (reads the originals from `origin/main`) |
 | Grim intro | `src/ov294/intro_script.c`, `res/text/system/game_start.txt`, `src/ov162/game_start.c` |
 | New game start, the lost-raid check on continue, and the seasons (one per raid from winter, not the clock) | `src/ov035/event_mapchange.c` (`Efu_GetSeason`) |
+| An exploration's own hour of the day and its downfall | `Efu_GetDaySeconds` in `src/ov036/fieldmap.c` (with `src/ov036/field_encount.c`), `GetDefaultWeatherValue` in `src/ov012/field_encount_st.c` |
 | Blacking out: home, the team gone, a new Pokémon, a save | `src/ov012/event_battle_lose.c`, `FieldMapControl_LoadBlackoutZone` in `src/ov035/event_mapchange.c`, `Script_Blackout` |
 | Options on a new game (fastest text, Set battle style, no battle animations) | `Config_Init` in `src/system/config.c` |
 | The base's beach and sea (Undella's sand and surf textures), and the grass filled in where cutting off the north left the ground bare | `tools/efu/build_coast.py`, run by `build_base.py` |
@@ -86,7 +87,7 @@ Taken so far:
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
 | `EVENT_FLAG_0x0a80` to `0x0a8f` (`EFU_FLAG_SCAV_FIRST`) | Each scav NPC's hide flag, in the order `build_raid.py` gives them. All set on heading out. Version 3. |
 | `EVENT_FLAG_0x0a90` to `0x0a92` (`EFU_FLAG_LOOT_FIRST`) | The hide flags of the item balls put where the original had none (the Cave of Being's three). Rolled on heading out. |
-| `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | The childcare centre's scav's hide flag: out on each entry while the Day Care Lady's quest is open, then 75% (`EFU_SIDE_SCAV_CHANCE`). |
+| `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | The childcare centre's scav's hide flag: out on each entry while the Day Care Lady's quest is open, then by chance as the target's (75% on the first entry, 25% after); set on heading out and when it is beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
 | `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
 | `EVENT_FLAG_0x0a95` (`EFU_FLAG_BASE_JOY_HIDDEN`) | Her base NPC's hide flag, set from the above on entering the Pokémon Center. |
@@ -100,17 +101,22 @@ Taken so far:
 | `EVENT_FLAG_0x0a44` (`EFU_FLAG_DAYCARE_QUEST_DONE`) | Set once the childcare centre's scav (trainer 401) has been beaten: the Day Care Lady's quest. |
 | `EVENT_FLAG_0x0a9e` (`EFU_FLAG_GUIDE_MET`) | The guide has been met on Route 3 (and their Route 3 NPC's hide flag). |
 | `EVENT_FLAG_0x0a9f` (`EFU_FLAG_BASE_GUIDE_HIDDEN`) | The gate guide's hide flag, set from the above on entering the gate. |
-| `EVENT_FLAG_0x0a40` to `0x0a42` (`EFU_FLAG_TARGET_SCAV_FIRST`) | The target's scavs' hide flags, rolled on each entry (75% out each, `EFU_SIDE_SCAV_CHANCE`). |
+| `EVENT_FLAG_0x0a40` to `0x0a42` (`EFU_FLAG_TARGET_SCAV_FIRST`) | The target's scavs' hide flags: set on heading out, then each one still hidden comes out on an entry by chance (75% on the first entry, 25% after); set again only when it is beaten. |
+| `EVENT_FLAG_0x0a46` (`EFU_FLAG_TARGET_ENTERED`) | Set on the first entry to the target on an exploration, cleared on heading out. Version 4. |
+| `EVENT_FLAG_0x0a47` (`EFU_FLAG_CHILDCARE_ENTERED`) | The same for the childcare centre. Version 4. |
+| `EVENT_FLAG_0x0a48` (`EFU_FLAG_DOWNFALL`) | Set for an exploration that drew downfall (30%, `EFU_DOWNFALL_CHANCE`): rain, or snow in winter, wherever the sky is open. Cleared when it ends. Version 4. |
+| `EVENT_WORK_0x4163` (`EFU_WORK_CLERK_CALLED`) | 1 once the clerk has met the player, which turns off the trigger inside the Pokémon Center's door. Version 4. |
+| `EVENT_WORK_0x415f` (`EFU_WORK_RAID_HOUR`) | The exploration's hour of the day plus 1, rolled on heading out; 0 at home, for the real clock's. Version 4. |
 | `EVENT_WORK_0x41a7` to `0x41a0`, `0x419e` to `0x4197`, `0x4193`, `0x418b`, `0x4180`, `0x4177` (`LOCKER_WORKS` in `gen_efu.py`) | The locker's 20 slots, in that order: each the item plus its count shifted left 10 (up to 63), 0 when empty. Kept packed, used slots first. A save from before the locker has them all 0, an empty locker. |
 
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x0a46 to 0x0a4f, 0x0a01 to 0x0a3f and 0x091e to 0x095f; take
-them upward from 0x0a46. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x0a49 to 0x0a4f, 0x0a01 to 0x0a3f and 0x091e to 0x095f; take
+them upward from 0x0a49. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415f, 0x4163. Take the next from the top of the list down, and move it into the table above.
+0x4156 to 0x415e. Take the next from the end of the list back, and move it into the table above.
 
 ## Raids and saving
 
@@ -118,6 +124,12 @@ Free event work values (no script, source file or event data refers to them): 0x
   (`EFU_WORK_RAID` 0): it asks to head out, refuses without a Pokémon that can fight, and on yes sets the raid and
   saves. Column 2, by Nacrene's door, is live while out (`EFU_WORK_RAID` 1): it clears the raid and saves.
   Heading out also counts the raid (the season moves on) and gives the running shoes, for saves from version 1.
+- Heading out also rolls the exploration's hour (`EFU_WORK_RAID_HOUR`) and whether it has downfall
+  (`EFU_FLAG_DOWNFALL`, 30%). The field's light, its day period and the battles' backgrounds read the hour through
+  `Efu_GetDaySeconds` (`src/ov036/fieldmap.c`), with the minutes still the clock's; the clock itself and main are left
+  alone, since main's size is held by the secure area. The downfall is `GetDefaultWeatherValue`'s
+  (`src/ov012/field_encount_st.c`, a stub in the original): rain, or snow in winter, in every zone the player can fly
+  from whose own weather is clear. Coming home, losing the raid or blacking out puts both back (`L_RaidOver`).
 - Continuing a save with the raid set (the game was switched off before coming back, or saved from the menu while
   out) runs `Script_RaidLost`: it empties the party, says so, clears the raid, gives a new Pokémon, saves and sends
   the player home.
@@ -244,10 +256,11 @@ confirm, and B closes either menu.
 - **Nurse Joy** waits in the northwest of the target (`JOY` in `build_raid.py`). She heals the team on the spot for a
   dollar a level of the party (`EFU_SPECIAL_PARTY_LEVELS`; an egg counts its level), then offers to join the base for
   `EFU_JOY_HIRE` ($1000). Once she has, she's at the base Pokémon Center's counter, healing for the same price.
-- **The clerk** sits in the Pokémon Center's waiting area. The first time the player talks to them, they tell what
-  happened and move to the Poké Mart counter, which then buys anything at the usual half price and sells
-  `MART` (`build_base.py`; Poké and Great Balls, Potions, Super Potions, Revives, Full Heals, Repels and Escape Ropes)
-  at `EFU_MART_PRICE_FACTOR` (5) times the price. It is Nacrene's old mail counter's list (`EFU_MART_SHOP_ID`), run by
+- **The clerk** sits in the Pokémon Center's waiting area. The first time the player steps inside, the clerk notices
+  them, walks over and tells what happened (`Script_ClerkCall`, a trigger inside the door that
+  `EFU_WORK_CLERK_CALLED` turns off), then moves to the Poké Mart counter, which then buys anything at the usual half
+  price and sells `MART` (`build_base.py`; Poké and Great Balls, Potions, Super Potions, Revives, Full Heals, Repels
+  and Escape Ropes) at the normal prices. It is Nacrene's old mail counter's list (`EFU_MART_SHOP_ID`), run by
   the original clerk's script (global 10110).
 - **The Day Care Lady** is in Route 3's Day Care, whose door is never shut. There she takes Pokémon in but gives
   none back (`Script_DayCareJoin` runs her original script, global 2201, with `EFU_FLAG_DAYCARE_DEPOSIT_ONLY` set,
@@ -304,8 +317,11 @@ Scav) and given new lines by `build_raid.py`, start hidden: heading out sets the
   building, a cave or the target), `Script_RouteEnter` (Route 3's init script) asks for one on
   `EFU_ROUTE_SCAV_CHANCE` (25%) of entries, and at the next step `EfuScav_Spawn` brings out the hidden scav furthest
   from the player on the current map, with its defeat on an earlier exploration forgotten. The side areas' own scavs
-  (the target's three and the childcare centre's) are out on `EFU_SIDE_SCAV_CHANCE` (75%) of entries, whenever the
-  player comes in.
+  (the target's three and the childcare centre's) each come out on `EFU_SIDE_SCAV_CHANCE` (75%) of first entries
+  and `EFU_ROUTE_SCAV_CHANCE` (25%) of later ones.
+- Scavs only ever add up over an exploration: leaving an area and coming back never hides one that is out. Only
+  beating one takes it away (`EFU_SPECIAL_SCAV_GONE`, from `Script_ScavDrop`, sets its hide flag and removes its
+  actor), until heading out again hides them all.
 - A scav that is out stands where it came out, looking around (`MOVE_CODE_TURN_RANDOM`), and never steps until it
   has seen the player: a scav wandering by its move code could be caught between two tiles when a chase or battle
   began, and the game locked up.

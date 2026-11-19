@@ -273,7 +273,8 @@ void SaveBtlFieldStatus(BtlFieldStatus *status, GameData *gameData, Field *field
     status->terrain = GetTileEncountType(GetTileClass(FieldPlayer_GetTileTypeUnder(player)));
     status->zoneId = zoneId;
     RTC_GetCachedTime(&time);
-    status->hour = time.hour;
+    // Escape from Unova: a raid's own hour
+    status->hour = Efu_GetDaySeconds(gameData) / 3600;
     status->minute = time.minute;
     status->weather = ConvFieldWeatherToBtl(field);
     status->season = GameData_GetSeason(gameData);

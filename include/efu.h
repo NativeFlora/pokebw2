@@ -58,6 +58,11 @@
 // Route 3's init script, on each entry to the route: a scav may come out on coming back from a side area
 // (EFU_ROUTE_SCAV_CHANCE)
 #define EFU_SCRIPT_ROUTE_ENTER (EFU_SCRIPT_FIRST + 29)
+// The trigger inside the Pokémon Center's door: the clerk (NPC EFU_CLERK_INTRO_ID, standing at x EFU_CLERK_INTRO_X)
+// notices the player, walks over and talks the first time; EFU_WORK_CLERK_CALLED stops it running again
+#define EFU_SCRIPT_CLERK_CALL (EFU_SCRIPT_FIRST + 30)
+#define EFU_CLERK_INTRO_ID 8
+#define EFU_CLERK_INTRO_X 1
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -77,6 +82,11 @@
 #define EFU_WORK_SCAVS_OUT 0x41a9
 // The item the bag tossed last, for EFU_SCRIPT_TOSS to put on the ground; 0 once it has
 #define EFU_WORK_TOSSED_ITEM 0x41a8
+// 1 once the clerk has met the player, which turns off EFU_SCRIPT_CLERK_CALL's trigger
+#define EFU_WORK_CLERK_CALLED 0x4163
+// A raid's hour of the day plus 1, rolled on heading out, or 0 at home for the real clock's (Efu_GetDaySeconds in
+// fieldmap.c: the field's light, its day period and the battles' backgrounds)
+#define EFU_WORK_RAID_HOUR 0x415f
 // The level of the Pokémon that joins a player with none
 #define EFU_LOST_SOUL_LEVEL 5
 #define EFU_SEASON(raids) ((SEASON_WINTER + (raids)) % SEASON_COUNT)
@@ -99,6 +109,14 @@
 #define EFU_SIDE_SCAV_CHANCE 75
 // Set on the first entry to the route on an exploration, the one from the east gate; cleared on heading out
 #define EFU_FLAG_ROUTE_ENTERED 0xa45
+// The same for the target and the childcare centre: the first entry rolls EFU_SIDE_SCAV_CHANCE, later ones
+// EFU_ROUTE_SCAV_CHANCE
+#define EFU_FLAG_TARGET_ENTERED 0xa46
+#define EFU_FLAG_CHILDCARE_ENTERED 0xa47
+// Set for a raid that drew downfall (EFU_DOWNFALL_CHANCE percent of them): rain, or snow in winter, wherever the sky is
+// open and the zone's own weather is clear (GetDefaultWeatherValue, src/ov012/field_encount_st.c)
+#define EFU_FLAG_DOWNFALL 0xa48
+#define EFU_DOWNFALL_CHANCE 30
 #define EFU_FLAG_SCAV_FIRST 0xa80
 #define EFU_SCAV_MAX 16
 // The hide flags of the item balls placed where the original had none (build_raid.py's NEW_BALLS), from this one.
@@ -122,6 +140,9 @@
 #define EFU_SPECIAL_SELL_PRICE 6
 // Marks every species seen in the Pokédex, as a new game starts: the Pokédex starts complete
 #define EFU_SPECIAL_FILL_POKEDEX 7
+// After a win against a scav (Script_ScavDrop), with the Trainer in item's place: the scav leaves the area, its NPC
+// hidden by its flag, until it comes out again
+#define EFU_SPECIAL_SCAV_GONE 8
 // Items on the ground: item ball actors made where an item was tossed or swapped, each holding its item in its user
 // parameter 0, with actor IDs from EFU_GROUND_ID_FIRST. They belong to the zone, and are gone once the player leaves it
 #define EFU_GROUND_BESIDE_PLAYER 0xffff
@@ -132,13 +153,12 @@
 #define EFU_LEVEL_CAP 22
 // The base's people (docs/efu.md). Nurse Joy, in Pinwheel Forest's northwest, heals for the party's total level in
 // money and joins the base's Pokémon Center for EFU_JOY_HIRE; the clerk, in its waiting area, tells the player what
-// happened the first time and runs its Poké Mart after, at EFU_MART_PRICE_FACTOR times the prices (EFU_MART_SHOP_ID's
+// happened the first time and runs its Poké Mart after, at the normal prices (EFU_MART_SHOP_ID's
 // list, Nacrene's mail counter in the original, shops.json); the Day Care lady, in Route 3's Day Care, moves into the
 // player's warehouse once the scav in the childcare centre next door is beaten (EFU_FLAG_DAYCARE_QUEST_DONE), and from
 // there each Pokémon left with her gains a level each raid
 #define EFU_JOY_HIRE 1000
 #define EFU_MART_SHOP_ID 2
-#define EFU_MART_PRICE_FACTOR 5
 // Set once each has joined the base (the original NPC's hide flag), and the hide flags of their base NPCs, which the
 // base's init scripts set from those (Script_PokecenInit, Script_HomeInit)
 #define EFU_FLAG_JOY_JOINED 0xa94
