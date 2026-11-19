@@ -10,6 +10,8 @@
 #include "constants/flags.h"
 #include "constants/moves.h"
 #include "constants/pokemon.h"
+#include "constants/zones.h"
+#include "efu.h"
 #include "field/c_gear_sw.h"
 #include "field/castelia_rush.h"
 #include "field/encounter.h"
@@ -1158,11 +1160,20 @@ static void RememberOutboundWarp(FieldInteractWk *wk, u32 warpId, VecFx32 *pos) 
     SetGameDataOutboundWarpRememberInfo(wk->gameData, &spawn);
 }
 
+// Escape from Unova: whether the warp is a door of the Day Care Lady's warehouse before she has joined
+static BOOL Efu_IsShutDoor(FieldInteractWk *wk, u32 warpId) {
+    if (Field_GetPlayerStateZoneID(wk->field) != ZONE_NACRENE_CITY ||
+        (warpId != EFU_DAYCARE_WARP && warpId != EFU_DAYCARE_UPPER_WARP)) {
+        return FALSE;
+    }
+    return !EventWork_FlagGet(GameData_GetEventWork(wk->gameData), EFU_FLAG_DAYCARE_JOINED);
+}
+
 static u32 GetWarpForWalkIn(FieldInteractWk *wk, VecFx32 *pos) {
     u32 warpId = GetWarpAtPosition(wk->eventData, pos);
     ZoneWarp *warp;
 
-    if (warpId == WARP_ID_NONE) {
+    if (warpId == WARP_ID_NONE || Efu_IsShutDoor(wk, warpId)) {
         return WARP_ID_NONE;
     }
     warp = GetZoneWarpByID(wk->eventData, warpId);

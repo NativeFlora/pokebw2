@@ -35,6 +35,7 @@
 #include "nitro/fx.h"
 #include "pml/item.h"
 #include "pml/poke_party.h"
+#include "save/pokedex_savedata.h"
 #include "system/game_data.h"
 #include "system/game_system.h"
 #include "system/vm.h"
@@ -1158,6 +1159,17 @@ BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
         x = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
         if (!PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL) && !PML_ItemIsMail(x)) {
             *result = x;
+        }
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_FILL_POKEDEX) {
+        PokeDexSave *pokedex = GameData_GetPokedex(FieldScriptEnv_GetGameData(env));
+
+        for (id = 1; id <= SPECIES_GENESECT; id++) {
+            PartyPkm *pkm = PokeParty_NewTempPkm(id, 1, 0xffffffff00000000ULL, Field_GetHeapID(fieldWork->field));
+
+            PokeDex_RegistPkm(pokedex, pkm);
+            GFL_HeapFree(pkm);
         }
         return FALSE;
     }

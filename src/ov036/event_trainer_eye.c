@@ -19,7 +19,6 @@
 #include "field/zone.h"
 #include "gfl/heap.h"
 #include "save/event_work.h"
-#include "save/playtime.h"
 #include "save/save_control.h"
 #include "system/game_data.h"
 #include "system/game_event.h"
@@ -708,14 +707,12 @@ static BOOL EfuScav_CanStep(FieldActor *actor, const GridPos *pos, u16 dir) {
             ~ACTOR_COLL_WALK_AREA) == 0;
 }
 
-// The scavs come out one at a time (EFU_SCAV_SPAWN_SECONDS): the hidden one furthest from the player, with its defeat
-// on an earlier exploration forgotten
+// A scav comes out when the route's init script asks (EFU_WORK_SCAV_PENDING, Script_RouteEnter): the hidden one
+// furthest from the player, with its defeat on an earlier exploration forgotten
 static void EfuScav_Spawn(Field *field, const GridPos *playerPos) {
     GameData *gameData = GSYS_GetGameData(Field_GetGameSystem(field));
     EventWork *eventWork = GameData_GetEventWork(gameData);
-    PlayTime *time = GameData_GetPlayTime(gameData);
-    u16 now = (PlayTime_GetHours(time) * 60 + PlayTime_GetMinutes(time)) * 60 + PlayTime_GetSeconds(time);
-    u16 *start = EventWork_GetWkPtr(eventWork, EFU_WORK_EXPLORE_START);
+    u16 *pending = EventWork_GetWkPtr(eventWork, EFU_WORK_SCAV_PENDING);
     u16 *out = EventWork_GetWkPtr(eventWork, EFU_WORK_SCAVS_OUT);
     EventData *eventData;
     ZoneNPC *npc;
@@ -723,12 +720,10 @@ static void EfuScav_Spawn(Field *field, const GridPos *playerPos) {
     u32 count;
     int furthestDist;
 
-    if (*start == 0) {
-        *start = now + 1;
-    }
-    if ((u16)(now + 1 - *start) < (*out + 1) * EFU_SCAV_SPAWN_SECONDS) {
+    if (*pending == 0) {
         return;
     }
+    *pending = 0;
     eventData = GameData_GetEventData(gameData);
     furthest = NULL;
     furthestDist = -1;

@@ -25,7 +25,8 @@
 #define EFU_SCRIPT_LOOT_TARGET (EFU_SCRIPT_FIRST + 10)
 // Run (RTCallGlobal) after each win against a scav (global_3000.s): it drops an item from the target's table
 #define EFU_SCRIPT_SCAV_DROP (EFU_SCRIPT_FIRST + 11)
-// The Route 3 childcare centre's init script: a scav there on 30% of entries
+// The Route 3 childcare centre's init script: a scav there always while the Day Care Lady's quest is open, then on
+// EFU_SIDE_SCAV_CHANCE percent of entries
 #define EFU_SCRIPT_CHILDCARE (EFU_SCRIPT_FIRST + 12)
 // The script of an item on the ground (EfuSpecial): picking it up, or swapping the bag's item for it
 #define EFU_SCRIPT_GROUND_ITEM (EFU_SCRIPT_FIRST + 13)
@@ -47,15 +48,16 @@
 #define EFU_SCRIPT_GATE_INIT (EFU_SCRIPT_FIRST + 24)
 // The guide out in the zone, the first time
 #define EFU_SCRIPT_GUIDE_MEET (EFU_SCRIPT_FIRST + 25)
-// The target's init script: each of its scavs is out on EFU_TARGET_SCAV_CHANCE percent of entries
+// The target's init script: each of its scavs is out on EFU_SIDE_SCAV_CHANCE percent of entries
 #define EFU_SCRIPT_TARGET_ENTER (EFU_SCRIPT_FIRST + 26)
 // The locker, in the player's warehouse and by the Pokémon Center's Poké Mart counter: 20 slots, each in an event work
 // value of its own (gen_efu.py's LOCKER_WORKS, docs/efu.md)
 #define EFU_SCRIPT_LOCKER (EFU_SCRIPT_FIRST + 27)
-// The base's init script: the Day Care Lady's warehouse door leads in once she has joined (EFU_DAYCARE_WARP)
-#define EFU_SCRIPT_NACRENE_INIT (EFU_SCRIPT_FIRST + 28)
-// That door's tiles: shut until she has joined
-#define EFU_SCRIPT_DAYCARE_DOOR (EFU_SCRIPT_FIRST + 29)
+// The signs on the Day Care Lady's warehouse doors, which say they are locked until she has joined
+#define EFU_SCRIPT_DAYCARE_DOOR (EFU_SCRIPT_FIRST + 28)
+// Route 3's init script, on each entry to the route: a scav may come out on coming back from a side area
+// (EFU_ROUTE_SCAV_CHANCE)
+#define EFU_SCRIPT_ROUTE_ENTER (EFU_SCRIPT_FIRST + 29)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -66,11 +68,11 @@
 // The save format's version, set on a new game. A later build that changes what the hack keeps in the save checks it
 // on continuing and upgrades the old save
 #define EFU_WORK_SAVE_VERSION 0x41ad
-#define EFU_SAVE_VERSION 3
+#define EFU_SAVE_VERSION 4
 // How many raids the player has set out on (from save version 2). The season moves on one with each raid, from winter
 #define EFU_WORK_RAID_COUNT 0x41ab
-// The play time (in seconds, wrapping at 0x10000) the exploration started at, plus 1; 0 until the first step out
-#define EFU_WORK_EXPLORE_START 0x41aa
+// 1 when a scav is to come out on the route at the player's next step (Script_RouteEnter, EfuScav_Spawn); 0 after
+#define EFU_WORK_SCAV_PENDING 0x4169
 // How many scavs have come out on this exploration
 #define EFU_WORK_SCAVS_OUT 0x41a9
 // The item the bag tossed last, for EFU_SCRIPT_TOSS to put on the ground; 0 once it has
@@ -89,10 +91,14 @@
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
 #define EFU_SCAV_PARAM_CHASE 1
 #define EFU_SCAV_PARAM_MOVE_CODE 2
-// The scavs come out one at a time, the first after the player has been out exploring this long (play time, in
-// seconds), and one more each time it passes again. Each scav's NPC is hidden by its own flag from EFU_FLAG_SCAV_FIRST
-// (build_raid.py), all set on heading out
-#define EFU_SCAV_SPAWN_SECONDS (10 * 60)
+// The route's scavs: none on the way out, but coming back to the route from a side area (a building, a cave or the
+// target) brings one out on EFU_ROUTE_SCAV_CHANCE percent of entries (Script_RouteEnter). Each scav's NPC is hidden by
+// its own flag from EFU_FLAG_SCAV_FIRST (build_raid.py), all set on heading out. The side areas' own scavs are out on
+// EFU_SIDE_SCAV_CHANCE percent of entries, whenever the player comes in
+#define EFU_ROUTE_SCAV_CHANCE 25
+#define EFU_SIDE_SCAV_CHANCE 75
+// Set on the first entry to the route on an exploration, the one from the east gate; cleared on heading out
+#define EFU_FLAG_ROUTE_ENTERED 0xa45
 #define EFU_FLAG_SCAV_FIRST 0xa80
 #define EFU_SCAV_MAX 16
 // The hide flags of the item balls placed where the original had none (build_raid.py's NEW_BALLS), from this one.
@@ -114,6 +120,8 @@
 #define EFU_SPECIAL_HELD_ITEM 4
 #define EFU_SPECIAL_TAKE_HELD 5
 #define EFU_SPECIAL_SELL_PRICE 6
+// Marks every species seen in the Pokédex, as a new game starts: the Pokédex starts complete
+#define EFU_SPECIAL_FILL_POKEDEX 7
 // Items on the ground: item ball actors made where an item was tossed or swapped, each holding its item in its user
 // parameter 0, with actor IDs from EFU_GROUND_ID_FIRST. They belong to the zone, and are gone once the player leaves it
 #define EFU_GROUND_BESIDE_PLAYER 0xffff
@@ -126,9 +134,9 @@
 // money and joins the base's Pokémon Center for EFU_JOY_HIRE; the clerk, in its waiting area, tells the player what
 // happened the first time and runs its Poké Mart after, at EFU_MART_PRICE_FACTOR times the prices (EFU_MART_SHOP_ID's
 // list, Nacrene's mail counter in the original, shops.json); the Day Care lady, in Route 3's Day Care, moves into the
-// player's warehouse for EFU_DAYCARE_HIRE, and from there each Pokémon left with her gains a level each raid
+// player's warehouse once the scav in the childcare centre next door is beaten (EFU_FLAG_DAYCARE_QUEST_DONE), and from
+// there each Pokémon left with her gains a level each raid
 #define EFU_JOY_HIRE 1000
-#define EFU_DAYCARE_HIRE 1000
 #define EFU_MART_SHOP_ID 2
 #define EFU_MART_PRICE_FACTOR 5
 // Set once each has joined the base (the original NPC's hide flag), and the hide flags of their base NPCs, which the
@@ -142,17 +150,18 @@
 // Set while the Day Care Lady's original script (global 2201) runs for her Route 3 NPC (Script_DayCareJoin), where it
 // leaves Withdraw out of its menu: she only takes Pokémon in there (build_raid.py patches global_2200.s)
 #define EFU_FLAG_DAYCARE_DEPOSIT_ONLY 0xa43
+// Set once the scav in Route 3's childcare centre (trainer 401) has been beaten: the Day Care Lady's quest
+#define EFU_FLAG_DAYCARE_QUEST_DONE 0xa44
 // The shut door in the Day Care Lady's warehouse's doorway (build_coast.py): its field prop (door_normal01 of
 // FIELD_PROPS_EXTERIOR_SHARED_PC_01_3) and its place in its chunk (overworld_2_map20_18), which
 // FieldPropSystem_InstantiateFromInfo leaves out once EFU_FLAG_DAYCARE_JOINED is set. Each closed warehouse has one
 #define EFU_DAYCARE_DOOR_PROP 259
-// Its warp (Nacrene's warp 2), which build_base.py parks in the sea with the closed doors' and Script_NacreneInit
-// puts back on the door's tile, in the base's tiles, once she has joined
-#define EFU_DAYCARE_WARP 2
-#define EFU_DAYCARE_WARP_X 72
-#define EFU_DAYCARE_WARP_Z 53
 #define EFU_DAYCARE_DOOR_PROP_X (-112)
 #define EFU_DAYCARE_DOOR_PROP_Z 84
+// Her warehouse's two doors, Nacrene's warps (build_base.py), which lead nowhere until she has joined (GetWarpForWalkIn
+// in fieldmap_event.c): a sign on each says the door is locked (Script_DayCareDoor)
+#define EFU_DAYCARE_WARP 2
+#define EFU_DAYCARE_UPPER_WARP 8
 // The guide, met out in the zone (their NPC's hide flag there), and their NPC's hide flag at the east gate, which its
 // init script sets from that (Script_GateInit)
 #define EFU_FLAG_GUIDE_MET 0xa9e
@@ -163,10 +172,9 @@
 #define EFU_FLAG_DOOR_FIRST 0xa9a
 #define EFU_DOOR_COUNT 3
 #define EFU_DOOR_SHUT_CHANCE 30
-// The target's scavs, each hidden by its flag from this one and out on EFU_TARGET_SCAV_CHANCE percent of entries
+// The target's scavs, each hidden by its flag from this one and out on EFU_SIDE_SCAV_CHANCE percent of entries
 #define EFU_FLAG_TARGET_SCAV_FIRST 0xa40
 #define EFU_TARGET_SCAV_COUNT 3
-#define EFU_TARGET_SCAV_CHANCE 40
 
 // Fleeing (btl_server_flow.c): the original's cap on the escape attempts it counts, and the count that means the
 // player failed to get away this turn and gets away at its end

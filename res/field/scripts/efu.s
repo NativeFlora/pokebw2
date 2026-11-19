@@ -50,8 +50,8 @@
     ScriptEntry Script_GuideMeet
     ScriptEntry Script_TargetEnter
     ScriptEntry Script_Locker
-    ScriptEntry Script_NacreneInit
     ScriptEntry Script_DayCareDoor
+    ScriptEntry Script_RouteEnter
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -61,9 +61,20 @@ Script_NewGameSetup:
     GiveRunningShoes
     // No money to start with: the zones are where it comes from (the subtraction stops at 0)
     MoneySub 0x3fff
+    VMCall L_PokedexFill
     FinishAllEvents
     ActorsUnpauseAll
     VMHalt
+
+// The Pokédex, national and complete: every species seen, which its screens show as a whole entry (pokedex_info.c),
+// while only the species the player has caught get the ball, in its list and in battle
+L_PokedexFill:
+    // The flag that puts the Pokédex in the field menu (FieldMenu_GetMenuType)
+    FlagSet EVENT_FLAG_0x0962
+    PokeDexEnable
+    PokeDexGiveNational
+    EfuSpecial EFU_SPECIAL_FILL_POKEDEX, 0, 0, 0, 0x8020
+    VMReturn
 
 // Runs after the first fade-in of a new game: a lost Pokémon finds the player
 Script_NewGameStart:
@@ -121,14 +132,16 @@ Script_RaidDepart:
     WorkSetConst EFU_WORK_RAID, 1
     // The season moves on with each raid (EFU_SEASON), when the player steps out onto the route
     WorkAdd EFU_WORK_RAID_COUNT, 1
-    // Saves from before version 2 started without them
+    // Saves from before version 2 started without them, and from before version 4 without the Pokédex
     GiveRunningShoes
-    // The scavs hide until the exploration has gone on a while (EventTrainerEye_EfuPursue brings them out), and the
-    // clock for that starts at the first step out
+    WorkCmpConst EFU_WORK_SAVE_VERSION, 4
+    VMCallIf CMP_LT, L_PokedexFill
+    // The route's scavs hide until the player comes back to it from a side area (Script_RouteEnter)
     .irp i, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
     FlagSet EFU_FLAG_SCAV_FIRST + \i
     .endr
-    WorkSetConst EFU_WORK_EXPLORE_START, 0
+    WorkSetConst EFU_WORK_SCAV_PENDING, 0
+    FlagReset EFU_FLAG_ROUTE_ENTERED
     WorkSetConst EFU_WORK_SCAVS_OUT, 0
     // New loot: each spot's item ball is out or not by its tier's chance (L_LootRoll, from loot.json)
     VMCall L_LootRoll
@@ -1987,10 +2000,15 @@ L_ScavDropLost:
     RTEndGlobal
     VMHalt
 
-// Entering Route 3's childcare centre (its init script): a scav waits there 30% of the time, ready to fight again
+// Entering Route 3's childcare centre (its init script): a scav waits there, always while the Day Care Lady's quest is
+// open and on EFU_SIDE_SCAV_CHANCE percent of entries after, ready to fight again. Beating it once ends her quest (L_DayCareQuestCheck)
 Script_ChildcareEnter:
+    VMCall L_DayCareQuestCheck
+    FlagGet EFU_FLAG_DAYCARE_QUEST_DONE, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_ChildcareScav
     Random 0x8020, 100
-    WorkCmpConst 0x8020, 30
+    WorkCmpConst 0x8020, EFU_SIDE_SCAV_CHANCE
     VMJumpIf CMP_LT, L_ChildcareScav
     FlagSet EFU_FLAG_CHILDCARE_SCAV
     VMHalt
@@ -1999,6 +2017,16 @@ L_ChildcareScav:
     FlagReset EFU_FLAG_CHILDCARE_SCAV
     TrainerFlagReset 401
     VMHalt
+
+// The Day Care Lady's quest is done once the childcare centre's scav (trainer 401) has been beaten, which its trainer
+// flag holds until the centre is entered again
+L_DayCareQuestCheck:
+    TrainerFlagGet 401, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_DayCareQuestOpen
+    FlagSet EFU_FLAG_DAYCARE_QUEST_DONE
+L_DayCareQuestOpen:
+    VMReturn
 
 // An item on the ground (EfuSpecial), its item in the actor's user parameter 0: taken, and when the bag's item is
 // already carried, swapped for it without asking, leaving the bag's item in its place
@@ -2195,10 +2223,11 @@ Script_Clerk:
     ActorsUnpauseAll
     VMHalt
 
-// The Day Care Lady in Route 3's Day Care: until she has joined, she offers to move into a warehouse of the base for
-// EFU_DAYCARE_HIRE, where the original Day Care Lady's script (global 2201) runs her (Script_DayCareInit shows her there,
-// and Script_NacreneInit opens its door). Either way she then takes Pokémon in, but gives none back here: her original
-// script runs with EFU_FLAG_DAYCARE_DEPOSIT_ONLY set, which leaves Withdraw out of its menu
+// The Day Care Lady in Route 3's Day Care: until she has joined, she asks the player to drive the scav out of the
+// childcare centre next door (Script_ChildcareEnter), and once it is beaten moves into a warehouse of the base, where
+// the original Day Care Lady's script (global 2201) runs her (Script_DayCareInit shows her there, and her warehouse's
+// doors open). After that she takes Pokémon in here, but gives none back: her original script runs with
+// EFU_FLAG_DAYCARE_DEPOSIT_ONLY set, which leaves Withdraw out of its menu
 Script_DayCareJoin:
     FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
     WorkCmpConst 0x8020, 1
@@ -2206,30 +2235,22 @@ Script_DayCareJoin:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
-    MoneyWinDisp 31, 1
-    WorkSetConst 0x8020, EFU_DAYCARE_HIRE
-    WordSetNumber 0, 0x8020, 5
-    ActorMsg MSGFILE_SCRIPT, Efu_Text_DayCareOffer, 0x8011, 2, 0
-    YesNoWin 0x8021
-    WorkCmpConst 0x8021, 1
-    VMJumpIf CMP_EQ, L_DayCareStay
-    MoneyCheck 0x8022, 0x8020
-    WorkCmpConst 0x8022, 0
-    VMJumpIf CMP_EQ, L_DayCarePoor
-    MoneySub 0x8020
-    MoneyWinUpdate
+    VMCall L_DayCareQuestCheck
+    FlagGet EFU_FLAG_DAYCARE_QUEST_DONE, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_DayCareJoins
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_DayCareQuest, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_DayCareJoins:
     SEPlay SEQ_SE_SYS_08
     ActorMsg MSGFILE_SCRIPT, Efu_Text_DayCareJoined, 0x8011, 2, 0
     LastKeyWait
     FlagSet EFU_FLAG_DAYCARE_JOINED
-    VMJump L_DayCareStay
-
-L_DayCarePoor:
-    ActorMsg MSGFILE_SCRIPT, Efu_Text_NotEnoughMoney, 0x8011, 2, 0
-    LastKeyWait
-L_DayCareStay:
     ActorMsgClose
-    MoneyWinClose
     ActorsUnpauseAll
 L_DayCareDeposit:
     FlagSet EFU_FLAG_DAYCARE_DEPOSIT_ONLY
@@ -2237,18 +2258,25 @@ L_DayCareDeposit:
     FlagReset EFU_FLAG_DAYCARE_DEPOSIT_ONLY
     VMHalt
 
-// The base's init script (as its field starts, on entering and on coming back from a menu or battle): the Day Care Lady's warehouse door, parked in
-// the sea like the closed doors' until she has joined, leads in after (its shut door prop goes too, in
-// FieldPropSystem_InstantiateFromInfo)
-Script_NacreneInit:
-    FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
+// Entering Route 3 (its init script): the first time on an exploration, from the east gate, nothing; after that, coming
+// back from a side area, a scav comes out at the player's next step on EFU_ROUTE_SCAV_CHANCE percent of entries
+// (EventTrainerEye_EfuPursue)
+Script_RouteEnter:
+    FlagGet EFU_FLAG_ROUTE_ENTERED, 0x8020
     WorkCmpConst 0x8020, 0
-    VMJumpIf CMP_EQ, L_NacreneInitEnd
-    ObjInitWarpGPos EFU_DAYCARE_WARP, EFU_DAYCARE_WARP_X, 0, EFU_DAYCARE_WARP_Z
-L_NacreneInitEnd:
+    VMJumpIf CMP_EQ, L_RouteFirstEntry
+    Random 0x8020, 100
+    WorkCmpConst 0x8020, EFU_ROUTE_SCAV_CHANCE
+    VMJumpIf CMP_GE, L_RouteEnterEnd
+    WorkSetConst EFU_WORK_SCAV_PENDING, 1
+L_RouteEnterEnd:
     VMHalt
 
-// The Day Care Lady's warehouse door, shut until she has joined
+L_RouteFirstEntry:
+    FlagSet EFU_FLAG_ROUTE_ENTERED
+    VMHalt
+
+// The signs on the Day Care Lady's warehouse doors, which are shut until she has joined (GetWarpForWalkIn)
 Script_DayCareDoor:
     FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
     WorkCmpConst 0x8020, 0
@@ -2261,7 +2289,7 @@ Script_DayCareDoor:
 L_DayCareDoorEnd:
     VMHalt
 
-// The base's other init scripts (on loading the zone): the people who have joined show, the rest stay hidden
+// The base's init scripts (on loading the zone): the people who have joined show, the rest stay hidden
 Script_PokecenInit:
     FlagSet EFU_FLAG_BASE_JOY_HIDDEN
     FlagGet EFU_FLAG_JOY_JOINED, 0x8020
@@ -2321,13 +2349,13 @@ Script_BlockedDoor:
     ActorsUnpauseAll
     VMHalt
 
-// Entering the target (its init script): each of its scavs is out on EFU_TARGET_SCAV_CHANCE percent of entries, ready
+// Entering the target (its init script): each of its scavs is out on EFU_SIDE_SCAV_CHANCE percent of entries, ready
 // to fight again
 Script_TargetEnter:
     .irp i, 0,1,2
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
     Random 0x8020, 100
-    WorkCmpConst 0x8020, EFU_TARGET_SCAV_CHANCE
+    WorkCmpConst 0x8020, EFU_SIDE_SCAV_CHANCE
     VMJumpIf CMP_GE, L_TargetScavNext\i
     FlagReset EFU_FLAG_TARGET_SCAV_FIRST + \i
 L_TargetScavNext\i:
@@ -2347,6 +2375,12 @@ L_DoorRoll:
     FlagReset EFU_FLAG_DOOR_FIRST + \i
 L_DoorNext\i:
     .endr
+    // The childcare centre's (the first) stays open while the Day Care Lady's quest, to beat its scav, is
+    FlagGet EFU_FLAG_DAYCARE_QUEST_DONE, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_DoorRollEnd
+    FlagSet EFU_FLAG_DOOR_FIRST
+L_DoorRollEnd:
     VMReturn
 
 // The east gate's guide: one day, the way to the farther zones

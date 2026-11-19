@@ -43,7 +43,7 @@
         },
         {
             "zone": "ZONE_NACRENE_CITY",
-            "warp": 2,
+            "warp": 8,
             "unk4": 3,
             "transition": 1,
             "grid": {

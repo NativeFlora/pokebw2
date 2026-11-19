@@ -125,7 +125,7 @@ PLACES = {
     'ZONE_CAVE_OF_BEING': ('cave', 'ZONE_CAVE_OF_BEING'),
     TARGET_ZONE: ('target', TARGET_ZONE),
 }
-# The target's Trainers that are scavs there, each out on EFU_TARGET_SCAV_CHANCE percent of entries
+# The target's Trainers that are scavs there, each out on EFU_SIDE_SCAV_CHANCE percent of entries
 # (Script_TargetEnter), with a hide flag of their own from EFU_FLAG_TARGET_SCAV_FIRST
 TARGET_SCAVS = [643, 642, 645]
 # The zone's doors that are shut on some explorations, a boulder in front of each, hidden by its flag from
@@ -335,6 +335,8 @@ def build_events(loot):
                              'grid': {'x': g['x'] // 16 + tx + dx, 'z': g['z'] // 16 + tz + dz, 'y': g['y'] * 4096}})
                 next_id += 1
     npcs.append(GUIDE)
+    # Its scavs come out on coming back from a side area (Script_RouteEnter)
+    e['init_scripts'] = [{'type': 2, 'script': efu_script('ROUTE_ENTER')}]
     write('res/field/events/route_3.json', e)
     return scavs, {w['zone']: i for i, w in enumerate(warps)}
 

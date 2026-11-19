@@ -906,7 +906,8 @@ static BOOL ThrowBall(BtlServerFlow *flow, BattleMon *mon, u16 item) {
             if (caught) {
                 flow->result = BTL_FLOW_RESULT_CAPTURE;
                 flow->capturePos = targetPos;
-                isNew = !IsMonCaught(flow->mainModule, target) ? TRUE : FALSE;
+                // Escape from Unova: the Pokédex starts complete, so a catch never adds its data
+                isNew = FALSE;
                 BattleMon_SetCaughtBall(target, item);
             } else {
                 isNew = FALSE;

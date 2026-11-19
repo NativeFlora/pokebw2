@@ -39,6 +39,10 @@
 // its footprint, and in windows its name, number, category, height, weight and description, in the game's language or
 // in one of the six others that the Pokédex has seen it in. The sprite, types and footprint are loaded into a slot of
 // two, so that showing another Pokémon swaps slots instead of waiting for the old one to be freed
+//
+// Escape from Unova: the Pokédex starts complete (Script_NewGameSetup), so each entry is whole, the category, height,
+// weight, description and footprint shown whether or not the player has caught the Pokémon; caught only picks the
+// caught label
 
 // The Pokédex's graphics (ARCID_POKEDEX_GRA) members
 #define POKEDEX_GRA_PALETTE 9
@@ -683,7 +687,7 @@ void PokedexInfo_SetLanguage(PokedexInfo *info, u32 language) {
     PokedexInfo_ClearWindows(info);
     PokedexInfo_FreeTypeActors(info, info->typeSlot);
     PokedexInfo_ShowTypes(info, language, info->typeSlot);
-    PokedexInfo_SetFootprintsVisible(info, info->caught);
+    PokedexInfo_SetFootprintsVisible(info, TRUE);
     if (language == POKEDEX_INFO_LANGUAGE_GAME || info->species > SPECIES_ARCEUS) {
         PokedexInfo_PrintEntry(info);
     } else {
@@ -892,7 +896,6 @@ static void PokedexInfo_PrintEntry(PokedexInfo *info) {
     u16 number;
     WordSet *wordSet;
     StrBuf *name;
-    u32 messageId;
 
     // The messages of a form follow its species's through the table of next forms
     for (; n != info->form; n++) {
@@ -934,36 +937,20 @@ static void PokedexInfo_PrintEntry(PokedexInfo *info) {
                           info->font, COLOR_LABEL);
     GFL_StrBufFree(name);
 
-    messageId = 0;
-    if (info->caught) {
-        messageId = info->species;
-    }
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_NAME], categories, info->printQueue,
-                             info->font, messageId, 0, 22, COLOR_LABEL, PRINT_ALIGN_CENTER, NULL);
+                             info->font, info->species, 0, 22, COLOR_LABEL, PRINT_ALIGN_CENTER, NULL);
 
     PokedexInfo_PrintStrbuf(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], info->printQueue, info->font,
                             info->labels[2], 0, 4, COLOR_LABEL, PRINT_ALIGN_LEFT, NULL);
     PokedexInfo_PrintStrbuf(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], info->printQueue, info->font,
                             info->labels[3], 0, 20, COLOR_LABEL, PRINT_ALIGN_LEFT, NULL);
 
-    messageId = 0;
-    if (info->caught) {
-        messageId = message;
-    }
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], heights, info->printQueue,
-                             info->font, messageId, 101, 4, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
-    messageId = 0;
-    if (info->caught) {
-        messageId = message;
-    }
+                             info->font, message, 101, 4, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], weights, info->printQueue,
-                             info->font, messageId, 102, 20, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
-    messageId = 0;
-    if (info->caught) {
-        messageId = message;
-    }
+                             info->font, message, 102, 20, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_TEXT], entries, info->printQueue,
-                             info->font, messageId, 2, 5, COLOR_TEXT, PRINT_ALIGN_LEFT, NULL);
+                             info->font, message, 2, 5, COLOR_TEXT, PRINT_ALIGN_LEFT, NULL);
 
     for (i = 0; i < POKEDEX_INFO_WINDOW_COUNT; i++) {
         info->flushed[i] = FALSE;
@@ -980,7 +967,6 @@ static void PokedexInfo_PrintEntryInLanguage(PokedexInfo *info, unsigned int lan
     MsgData *names = info->msgs[POKEDEX_INFO_MSG_OTHER_NAMES + language];
     u16 message = info->species;
     u16 number;
-    u16 messageId;
     u8 i;
     WordSet *wordSet;
 
@@ -1022,36 +1008,20 @@ static void PokedexInfo_PrintEntryInLanguage(PokedexInfo *info, unsigned int lan
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_NAME], names, info->printQueue, info->font,
                              info->species, 0x30, 5, COLOR_LABEL, PRINT_ALIGN_LEFT, NULL);
 
-    messageId = 0;
-    if (info->caught) {
-        messageId = info->species;
-    }
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_NAME], categories, info->printQueue,
-                             info->font, messageId, 0, 22, COLOR_LABEL, PRINT_ALIGN_CENTER, NULL);
+                             info->font, info->species, 0, 22, COLOR_LABEL, PRINT_ALIGN_CENTER, NULL);
 
     PokedexInfo_PrintStrbuf(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], info->printQueue, info->font,
                             info->labels[4 + language], 0, 4, COLOR_LABEL, PRINT_ALIGN_LEFT, NULL);
     PokedexInfo_PrintStrbuf(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], info->printQueue, info->font,
                             info->labels[10 + language], 0, 20, COLOR_LABEL, PRINT_ALIGN_LEFT, NULL);
 
-    messageId = 0;
-    if (info->caught) {
-        messageId = message;
-    }
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], heights, info->printQueue,
-                             info->font, messageId, sHeightX[language], 4, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
-    messageId = 0;
-    if (info->caught) {
-        messageId = message;
-    }
+                             info->font, message, sHeightX[language], 4, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_SIZE], weights, info->printQueue,
-                             info->font, messageId, sWeightX[language], 20, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
-    messageId = 0;
-    if (info->caught) {
-        messageId = info->species;
-    }
+                             info->font, message, sWeightX[language], 20, COLOR_LABEL, PRINT_ALIGN_RIGHT, NULL);
     PokedexInfo_PrintMessage(info->heapId, info->windows[POKEDEX_INFO_WINDOW_TEXT], entries, info->printQueue,
-                             info->font, messageId, sEntryX[language], 5, COLOR_TEXT, PRINT_ALIGN_LEFT, NULL);
+                             info->font, info->species, sEntryX[language], 5, COLOR_TEXT, PRINT_ALIGN_LEFT, NULL);
 
     for (i = 0; i < POKEDEX_INFO_WINDOW_COUNT; i++) {
         info->flushed[i] = FALSE;
@@ -1533,14 +1503,14 @@ static void PokedexInfo_HideOtherFootprints(PokedexInfo *info) {
 static void PokedexInfo_ShowEntry(PokedexInfo *info) {
     PokedexInfo_ShowTypes(info, POKEDEX_INFO_LANGUAGE_GAME, info->typeSlot);
     PokedexInfo_LoadFootprint(info, info->species, info->form, info->footprintSlot);
-    PokedexInfo_SetFootprintsVisible(info, info->caught);
+    PokedexInfo_SetFootprintsVisible(info, TRUE);
     PokedexInfo_PrintEntry(info);
 }
 
 static void PokedexInfo_ShowEntryInLanguage(PokedexInfo *info, u32 language) {
     PokedexInfo_ShowTypes(info, language, info->typeSlot);
     PokedexInfo_LoadFootprint(info, info->species, info->form, info->footprintSlot);
-    PokedexInfo_SetFootprintsVisible(info, info->caught);
+    PokedexInfo_SetFootprintsVisible(info, TRUE);
     PokedexInfo_PrintEntryInLanguage(info, language);
 }
 
@@ -1597,9 +1567,6 @@ static void PokedexInfo_SetFootprintsVisible(PokedexInfo *info, BOOL visible) {
 
 static void PokedexInfo_SetVisible(PokedexInfo *info, BOOL visible) {
     ClActor_SetVisible(info->sprites[info->spriteSlot], visible);
-    if (!info->caught) {
-        visible = FALSE;
-    }
     PokedexInfo_SetFootprintsVisible(info, visible);
 }
 

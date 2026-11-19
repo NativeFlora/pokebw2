@@ -10,6 +10,96 @@
                 "y": 3,
                 "z": 0
             }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 2,
+                "y": 1,
+                "z": -4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 2,
+                "y": 1,
+                "z": 0
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 2,
+                "y": 1,
+                "z": 4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 3,
+                "y": 1,
+                "z": -4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 3,
+                "y": 1,
+                "z": 0
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 3,
+                "y": 1,
+                "z": 4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 4,
+                "y": 1,
+                "z": -4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 4,
+                "y": 1,
+                "z": 0
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 4,
+                "y": 1,
+                "z": 4
+            }
         }
     ],
     "npcs": [

@@ -20,7 +20,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   start where ov036's code and BSS end), so growing either moves those pointers, and main's compressed size, kept in
   the secure area, may change with them. It is luck: some sizes pass and some don't, so build after every change to
   them and, if the check fails, change the size a little (natural code, never padding) and try again. ov035 has stayed
-  at its v1 size (11520 bytes); ov036 is 355296 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
+  at its v1 size (11520 bytes); ov036 is 355360 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
 
 ## Where things are
@@ -45,7 +45,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | The locker: its furniture and tiles, its script, and the routines that read and write its slots | `LOCKERS` and `build_lockers` in `tools/efu/build_base.py`, `Script_Locker` in `tools/efu/efu.s.in`, `LOCKER_WORKS` in `tools/efu/gen_efu.py` |
 | The base's people: Nurse Joy, the clerk and the Day Care Lady, and the gate's guide | `build_interiors` in `tools/efu/build_base.py`, `Script_Nurse` and below in `tools/efu/efu.s.in`, the mart's prices in `src/ov036/scrcmd_shop.c` |
 | The loot tables and the scripts that roll them | `LOOT` in `tools/efu/gen_efu.py`, `Script_Loot*` in `tools/efu/efu.s.in` |
-| The closed warehouses' shut doors, and the Day Care Lady's, which goes once she has joined | `CLOSED_WAREHOUSES` in `tools/efu/build_coast.py`, `Efu_IsOpenedDoor` in `src/ov036/field_buildmodel.c`, `Script_NacreneInit` in `tools/efu/efu.s.in` |
+| The closed warehouses' shut doors, and the Day Care Lady's, which goes once she has joined | `CLOSED_WAREHOUSES` in `tools/efu/build_coast.py`, `Efu_IsOpenedDoor` in `src/ov036/field_buildmodel.c`, `Efu_IsShutDoor` in `src/ov036/fieldmap_event.c`, the door signs in `tools/efu/build_base.py` |
 | Wild Pokémon that count as equivalent, by egg group | `tools/efu/wild_groups.py` → `tools/efu/wild_groups.json` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` in `src/ov036/event_trainer_eye.c`, called each step from `src/ov036/fieldmap_event.c` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs); 0x2db and 0x15f took over unused commands' rows, so the tables keep their size |
@@ -79,13 +79,14 @@ Taken so far:
 | Value | Meaning |
 | --- | --- |
 | `EVENT_WORK_0x41ac` (`EFU_WORK_RAID`) | 1 while out on a raid. Set and saved on leaving through the east gate, cleared and saved on coming back. Continuing a save with it set loses the raid. |
-| `EVENT_WORK_0x41ad` (`EFU_WORK_SAVE_VERSION`) | The save format's version, set on a new game and on heading out on a raid (now 3). |
+| `EVENT_WORK_0x41ad` (`EFU_WORK_SAVE_VERSION`) | The save format's version, set on a new game and on heading out on a raid (now 4). Heading out with a save from before version 4 fills its Pokédex. |
 | `EVENT_WORK_0x41ab` (`EFU_WORK_RAID_COUNT`) | Raids set out on, which picks the season (`EFU_SEASON`). Version 2; a version 1 save has 0, so winter. |
-| `EVENT_WORK_0x41aa` (`EFU_WORK_EXPLORE_START`) | The play time in seconds (wrapping at 0x10000), plus 1, at the first step of this exploration; 0 until then. Version 3. |
+| `EVENT_WORK_0x41aa` | Retired in version 4: the play time the exploration started at, for the scavs' old 10-minute clock. Not to be reused. |
+| `EVENT_WORK_0x4169` (`EFU_WORK_SCAV_PENDING`) | 1 when a scav is to come out on the route at the next step (`Script_RouteEnter`); 0 after, and on heading out. Version 4. |
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
 | `EVENT_FLAG_0x0a80` to `0x0a8f` (`EFU_FLAG_SCAV_FIRST`) | Each scav NPC's hide flag, in the order `build_raid.py` gives them. All set on heading out. Version 3. |
 | `EVENT_FLAG_0x0a90` to `0x0a92` (`EFU_FLAG_LOOT_FIRST`) | The hide flags of the item balls put where the original had none (the Cave of Being's three). Rolled on heading out. |
-| `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | The childcare centre's scav's hide flag, rolled on each entry (30% out). |
+| `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | The childcare centre's scav's hide flag: out on each entry while the Day Care Lady's quest is open, then 75% (`EFU_SIDE_SCAV_CHANCE`). |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
 | `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
 | `EVENT_FLAG_0x0a95` (`EFU_FLAG_BASE_JOY_HIDDEN`) | Her base NPC's hide flag, set from the above on entering the Pokémon Center. |
@@ -95,19 +96,21 @@ Taken so far:
 | `EVENT_FLAG_0x0a99` (`EFU_FLAG_BASE_DAYCARE_HIDDEN`) | Her NPC's hide flag in her warehouse (`NACRENE_CITY_7`), set from the above on entering it. |
 | `EVENT_FLAG_0x0a9a` to `0x0a9c` (`EFU_FLAG_DOOR_FIRST`) | The hide flags of the boulders in front of the zone's doors that can be shut (`DOORS` in `build_raid.py`), rolled on heading out. `0x0a9d` was the Day Care's, whose door is never shut now; an older save may have it set, and nothing reads it. |
 | `EVENT_FLAG_0x0a43` (`EFU_FLAG_DAYCARE_DEPOSIT_ONLY`) | Set while the Day Care Lady's original script runs for her Route 3 NPC, which leaves Withdraw out of its menu. Cleared after. |
+| `EVENT_FLAG_0x0a45` (`EFU_FLAG_ROUTE_ENTERED`) | Set on the first entry to Route 3 on an exploration (from the east gate), cleared on heading out (`Script_RouteEnter`). Version 4. |
+| `EVENT_FLAG_0x0a44` (`EFU_FLAG_DAYCARE_QUEST_DONE`) | Set once the childcare centre's scav (trainer 401) has been beaten: the Day Care Lady's quest. |
 | `EVENT_FLAG_0x0a9e` (`EFU_FLAG_GUIDE_MET`) | The guide has been met on Route 3 (and their Route 3 NPC's hide flag). |
 | `EVENT_FLAG_0x0a9f` (`EFU_FLAG_BASE_GUIDE_HIDDEN`) | The gate guide's hide flag, set from the above on entering the gate. |
-| `EVENT_FLAG_0x0a40` to `0x0a42` (`EFU_FLAG_TARGET_SCAV_FIRST`) | The target's scavs' hide flags, rolled on each entry (40% out each). |
+| `EVENT_FLAG_0x0a40` to `0x0a42` (`EFU_FLAG_TARGET_SCAV_FIRST`) | The target's scavs' hide flags, rolled on each entry (75% out each, `EFU_SIDE_SCAV_CHANCE`). |
 | `EVENT_WORK_0x41a7` to `0x41a0`, `0x419e` to `0x4197`, `0x4193`, `0x418b`, `0x4180`, `0x4177` (`LOCKER_WORKS` in `gen_efu.py`) | The locker's 20 slots, in that order: each the item plus its count shifted left 10 (up to 63), 0 when empty. Kept packed, used slots first. A save from before the locker has them all 0, an empty locker. |
 
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x0a44 to 0x0a4f, 0x0a01 to 0x0a3f and 0x091e to 0x095f; take
-them upward from 0x0a44. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x0a46 to 0x0a4f, 0x0a01 to 0x0a3f and 0x091e to 0x095f; take
+them upward from 0x0a46. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415f, 0x4163, 0x4169. Take the next from the top of the list down, and move it into the table above.
+0x4156 to 0x415f, 0x4163. Take the next from the top of the list down, and move it into the table above.
 
 ## Raids and saving
 
@@ -141,7 +144,8 @@ from where the player walks into the base as from the route.
 
 Three of the doors can be shut (`DOORS`: the childcare centre, Wellspring Cave and the Cave of Being; the Day Care's
 never is): heading out
-(`L_DoorRoll`) puts a boulder in front of each on `EFU_DOOR_SHUT_CHANCE` (30) percent of explorations. The boulders
+(`L_DoorRoll`) puts a boulder in front of each on `EFU_DOOR_SHUT_CHANCE` (30) percent of explorations, except the
+childcare centre's while the Day Care Lady's quest to beat its scav is open. The boulders
 are `OBJ_CODE_MODEL_3`, the strength boulder with a drawn model (the other rock codes draw nothing), one for each
 tile of a wide way in. Strength can push one aside; the game saves no position for them outside its own puzzle rooms,
 so the next zone load puts it back.
@@ -221,9 +225,10 @@ once the player leaves the zone.
 ## The locker
 
 The player's storage: 20 slots, each one kind of item, up to 63 of it, in event work values of their own
-(`LOCKER_WORKS`), so one locker shared by its two spots. It is Nimbasa's stadium locker (field prop 126, `shelf06`) in
-two places: upstairs in the player's warehouse, against the back wall right of the bed, and in the Pokémon Center,
-its back to the Poké Mart counter's west side. Its tiles are blocked and talking to either runs `Script_Locker`.
+(`LOCKER_WORKS`), so one locker shared by its three spots. It is Nimbasa's stadium locker (field prop 126, `shelf06`) in
+three places: upstairs in the player's warehouse, against the back wall right of the bed; in the Pokémon Center,
+its back to the Poké Mart counter's west side; and in the east gate's northwest corner, where its bin and two chairs
+were (`remove_props` drops them from the gate's model, which only that gate uses, edited in place). Its tiles are blocked and talking to either runs `Script_Locker`.
 The warehouse's is in a copy of the warehouse's map model (`efu_home`, its own matrix), since the Day Care Lady's
 warehouse shares the original; the Pokémon Center's model is edited in place (a skinned model, which the packer can't
 write whole), so every Pokémon Center has the locker, though no other can be reached.
@@ -247,13 +252,16 @@ confirm, and B closes either menu.
 - **The Day Care Lady** is in Route 3's Day Care, whose door is never shut. There she takes Pokémon in but gives
   none back (`Script_DayCareJoin` runs her original script, global 2201, with `EFU_FLAG_DAYCARE_DEPOSIT_ONLY` set,
   which `build_raid.py` patches into `global_2200.s` to leave Withdraw out of its menu): an early form of the
-  insurance broker. Until she has joined, she first offers to move into the abandoned warehouse east of the Pokémon
-  Center (`NACRENE_CITY_7`, `DAYCARE_DOOR`) for `EFU_DAYCARE_HIRE` ($1000); she keeps coming out to the route after.
-  The warehouse's doorway has a shut door until she has joined, like the other closed warehouses' (`build_coast.py`),
-  and its warp is parked in the sea with theirs. Once she has, `Efu_IsOpenedDoor` leaves the door prop out each time
-  its chunk loads, which shows the warehouse's own open doorway, and `Script_NacreneInit` (the zone's init script as
-  its field starts, types 3 and 4: type 2 runs before the zone's events are loaded again) puts the warp back with `ObjInitWarpGPos`. Inside, her original script runs her with
-  Withdraw, the only place Pokémon come back. The Day Care no longer grows
+  insurance broker. Until she has joined, she asks the player to drive out the scav in the childcare centre next
+  door, which is always there while her quest is open; once it is beaten (`EFU_FLAG_DAYCARE_QUEST_DONE`, from its
+  trainer flag) she moves into the abandoned warehouse east of the Pokémon Center (`NACRENE_CITY_7`, `DAYCARE_DOOR`)
+  and keeps coming out to the route after. Until then the warehouse's doorway has a shut door like the other closed
+  warehouses' (`build_coast.py`), its two door warps (`EFU_DAYCARE_WARP`, `EFU_DAYCARE_UPPER_WARP`) lead nowhere
+  (`Efu_IsShutDoor` in `fieldmap_event.c`'s `GetWarpForWalkIn`), and a sign on each says the door is locked. Once she
+  has joined, `Efu_IsOpenedDoor` leaves the door prop out each time its chunk loads, which shows the warehouse's own
+  open doorway, and the warps, which never move, work: the top floor's door comes out at the top of the stairs
+  outside. (Warps can't be moved by an init script: the player's arrival on one is worked out before those run.)
+  Inside, her original script runs her with Withdraw, the only place Pokémon come back. The Day Care no longer grows
   its Pokémon by steps or makes eggs (`DayCare_Update`); instead each raid's return gives each one a level, up to
   `EFU_LEVEL_CAP` (22, the zone's highest wild level), and withdrawing charges the original's $100 a level plus $100.
 - **The gate's guide** is first met on Route 3, then waits behind the east gate's counter. They will take the player
@@ -265,6 +273,16 @@ its HP and half of each move's PP, rounded up (`Efu_RecoverHalf` in `box2_main.c
 
 Each base NPC is hidden by its own flag, which the zone's init script (`Script_PokecenInit`, `Script_DayCareInit`, `Script_GateInit`) sets
 from whether that person has joined, so the base needs no save upgrade.
+
+## The Pokédex
+
+A new game starts with the national Pokédex, every species seen (`L_PokedexFill`, with `EFU_SPECIAL_FILL_POKEDEX`;
+heading out with a save from before version 4 fills it too). Every entry is whole: `pokedex_info.c` shows the
+category, height, weight, description and footprint whether or not the player has caught the Pokémon, and the
+search's type and size orders take any seen species (`pokedex_search_engine.c`). The caught marks are the player's
+own: the ball in the list, the caught label on the entry and the ball by a wild Pokémon's HP bar in battle show only
+species the player has caught. Catching a new species neither says its data was added (`btl_server_flow_sub.c`) nor
+shows its entry (`event_battle_return.c`).
 
 ## Wild groups
 
@@ -282,9 +300,12 @@ of its level cap (14 to 20), evolved to their levels, dressed as Team Plasma Gru
 Scav) and given new lines by `build_raid.py`, start hidden: heading out sets their flags. Each step the player takes,
 `EventTrainerEye_EfuPursue` runs before the original sight check:
 
-- `EfuScav_Spawn` starts the exploration's clock on its first step, and once `EFU_SCAV_SPAWN_SECONDS` (10 minutes) of
-  play time have passed, and again each time that much more has, brings out the hidden scav furthest from the player
-  on the current map, with its defeat on an earlier exploration forgotten.
+- None are out on the way in from the east gate. Each later entry to the route, coming back from a side area (a
+  building, a cave or the target), `Script_RouteEnter` (Route 3's init script) asks for one on
+  `EFU_ROUTE_SCAV_CHANCE` (25%) of entries, and at the next step `EfuScav_Spawn` brings out the hidden scav furthest
+  from the player on the current map, with its defeat on an earlier exploration forgotten. The side areas' own scavs
+  (the target's three and the childcare centre's) are out on `EFU_SIDE_SCAV_CHANCE` (75%) of entries, whenever the
+  player comes in.
 - A scav that is out stands where it came out, looking around (`MOVE_CODE_TURN_RANDOM`), and never steps until it
   has seen the player: a scav wandering by its move code could be caught between two tiles when a chase or battle
   began, and the game locked up.

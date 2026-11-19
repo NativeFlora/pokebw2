@@ -230,10 +230,8 @@ static BOOL EventBattleReturn_Main(GameProc *proc, u32 *state, void *param, void
             PokeParty_SetupMetData(wk->pkm, metKind, playerInfo,
                                    ZoneData_GetPlaceNameID(PlayerState_GetZoneID(playerState)), wk->heapId);
             nationalDex = PokeDex_IsNationalObtained(pokedex);
+            // Escape from Unova: the Pokédex starts complete, so a catch never adds an entry to show
             firstCatch = FALSE;
-            if (!PokeDex_IsCaught(pokedex, PokeParty_GetParam(wk->pkm, PKM_PARAM_SPECIES, NULL))) {
-                firstCatch = TRUE;
-            }
             PokeDex_RegistPkm(pokedex, wk->pkm);
             addPkmToDex(pokedex, wk->pkm);
             wk->dex.pkm = wk->pkm;

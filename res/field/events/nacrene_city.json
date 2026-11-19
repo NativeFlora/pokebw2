@@ -62,7 +62,7 @@
             }
         },
         {
-            "script": 11029,
+            "script": 11028,
             "condition": 0,
             "direction": 4,
             "grid": {
@@ -72,7 +72,7 @@
             }
         },
         {
-            "script": 11029,
+            "script": 11028,
             "condition": 0,
             "direction": 4,
             "grid": {
@@ -82,7 +82,7 @@
             }
         },
         {
-            "script": 11029,
+            "script": 11028,
             "condition": 0,
             "direction": 4,
             "grid": {
@@ -152,6 +152,16 @@
             }
         },
         {
+            "script": 11028,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 75,
+                "y": 50,
+                "z": 32
+            }
+        },
+        {
             "script": 11002,
             "condition": 0,
             "direction": 4,
@@ -218,9 +228,9 @@
             "unk4": 2,
             "transition": 3,
             "grid": {
-                "x": 8,
+                "x": 1160,
                 "y": 0,
-                "z": 8,
+                "z": 856,
                 "width": 1,
                 "height": 1,
                 "unk0a": 0
@@ -302,9 +312,9 @@
             "unk4": 4,
             "transition": 1,
             "grid": {
-                "x": 8,
+                "x": 1208,
                 "y": 32,
-                "z": 8,
+                "z": 808,
                 "width": 1,
                 "height": 1,
                 "unk0a": 0
@@ -354,14 +364,5 @@
         }
     ],
     "triggers": [],
-    "init_scripts": [
-        {
-            "type": 3,
-            "script": 11028
-        },
-        {
-            "type": 4,
-            "script": 11028
-        }
-    ]
+    "init_scripts": []
 }

@@ -155,7 +155,8 @@ BOOL PokedexSearchEngine_Step(PokedexSearchEngine *engine, HeapID heapId, u16 *c
             }
             if ((engine->criteria->order >= 2 && engine->criteria->order <= 5) ||
                 engine->criteria->type1 != CRITERIA_ANY || engine->criteria->type2 != CRITERIA_ANY) {
-                if (!PokeDex_IsCaught(engine->pokedex, species)) {
+                // Escape from Unova: every species has its whole entry, so any seen one can be found by these
+                if (!PokeDex_IsSeen(engine->pokedex, species)) {
                     engine->excluded[i] = 1;
                     continue;
                 }
