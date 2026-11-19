@@ -54,10 +54,12 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | Wild Pokémon that count as equivalent, by egg group | `tools/efu/wild_groups.py` → `tools/efu/wild_groups.json` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` and `EventTrainerEye_EfuIdle` in `src/ov036/event_trainer_eye.c`, called each step, or each frame the player stands still, from `src/ov036/fieldmap_event.c` |
 | The scavs' teams | `Efu_ScavParty` in `src/ov036/field_encount.c` |
+| The world editor (collision, tile classes, events, chunks, clearing and stamping ground), its saved edits and their applying | `tools/efu/world_editor/` (its `README.md`), `tools/efu/world_edits.json`, `tools/efu/apply_world_edits.py` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs); 0x2db and 0x15f took over unused commands' rows, so the tables keep their size |
 
 Edit the templates, then from `tools/efu` run `python3 build_base.py`, `python3 build_zone.py`, `python3 build_raid.py`,
-`python3 build_bag.py` and `python3 gen_efu.py`, in that order (`gen_efu.py` reads `build_raid.py`'s `loot.json`). Never edit
+`python3 apply_world_edits.py`, `python3 build_bag.py` and `python3 gen_efu.py`, in that order (`gen_efu.py` reads
+`build_raid.py`'s `loot.json`; `apply_world_edits.py` puts the world editor's edits on top of the zone and its events). Never edit
 `efu.s` or `efu.txt` by hand.
 
 Script gotchas: `VMJumpIf CMP_STACK` jumps when the comparison is false, so use `WorkCmpConst` with

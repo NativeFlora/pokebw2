@@ -1,0 +1,9 @@
+{
+  "name": "efu-world-editor",
+  "private": true,
+  "description": "Escape from Unova's world editor: build with ./build.sh, which bundles src/ into editor.js",
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "three": "0.160.0"
+  }
+}
