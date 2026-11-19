@@ -241,13 +241,25 @@ struct ItemMenuWork {
     u32 sortType;
     u32 freeSpaceFilter;
     u32 efuItemPocket; // Escape from Unova: the pocket the bag shows as Items (efu_bag.h)
-    // Escape from Unova: the field bag shows the party on the lower screen, where the pocket tabs were, to give the
-    // bag's item to a Pokémon or take one's held item with a touch (ItemMenu_EfuPartyAction)
+    // Escape from Unova: the field bag shows the party on the upper screen in place of the item's description, as
+    // the party screen's plates with each Pokémon's held item in place of its HP, to give the bag's item to a Pokémon
+    // or take one's held item (ItemMenu_EfuPartyAction)
     BOOL efuParty;
     // The Pokémon picked with the keys while picking one (ItemMenu_StateEfuPickParty), or -1
     s32 efuPartyCursor;
     ClActor *efuPartyIcons[6];
-    ClActor *efuHeldMarks[6];
+    // Each plate's held item icon, its resources and the item it shows
+    ClActor *efuItemIcons[6];
+    u32 efuItemIconChr[6];
+    u32 efuItemIconPlt[6];
+    u16 efuItems[6];
+    // Each plate's text, on BG 7
+    PrintWindow efuPlateWindows[6];
+    // The plates' screen (the party screen's)
+    void *efuPlateScreenFile;
+    NNSG2dScreenData *efuPlateScreen;
+    Font *efuSmallFont;
+    MsgData *efuPartyMsgData;
 };
 
 // The slot of an item of the list

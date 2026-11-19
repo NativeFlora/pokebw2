@@ -2088,15 +2088,6 @@ static void ItemMenu_ButtonCallback(u32 button, u32 event, void *data) {
     if (event != BMN_EVENT_TOUCH) {
         return;
     }
-    // Escape from Unova: the party took the pocket tabs' place
-    if (work->efuParty && button < ITEMMENU_TOUCH_POCKET_LEFT) {
-        if (work->state == ItemMenu_StateList &&
-            button < PokeParty_GetPkmCount(GameData_GetParty(work->gameData))) {
-            ItemMenu_SetKeyMode(work, FALSE);
-            ItemMenu_EfuPartyAction(work, button);
-        }
-        return;
-    }
     if (button < ITEMMENU_TOUCH_POCKET_LEFT) {
         s32 pockets[] = {
             BAG_POCKET_MEDICINE,  BAG_POCKET_TMS_HMS,    BAG_POCKET_BERRIES,
@@ -2271,35 +2262,6 @@ static const TouchRect sButtonRects[] = {
     { TOUCH_RECT_END, 0, 0, 0 },
 };
 
-// Escape from Unova: sButtonRects, with the party's slots in two columns of three for the pocket tabs, in the field bag
-static const TouchRect sEfuButtonRects[] = {
-    { 44, 83, 4, 67 },
-    { 44, 83, 68, 131 },
-    { 84, 123, 4, 67 },
-    { 84, 123, 68, 131 },
-    { 124, 163, 4, 67 },
-    { 124, 163, 68, 131 },
-    { 168, 191, 0, 23 },
-    { 168, 191, 120, 143 },
-    { 168, 191, 152, 175 },
-    { 168, 191, 176, 191 },
-    { 168, 191, 192, 215 },
-    { 168, 191, 224, 247 },
-    { 12, 35, 144, 223 },
-    { 36, 59, 144, 223 },
-    { 60, 83, 144, 223 },
-    { 84, 107, 144, 223 },
-    { 108, 131, 144, 223 },
-    { 132, 155, 144, 223 },
-    { 12, 35, 120, 143 },
-    { 36, 59, 120, 143 },
-    { 60, 83, 120, 143 },
-    { 84, 107, 120, 143 },
-    { 108, 131, 120, 143 },
-    { 132, 155, 120, 143 },
-    { TOUCH_RECT_END, 0, 0, 0 },
-};
-
 // clang-format on
 
 static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *data) {
@@ -2366,19 +2328,18 @@ static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *dat
     work->printQueue = PrintQueue_Create(0x1000, work->heapId);
     work->keyCursor = KeyCursor_Create(15, TRUE, TRUE, work->heapId);
     work->font = GFL_FontCreate(ARCID_FONT, 0, 0, FALSE, work->heapId);
+    // Escape from Unova: the field bag shows the party
+    work->efuParty = work->mode == BAG_MODE_NORMAL;
     ItemMenuDisp_Init(work);
     ItemMenuDisp_CreateWindows(work);
     ItemMenuDisp_LoadListRes(work);
     ItemMenuDisp_CreatePocketTabs(work);
-    // Escape from Unova: the field bag shows the party
-    work->efuParty = work->mode == BAG_MODE_NORMAL;
     if (work->efuParty) {
         ItemMenuDisp_EfuCreateParty(work);
     }
     ItemMenu_RedrawList(work);
     ItemMenuDisp_CreateListActors(work);
-    work->buttonMan = GFL_BMN_Create(work->efuParty ? sEfuButtonRects : sButtonRects, ItemMenu_ButtonCallback, work,
-                                     work->heapId);
+    work->buttonMan = GFL_BMN_Create(sButtonRects, ItemMenu_ButtonCallback, work, work->heapId);
     ItemMenu_CreatePaletteAnim(work);
     ItemMenu_CreatePaletteFade(work);
     work->vblankTask = GFL_VBlankTCBAdd(ItemMenu_VBlank, work, 0);
@@ -2388,6 +2349,11 @@ static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *dat
     GFL_NetSetIconScreen(TRUE, work->heapId);
     ItemMenu_SetKeyMode(work, GCTX_HIDIsUsingTouch() ? FALSE : TRUE);
     ItemMenuDisp_ShowBGs();
+    // Escape from Unova: the party's plates' text in place of the item's description
+    if (work->efuParty) {
+        GFL_BGSysSetBGEnabled(6, FALSE);
+        GFL_BGSysSetBGEnabled(7, TRUE);
+    }
     ItemMenu_SetState(work, ItemMenu_StateFadeIn);
     return TRUE;
 }
@@ -3067,7 +3033,7 @@ static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot) {
     ItemMenu_EfuRefresh(work);
 }
 
-// Escape from Unova: picks a Pokémon of the party with the keys or a touch, for ItemMenu_EfuPartyAction
+// Escape from Unova: picks a Pokémon of the party with the keys, on the upper screen, for ItemMenu_EfuPartyAction
 static void ItemMenu_EfuStartPickParty(ItemMenuWork *work) {
     ItemMenuDisp_SetButtonsActive(work, TRUE);
     ClActor_SetAutoAnim(work->scrollBar, FALSE);
@@ -3087,15 +3053,8 @@ static void ItemMenu_EfuEndPickParty(ItemMenuWork *work) {
 static void ItemMenu_StateEfuPickParty(ItemMenuWork *work) {
     s32 count = PokeParty_GetPkmCount(GameData_GetParty(work->gameData));
     s32 cursor = work->efuPartyCursor;
-    s32 touched = GFL_HIDGetTouchPressedRect(sEfuButtonRects);
     u32 keys = GCTX_HIDGetTypedKeys();
 
-    if (touched != TOUCH_RECT_NONE && touched < count) {
-        GCTX_HIDSetUsingTouch(TRUE);
-        ItemMenu_EfuPartyAction(work, touched);
-        ItemMenu_EfuEndPickParty(work);
-        return;
-    }
     if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_A) {
         ItemMenu_EfuPartyAction(work, cursor);
         ItemMenu_EfuEndPickParty(work);

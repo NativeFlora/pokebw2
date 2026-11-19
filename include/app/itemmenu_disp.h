@@ -52,8 +52,10 @@ void ItemMenuDisp_UpdateSortButton(ItemMenuWork *work);
 void ItemMenuDisp_SetMoveButtons(ItemMenuWork *work, BOOL active);
 BOOL ItemMenuDisp_SlidePocketTabs(ItemMenuWork *work);
 void ItemMenuDisp_FlushWindows(ItemMenuWork *work);
-// Escape from Unova: the party on the lower screen (ItemMenuWork's efuParty)
+// Escape from Unova: the party on the upper screen (ItemMenuWork's efuParty)
 void ItemMenuDisp_EfuCreateParty(ItemMenuWork *work);
+void ItemMenuDisp_EfuFreeParty(ItemMenuWork *work);
 void ItemMenuDisp_EfuUpdateParty(ItemMenuWork *work);
+void ItemMenuDisp_EfuFlushParty(ItemMenuWork *work);
 
 #endif // POKEBW2_APP_ITEMMENU_DISP_H

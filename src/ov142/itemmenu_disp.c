@@ -7,6 +7,7 @@
 #include "constants/moves.h"
 #include "constants/pokemon.h"
 #include "constants/sound.h"
+#include "constants/text_banks.h"
 #include "efu_bag.h"
 #include "gfl/arc.h"
 #include "gfl/arc_util.h"
@@ -46,6 +47,7 @@
 #include "system/text_speed.h"
 #include "system/wordset.h"
 #include "text/system/bag_menu.h"
+#include "text/system/party_list.h"
 
 // The bag's screens: BGs, windows, OBJ, the drawing of the item list and of the item under the cursor, and the menus'
 // windows. The ROM doesn't name this file; it is named after itemmenu.c for what it holds
@@ -102,6 +104,7 @@ static void ItemMenuDisp_DrawTMInfo(ItemMenuWork *work, u32 move);
 static void ItemMenuDisp_Print(ItemMenuWork *work, PrintWindow *window, StrBuf *strbuf, u16 x, s16 y, u16 color);
 static void ItemMenuDisp_TransferScreen(PrintWindow *window);
 static BOOL ItemMenuDisp_ShowsCount(u8 pocket);
+static void ItemMenuDisp_EfuLoadPartyBGs(ItemMenuWork *work);
 
 // Each data table is declared just before the function that first uses it, which gives the original's .rodata order
 
@@ -353,18 +356,25 @@ void ItemMenuDisp_Init(ItemMenuWork *work) {
     work->cursorImageChars = LoadCursorImageEndOfHeap(3, 13, 0, work->heapId);
 
     arc = GFL_ArcSysCreateFileHandle(ARCID_ITEMMENU, work->heapId);
-    GFL_G2DIOLoadArcNCLRDefault(arc, 8, PALTYPE_SUB_BG, 0, 0, work->heapId);
-    if (getTrainerGender(work->playerInfo) == GENDER_MALE) {
-        GFL_G2DIOLoadArcNCLR(arc, 8, PALTYPE_SUB_BG, 0x20, 0, 0x20, work->heapId);
-    }
-    work->bg4Chars = GFL_BGSysLoadArcNCGRDynamic(arc, 6, 4, 0, FALSE, work->heapId);
-    GFL_G2DIOLoadNSCRSync(arc, 7, 4, 0, CHAR_POS(work->bg4Chars), 0, FALSE, work->heapId);
-    ItemMenuDisp_LoadBagPicture(work, arc);
-    work->bg5Chars = GFL_BGSysLoadArcNCGRDynamic(arc, 17, 5, 0, FALSE, work->heapId);
-    if (work->pocket == BAG_POCKET_FREE_SPACE) {
-        GFL_G2DIOLoadNSCRSync(arc, 24, 5, 0, CHAR_POS(work->bg5Chars), 0, FALSE, work->heapId);
+    // Escape from Unova: the field bag's upper screen is the party screen's (ItemMenuDisp_EfuLoadPartyBGs)
+    if (work->efuParty) {
+        ItemMenuDisp_EfuLoadPartyBGs(work);
     } else {
-        GFL_G2DIOLoadNSCRSync(arc, 23, 5, 0, CHAR_POS(work->bg5Chars), 0, FALSE, work->heapId);
+        GFL_G2DIOLoadArcNCLRDefault(arc, 8, PALTYPE_SUB_BG, 0, 0, work->heapId);
+        if (getTrainerGender(work->playerInfo) == GENDER_MALE) {
+            GFL_G2DIOLoadArcNCLR(arc, 8, PALTYPE_SUB_BG, 0x20, 0, 0x20, work->heapId);
+        }
+        work->bg4Chars = GFL_BGSysLoadArcNCGRDynamic(arc, 6, 4, 0, FALSE, work->heapId);
+        GFL_G2DIOLoadNSCRSync(arc, 7, 4, 0, CHAR_POS(work->bg4Chars), 0, FALSE, work->heapId);
+    }
+    ItemMenuDisp_LoadBagPicture(work, arc);
+    if (!work->efuParty) {
+        work->bg5Chars = GFL_BGSysLoadArcNCGRDynamic(arc, 17, 5, 0, FALSE, work->heapId);
+        if (work->pocket == BAG_POCKET_FREE_SPACE) {
+            GFL_G2DIOLoadNSCRSync(arc, 24, 5, 0, CHAR_POS(work->bg5Chars), 0, FALSE, work->heapId);
+        } else {
+            GFL_G2DIOLoadNSCRSync(arc, 23, 5, 0, CHAR_POS(work->bg5Chars), 0, FALSE, work->heapId);
+        }
     }
     ItemMenuDisp_LoadPocketTabRes(work, arc);
     work->bg3Chars = GFL_BGSysLoadArcNCGRDynamic(arc, 33, 3, 0, FALSE, work->heapId);
@@ -457,6 +467,10 @@ void ItemMenuDisp_FreeBGChars(ItemMenuWork *work) {
 
 // Shows or hides the TM's move data on the lower screen
 void ItemMenuDisp_ShowTMInfoBGs(ItemMenuWork *work, BOOL show) {
+    // Escape from Unova: the party's plates are on BG 5, and the description's BG 6 stays hidden
+    if (work->efuParty) {
+        return;
+    }
     GFL_BGSysSetBGEnabled(5, show);
     GFL_BGSysSetBGEnabled(6, show);
 }
@@ -469,6 +483,10 @@ void ItemMenuDisp_ShowTMIcons(ItemMenuWork *work, BOOL show) {
         work->tmInfoRequest = ITEMMENU_TM_INFO_SHOW;
     } else {
         work->tmInfoRequest = ITEMMENU_TM_INFO_HIDE;
+    }
+    // Escape from Unova: the party is where the item's icon and the move's type were
+    if (work->efuParty) {
+        return;
     }
     if (work->selIcon != NULL) {
         ClActor_SetVisible(work->selIcon, show);
@@ -590,6 +608,9 @@ void ItemMenuDisp_Exit(ItemMenuWork *work) {
     for (i = 0; i < ITEMMENU_ROW_OBJS; i++) {
         GFL_BitmapFree(work->rowNameBitmaps[i]);
     }
+    if (work->efuParty) {
+        ItemMenuDisp_EfuFreeParty(work);
+    }
     ClActUnit_Delete(work->actorUnit);
     ClActSys_Delete();
 }
@@ -675,7 +696,7 @@ static void ItemMenuDisp_ShowSelIcon(ItemMenuWork *work, u32 item) {
     work->selIcon = ClActor_Create(work->actorUnit, work->selIconChr, work->selIconPlt, work->selIconCel, &setup,
                                    CLACT_SURFACE_SUB, work->heapId);
     ClActor_SetAutoAnim(work->selIcon, TRUE);
-    ClActor_SetVisible(work->selIcon, TRUE);
+    ClActor_SetVisible(work->selIcon, !work->efuParty); // Escape from Unova: the party is where it was
     ClActor_SetDrawAnim(work->selIcon, FALSE);
 }
 
@@ -1142,7 +1163,13 @@ void ItemMenuDisp_OpenFilterMenu(ItemMenuWork *work, u8 count) {
 
 // Loads the lower screen's frame for a pocket
 void ItemMenuDisp_LoadPocketFrame(ItemMenuWork *work, u32 pocket) {
-    ArcTool *arc = GFL_ArcSysCreateFileHandle(ARCID_ITEMMENU, work->heapId);
+    ArcTool *arc;
+
+    // Escape from Unova: BG 5 has the party's plates
+    if (work->efuParty) {
+        return;
+    }
+    arc = GFL_ArcSysCreateFileHandle(ARCID_ITEMMENU, work->heapId);
 
     if (pocket == BAG_POCKET_FREE_SPACE) {
         GFL_G2DIOLoadNSCRAsync(arc, 24, 5, 0, CHAR_POS(work->bg5Chars), 0, FALSE, work->heapId);
@@ -1159,8 +1186,9 @@ static void ItemMenuDisp_DrawTMInfo(ItemMenuWork *work, u32 move) {
     s32 power;
     s32 accuracy;
 
-    ClActor_SetVisible(work->categoryIcons[PML_MoveGetCategory(move)], TRUE);
-    ClActor_SetVisible(work->typeIcons[PML_MoveGetType(move)], TRUE);
+    // Escape from Unova: the party is where the move's type was
+    ClActor_SetVisible(work->categoryIcons[PML_MoveGetCategory(move)], !work->efuParty);
+    ClActor_SetVisible(work->typeIcons[PML_MoveGetType(move)], !work->efuParty);
     pp = PML_MoveGetMaxPP(move, 0);
     power = PML_MoveGetParam(move, MOVE_PARAM_POWER);
     accuracy = PML_MoveGetParam(move, MOVE_PARAM_ACCURACY);
@@ -1563,6 +1591,9 @@ void ItemMenuDisp_FlushWindows(ItemMenuWork *work) {
     PrintWindow_Flush(&work->menuTitleWindow, work->printQueue);
     PrintWindow_Flush(&work->msgWindow, work->printQueue);
     PrintWindow_Flush(&work->pocketNameWindow, work->printQueue);
+    if (work->efuParty) {
+        ItemMenuDisp_EfuFlushParty(work);
+    }
 }
 
 // Whether a pocket's items show their count
@@ -1572,90 +1603,224 @@ static BOOL ItemMenuDisp_ShowsCount(u8 pocket) {
     return showCount[pocket];
 }
 
-// Escape from Unova: the party on the lower screen, in two columns of three where the pocket tabs were. The tabs
-// stay, hidden, and the icons take their OBJ palettes (6 to 8); the held item marks take palette 9
-#define EFU_PARTY_ICON_PLTT_OFFSET 0xc0
-#define EFU_HELD_MARK_PLTT_OFFSET 0x120
-#define EFU_HELD_MARK_MAPPING 2 // GX_OBJVRAMMODE_CHAR_1D_128K's cells and animations
+// Escape from Unova: the party on the upper screen, in place of the item's description: the party screen's grid
+// (BG 4) and plates (BG 5, plist_plate.c), with each plate's text on BG 7 and the item's description's BG 6 hidden. Each
+// plate shows the Pokémon's held item, its icon and name, where the party screen shows its HP and sex. OBJ palettes:
+// the description's item icon 0, the TM's type icons 4 to 6, the party's icons 1 to 3 and the held items' 7 to 12
+#define EFU_PARTY_ICON_PLTT_OFFSET 0x20
+#define EFU_ITEM_ICON_PLTT_FIRST 7
+#define EFU_PLATE_TEXT_PALETTE 13
+#define EFU_PLATE_TEXT_COLOR 0x440
 
-// Where each party slot's icon is, the middle of the slot's cell of ItemMenu_EfuPartyRects
-static const ClActorPos sEfuPartyIconPos[6] = { { 36, 64 }, { 100, 64 }, { 36, 104 }, { 100, 104 }, { 36, 144 }, { 100, 144 } };
+// The tile of each plate's top left corner, and where the plates' screen has the first plate's, the others' and an
+// empty slot's (plist_plate.c's)
+static const u8 sEfuPlatePos[6][2] = { { 0, 1 }, { 16, 2 }, { 0, 7 }, { 16, 8 }, { 0, 13 }, { 16, 14 } };
+static const u8 sEfuPlateScreenPos[3][2] = { { 0, 1 }, { 16, 2 }, { 0, 19 } };
+
+// Loads the party screen's BGs onto the upper screen in place of the bag's
+static void ItemMenuDisp_EfuLoadPartyBGs(ItemMenuWork *work) {
+    BGSetup setup = {
+        0,
+        0,
+        0x800,
+        0,
+        BGRES_256x256,
+        GX_BG_COLORMODE_16,
+        GX_BG_SCRBASE(0xe000),
+        GX_BG_CHARBASE(0x18000),
+        0x8000,
+        GX_BG_EXTPLTT_01,
+        1,
+        GX_BG_AREAOVER_XLU,
+        FALSE,
+    };
+    ArcTool *arc = GFL_ArcSysCreateFileHandle(ARCID_PLIST, work->heapId);
+    u16 *entries;
+    u32 i;
+
+    GFL_BGSysCreateBG(7, &setup, BGMODE_TEXT);
+    GFL_BGSysFillChar(7, 0, 1, 0);
+    GFL_BGSysClearScr(7);
+    GFL_G2DIOLoadArcNCLRDefault(arc, 6, PALTYPE_SUB_BG, 0, 0, work->heapId);
+    GFL_G2DIOLoadArcNCLRDefault(arc, 0, PALTYPE_SUB_BG, EFU_PLATE_TEXT_PALETTE * 0x20, 0x20, work->heapId);
+    work->bg4Chars = GFL_BGSysLoadArcNCGRDynamic(arc, 0xf, 4, 0, FALSE, work->heapId);
+    GFL_G2DIOLoadNSCRSync(arc, 0x14, 4, 0, CHAR_POS(work->bg4Chars), 0, FALSE, work->heapId);
+    work->bg5Chars = GFL_BGSysLoadArcNCGRDynamic(arc, 0xc, 5, 0, FALSE, work->heapId);
+    work->efuPlateScreenFile = GFL_G2DIOReadNSCRArc(arc, 0x12, FALSE, &work->efuPlateScreen, work->heapId);
+    GFL_ArcToolFree(arc);
+    entries = (u16 *)work->efuPlateScreen->rawData;
+    for (i = 0; i < 32 * 32; i++) {
+        entries[i] += CHAR_POS(work->bg5Chars);
+    }
+    GFL_BGSysClearScr(5);
+}
 
 void ItemMenuDisp_EfuCreateParty(ItemMenuWork *work) {
     PokeParty *party = GameData_GetParty(work->gameData);
     s32 count = PokeParty_GetPkmCount(party);
     ArcTool *arc = GFL_ArcSysCreateFileHandle(ARCID_POKEICON, work->heapId);
-    u32 iconPlt = ClActSys_LoadPlttEx(arc, PokeIcon_GetPaletteFile(), CLACT_VRAM_MAIN, EFU_PARTY_ICON_PLTT_OFFSET,
+    u32 iconPlt = ClActSys_LoadPlttEx(arc, PokeIcon_GetPaletteFile(), CLACT_VRAM_SUB, EFU_PARTY_ICON_PLTT_OFFSET,
                                       work->heapId);
     u32 iconCel = ClActSys_LoadCellAnims(arc, PokeIcon_GetCellFile_Main(), getOBJTileMapping_MainEng(), work->heapId);
-    u32 markPlt;
-    u32 markChr;
-    u32 markCel;
     ClActorSetup setup;
     s32 i;
 
     for (i = 0; i < count; i++) {
         BoxPkm *pkm = PokeParty_ToBoxPkm(PokeParty_GetPkm(party, i));
-        u32 chars = ClActSys_LoadChars(arc, PokeIcon_GetFileOfPkm(pkm), FALSE, CLACT_VRAM_MAIN, work->heapId);
+        u32 chars = ClActSys_LoadChars(arc, PokeIcon_GetFileOfPkm(pkm), FALSE, CLACT_VRAM_SUB, work->heapId);
 
-        setup.x = sEfuPartyIconPos[i].x;
-        setup.y = sEfuPartyIconPos[i].y;
+        setup.x = sEfuPlatePos[i][0] * 8 + 24;
+        setup.y = sEfuPlatePos[i][1] * 8 + 16;
         setup.sequence = POKELIST_PARTY_ICON_ANM_DEFAULT;
         setup.priority = 1;
         setup.bgPriority = 1;
         work->efuPartyIcons[i] =
-            ClActor_Create(work->actorUnit, chars, iconPlt, iconCel, &setup, CLACT_SURFACE_MAIN, work->heapId);
+            ClActor_Create(work->actorUnit, chars, iconPlt, iconCel, &setup, CLACT_SURFACE_SUB, work->heapId);
         ClActor_SetPalette(work->efuPartyIcons[i], PokeIcon_GetPaletteOfPkm(pkm), CLACT_PALETTE_REPLACE);
         ClActor_SetAutoAnim(work->efuPartyIcons[i], TRUE);
     }
     GFL_ArcToolFree(arc);
-
-    arc = GFL_ArcSysCreateFileHandle(ARCID_APP_MENU_COMMON, work->heapId);
-    markPlt = ClActSys_LoadPlttRange(arc, AppMenuCommon_GetItemIconPaletteFile(), CLACT_VRAM_MAIN,
-                                     EFU_HELD_MARK_PLTT_OFFSET, 0, 1, work->heapId);
-    markChr = ClActSys_LoadChars(arc, AppMenuCommon_GetItemIconCharFile(), FALSE, CLACT_VRAM_MAIN, work->heapId);
-    markCel = ClActSys_LoadCellAnims(arc, AppMenuCommon_GetItemIconCellFile(EFU_HELD_MARK_MAPPING),
-                                     AppMenuCommon_GetItemIconAnimFile(EFU_HELD_MARK_MAPPING), work->heapId);
-    GFL_ArcToolFree(arc);
-    for (i = 0; i < count; i++) {
-        setup.x = sEfuPartyIconPos[i].x + 8;
-        setup.y = sEfuPartyIconPos[i].y + 8;
-        setup.sequence = POKELIST_HELD_ITEM_ANM_ITEM;
-        setup.priority = 0;
-        setup.bgPriority = 1;
-        work->efuHeldMarks[i] =
-            ClActor_Create(work->actorUnit, markChr, markPlt, markCel, &setup, CLACT_SURFACE_MAIN, work->heapId);
+    work->efuSmallFont = GFL_FontCreate(ARCID_FONT, 3, 0, FALSE, work->heapId);
+    work->efuPartyMsgData = GFL_MsgSysLoadData(FALSE, ARCID_SYSTEM_MESSAGE, TEXT_BANK_PARTY_LIST, work->heapId);
+    for (i = 0; i < 6; i++) {
+        PrintWindow_Init(&work->efuPlateWindows[i], BmpWin_CreateDynamic(7, sEfuPlatePos[i][0], sEfuPlatePos[i][1],
+                                                                          16, 6, EFU_PLATE_TEXT_PALETTE, TRUE));
+        BmpWin_FlushMap(work->efuPlateWindows[i].window);
     }
-    for (i = 0; i < NELEMS(work->pocketTabs); i++) {
-        ClActor_SetVisible(work->pocketTabs[i], FALSE);
-    }
+    GFL_BGSysQueueScrLoad(7);
     work->efuPartyCursor = -1;
     ItemMenuDisp_EfuUpdateParty(work);
 }
 
-// Shows each Pokémon's held item mark, and the picked one hopping
-void ItemMenuDisp_EfuUpdateParty(ItemMenuWork *work) {
-    PokeParty *party = GameData_GetParty(work->gameData);
+void ItemMenuDisp_EfuFreeParty(ItemMenuWork *work) {
     s32 i;
 
     for (i = 0; i < 6; i++) {
-        PartyPkm *pkm;
-        u32 item;
+        if (work->efuItemIcons[i] != NULL) {
+            ClActor_Delete(work->efuItemIcons[i]);
+            ClActSys_FreeChars(work->efuItemIconChr[i]);
+            ClActSys_FreePltt(work->efuItemIconPlt[i]);
+            work->efuItemIcons[i] = NULL;
+        }
+        BmpWin_Free(work->efuPlateWindows[i].window);
+    }
+    GFL_FontFree(work->efuSmallFont);
+    GFL_MsgDataFree(work->efuPartyMsgData);
+    GFL_HeapFree(work->efuPlateScreenFile);
+}
 
-        if (work->efuPartyIcons[i] == NULL) {
-            continue;
-        }
-        pkm = PokeParty_GetPkm(party, i);
-        item = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
-        ClActor_SetVisible(work->efuHeldMarks[i], item != ITEM_NONE);
-        ClActor_SetSequence(work->efuHeldMarks[i],
-                            PML_ItemIsMail(item) ? POKELIST_HELD_ITEM_ANM_MAIL : POKELIST_HELD_ITEM_ANM_ITEM);
-        if (PokeParty_GetParam(pkm, PKM_PARAM_HP, NULL) == 0 && !PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL)) {
-            ClActor_SetSequence(work->efuPartyIcons[i], POKELIST_PARTY_ICON_ANM_FAINTED);
-        } else if (i == work->efuPartyCursor) {
-            ClActor_SetSequence(work->efuPartyIcons[i], POKELIST_PARTY_ICON_ANM_HP_GREEN);
-        } else {
-            ClActor_SetSequence(work->efuPartyIcons[i], POKELIST_PARTY_ICON_ANM_DEFAULT);
-        }
+// Shows a plate's held item's icon, loading it when the item changed
+static void ItemMenuDisp_EfuShowItemIcon(ItemMenuWork *work, s32 slot, u16 item) {
+    ArcTool *arc;
+    ClActorSetup setup;
+
+    if (work->efuItemIcons[slot] != NULL && work->efuItems[slot] == item) {
+        return;
+    }
+    if (work->efuItemIcons[slot] != NULL) {
+        ClActor_Delete(work->efuItemIcons[slot]);
+        ClActSys_FreeChars(work->efuItemIconChr[slot]);
+        ClActSys_FreePltt(work->efuItemIconPlt[slot]);
+        work->efuItemIcons[slot] = NULL;
+    }
+    work->efuItems[slot] = item;
+    if (item == ITEM_NONE) {
+        return;
+    }
+    arc = GFL_ArcSysCreateFileHandle(ARCID_ITEMGRA, work->heapId);
+    work->efuItemIconPlt[slot] =
+        ClActSys_LoadPlttRange(arc, GetItemGraphicsDatID(item, ITEM_FILE_ICON_PLTT), CLACT_VRAM_SUB,
+                               (EFU_ITEM_ICON_PLTT_FIRST + slot) * 0x20, 0, 1, work->heapId);
+    work->efuItemIconChr[slot] =
+        ClActSys_LoadChars(arc, GetItemGraphicsDatID(item, ITEM_FILE_ICON_CHAR), FALSE, CLACT_VRAM_SUB, work->heapId);
+    GFL_ArcToolFree(arc);
+    setup.x = sEfuPlatePos[slot][0] * 8 + 54;
+    setup.y = sEfuPlatePos[slot][1] * 8 + 36;
+    setup.sequence = 0;
+    setup.priority = 0;
+    setup.bgPriority = 1;
+    work->efuItemIcons[slot] = ClActor_Create(work->actorUnit, work->efuItemIconChr[slot], work->efuItemIconPlt[slot],
+                                              work->selIconCel, &setup, CLACT_SURFACE_SUB, work->heapId);
+    ClActor_SetDrawAnim(work->efuItemIcons[slot], FALSE);
+}
+
+// Prints a message of a bank, its words from the bag's word set, into a plate's window
+static void ItemMenuDisp_EfuPrintPlate(ItemMenuWork *work, s32 slot, MsgData *msgData, u32 msgId, s16 x, s16 y,
+                                       Font *font) {
+    GFL_MsgDataLoadStrbuf(msgData, msgId, work->tempBuf);
+    GFL_WordSetFormatStrbuf(work->wordSet, work->expandBuf, work->tempBuf);
+    PrintWindow_Print(&work->efuPlateWindows[slot], work->printQueue, x, y, work->expandBuf, font,
+                      EFU_PLATE_TEXT_COLOR);
+}
+
+// Draws a slot's plate: its frame in the plate's palette (picked, fainted or neither), the Pokémon's name and level,
+// and its held item's icon and name
+static void ItemMenuDisp_EfuDrawPlate(ItemMenuWork *work, s32 slot) {
+    PokeParty *party = GameData_GetParty(work->gameData);
+    u8 x = sEfuPlatePos[slot][0];
+    u8 y = sEfuPlatePos[slot][1];
+    PartyPkm *pkm;
+    BOOL isEgg;
+    BOOL fainted;
+    BOOL picked = slot == work->efuPartyCursor;
+    u16 item;
+    u32 palette;
+
+    GFL_BitmapFill(BmpWin_GetBitmap(work->efuPlateWindows[slot].window), 0);
+    work->efuPlateWindows[slot].flushPending = TRUE;
+    if (slot >= PokeParty_GetPkmCount(party)) {
+        GFL_BGSysLoadScrArea(5, x, y, 16, 6, work->efuPlateScreen->rawData, sEfuPlateScreenPos[2][0],
+                             sEfuPlateScreenPos[2][1], 32, 32);
+        GFL_BGSysQueueScrLoad(5);
+        return;
+    }
+    pkm = PokeParty_GetPkm(party, slot);
+    isEgg = PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL);
+    fainted = !isEgg && PokeParty_GetParam(pkm, PKM_PARAM_HP, NULL) == 0;
+    item = isEgg ? ITEM_NONE : PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
+    GFL_BGSysLoadScrArea(5, x, y, 16, 6, work->efuPlateScreen->rawData, sEfuPlateScreenPos[slot != 0][0],
+                         sEfuPlateScreenPos[slot != 0][1], 32, 32);
+    if (fainted) {
+        palette = picked ? POKELIST_PLATE_PALETTE_SELECTED_FAINTED : POKELIST_PLATE_PALETTE_FAINTED;
+    } else {
+        palette = picked ? POKELIST_PLATE_PALETTE_SELECTED : POKELIST_PLATE_PALETTE_NORMAL;
+    }
+    GFL_BGSysSetScrPaletteNo(5, x, y, 16, 6, palette);
+    GFL_BGSysQueueScrLoad(5);
+    loadPokemonNicknameToStrbuf(work->wordSet, 0, pkm);
+    ItemMenuDisp_EfuPrintPlate(work, slot, work->efuPartyMsgData, PartyList_Text_Empty, 41, 9, work->font);
+    if (!isEgg) {
+        WordSetNumber(work->wordSet, 0, PokeParty_GetLevel(pkm), 3, 0, TRUE);
+        ItemMenuDisp_EfuPrintPlate(work, slot, work->efuPartyMsgData, PartyList_Text_L, 9, 35, work->efuSmallFont);
+    }
+    if (item != ITEM_NONE) {
+        loadItemNameToStrbuf(work->wordSet, 0, item);
+        ItemMenuDisp_EfuPrintPlate(work, slot, work->msgData, BagMenu_Text_Empty_96, 68, 27, work->font);
+    }
+    ItemMenuDisp_EfuShowItemIcon(work, slot, item);
+    if (fainted) {
+        ClActor_SetSequence(work->efuPartyIcons[slot], POKELIST_PARTY_ICON_ANM_FAINTED);
+    } else if (picked) {
+        ClActor_SetSequence(work->efuPartyIcons[slot], POKELIST_PARTY_ICON_ANM_HP_GREEN);
+    } else {
+        ClActor_SetSequence(work->efuPartyIcons[slot], POKELIST_PARTY_ICON_ANM_DEFAULT);
+    }
+}
+
+// Draws every plate, with the picked one's highlighted and its Pokémon hopping
+void ItemMenuDisp_EfuUpdateParty(ItemMenuWork *work) {
+    s32 i;
+
+    for (i = 0; i < 6; i++) {
+        ItemMenuDisp_EfuDrawPlate(work, i);
+    }
+}
+
+// Sends the plates' text to VRAM once it is printed
+void ItemMenuDisp_EfuFlushParty(ItemMenuWork *work) {
+    s32 i;
+
+    for (i = 0; i < 6; i++) {
+        PrintWindow_Flush(&work->efuPlateWindows[i], work->printQueue);
     }
 }

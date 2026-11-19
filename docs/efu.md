@@ -195,10 +195,11 @@ and Berries pockets holds the one item as Items (`Efu_BagItemPocket`, named and 
 (`build_bag.py`). There is no Free Space. The fades, the cursor's flash and the pocket arrows are quicker. Trash is Toss,
 and tossing a single item doesn't ask.
 
-The field bag shows the party on the lower screen, in two columns of three where the pocket tabs were (hidden, their
-OBJ palettes reused: `ItemMenuDisp_EfuCreateParty`), each with its held item mark. Tapping a Pokémon, or picking one
-with the keys after Give in an item's menu or A in the empty Items pocket (`ItemMenu_StateEfuPickParty`), gives it the
-bag's item, swapping for the one it holds, or takes its item when the bag has none (`ItemMenu_EfuPartyAction`). Eggs
+The field bag shows the party on the upper screen in place of the item's description, as the party screen's grid and
+plates (BGs 4, 5 and 7, `ItemMenuDisp_EfuCreateParty`), each with the Pokémon's name and level and, where the party
+screen has its HP and sex, its held item's icon and name; the lower screen is the bag's own. Picking a Pokémon with the
+keys after Give in an item's menu or A in the empty Items pocket (`ItemMenu_StateEfuPickParty`, its plate lit) gives it
+the bag's item, swapping for the one it holds, or takes its item when the bag has none (`ItemMenu_EfuPartyAction`). Eggs
 and mail are left alone. Arceus's and Genesect's forms follow the item as in the party screen.
 
 ## Items on the ground
