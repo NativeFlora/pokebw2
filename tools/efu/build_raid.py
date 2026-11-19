@@ -13,7 +13,7 @@ Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) an
   path south into Pinwheel Forest and its road east to Route 2's south end, the forest out to Route 19, Route 2's and
   Route 20's gates home;
 - the caves' and the target's events, the childcare centre's and the Day Care's;
-- the Grunts' Trainer classes, named Scav.
+- the Grunts' Trainer classes, named Scavenger.
 """
 import json, os, random, re, subprocess
 
@@ -102,7 +102,7 @@ SCAVS = {
 # The scavs' Trainer class, whichever it was: Team Plasma's Grunts, renamed
 SCAV_CLASS = {False: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_M', True: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_F'}
 SCAV_MODEL = {False: 'OBJ_CODE_TEAM_PLASMA_GRUNT_M', True: 'OBJ_CODE_TEAM_PLASMA_GRUNT_F'}
-SCAV_CLASS_NAME = 'Scav'
+SCAV_CLASS_NAME = 'Scavenger'
 FLAG_SPOT_FIRST = int(re.search(r'#define EFU_FLAG_SPOT_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 SPOT_MAX = int(re.search(r'#define EFU_SPOT_MAX (\d+)', efu_h).group(1))
 FLAG_DOOR_FIRST = int(re.search(r'#define EFU_FLAG_DOOR_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
@@ -115,10 +115,16 @@ LOOT_SCRIPTS = {t: 11000 + int(re.search(r'#define EFU_SCRIPT_LOOT_%s \(EFU_SCRI
                                          efu_h).group(1)) for t in ('route', 'cave', 'target')}
 SCRIPT_CHILDCARE = 11000 + int(re.search(r'#define EFU_SCRIPT_CHILDCARE \(EFU_SCRIPT_FIRST \+ (\d+)\)', efu_h).group(1))
 FLAG_CHILDCARE_SCAV = int(re.search(r'#define EFU_FLAG_CHILDCARE_SCAV (0x[0-9a-f]+)', efu_h).group(1), 16)
-# The Route 3 childcare centre's scav, a Trainer from Route 2 (which can't be reached), and its Rare Candy
+# The Route 3 childcare centre's scavenger, Billy (Route 2's Youngster Jimmy's Trainer, renamed), whose team comes from
+# the starters' pool, and the generic scavenger who takes over the centre once he's beaten (a Route 3 Trainer's,
+# EFU_FLAG_CHILDCARE_GENERIC), and its Rare Candy
 CHILDCARE_TRAINER = 401
+CHILDCARE_NAME = 'Billy'
+CHILDCARE_GENERIC_TRAINER = 398
 CHILDCARE_CANDY_SCRIPT = 7280
 EFU_WORK_RAID = int(re.search(r'#define EFU_WORK_RAID (0x[0-9a-f]+)', efu_h).group(1), 16)
+# The work the Trainer battle scripts pass Script_ScavDrop its Trainer in, one global_3000.s never uses
+SCAV_DROP_TRAINER_WORK = 0x803f
 SCRIPT_SCAV_DROP = 11000 + int(re.search(r'#define EFU_SCRIPT_SCAV_DROP \(EFU_SCRIPT_FIRST \+ (\d+)\)', efu_h).group(1))
 def efu_script(name):
     return 11000 + int(re.search(r'#define EFU_SCRIPT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % name, efu_h).group(1))
@@ -491,12 +497,16 @@ def build_childcare(loot):
     e = json.loads(orig('res/field/events/route_3_2.json'))
     candy = next(n for n in e['npcs'] if n['script'] == CHILDCARE_CANDY_SCRIPT)
     loot.spots.append({'flag': candy['flag'], 'place': 'candy'})
-    female = SCAVS[scav_key(CHILDCARE_TRAINER)][0]
-    scav = {'id': max(n['id'] for n in e['npcs']) + 1, 'model': SCAV_MODEL[female], 'movement': 'MOVE_CODE_TURN_RANDOM',
-            'type': 'ACTOR_EVENT_TYPE_TRAINER', 'flag': 'EVENT_FLAG_0x%04x' % FLAG_CHILDCARE_SCAV,
-            'script': 3000 + CHILDCARE_TRAINER, 'direction': 'DIR_DOWN', 'params': [SCAV_SIGHT, 0, 0],
-            'area': {'width': 1, 'height': 1}, 'grid': {'x': 5, 'z': 5, 'y': 0}}
-    e['npcs'] = [candy, scav]
+    first = max(n['id'] for n in e['npcs']) + 1
+    scavs = []
+    for i, (tid, flag) in enumerate([(CHILDCARE_TRAINER, efu_flag('CHILDCARE_SCAV')),
+                                     (CHILDCARE_GENERIC_TRAINER, efu_flag('CHILDCARE_GENERIC'))]):
+        female = SCAVS[scav_key(tid)][0]
+        scavs.append({'id': first + i, 'model': SCAV_MODEL[female], 'movement': 'MOVE_CODE_TURN_RANDOM',
+                      'type': 'ACTOR_EVENT_TYPE_TRAINER', 'flag': flag, 'script': 3000 + tid, 'direction': 'DIR_DOWN',
+                      'params': [SCAV_SIGHT, 0, 0], 'area': {'width': 1, 'height': 1},
+                      'grid': {'x': 5, 'z': 5, 'y': 0}})
+    e['npcs'] = [candy] + scavs
     e['init_scripts'] = [{'type': 2, 'script': SCRIPT_CHILDCARE}]
     write('res/field/events/route_3_2.json', e)
     return CHILDCARE_TRAINER
@@ -594,10 +604,15 @@ def build_trainers(trainer_ids):
         t['class'] = SCAV_CLASS[female]
         t['messages'] = [{'type': 'TRMSG_START', 'text': start}, {'type': 'TRMSG_LOSE', 'text': lose},
                          {'type': 2, 'text': after}]
-        # Their own Pokémon first, then the zone's wild ones
+        # Their own Pokémon first, then the zone's wild ones; Billy's from the starters' pool. On an exploration, the
+        # wild groups of the place they fight in replace them (Efu_ScavParty in field_encount.c)
         party = t['party'][:size]
         while len(party) < size:
             party.append(dict(t['party'][0], species=rng.choice(pool), gender=0, ability=0))
+        if tid == CHILDCARE_TRAINER:
+            t['name'] = CHILDCARE_NAME
+            starters = [c for c, n, types in json.load(open(os.path.join(here, 'starters.json')))]
+            party = [dict(mon, species=rng.choice(starters), gender=0, ability=0) for mon in party]
         for j, mon in enumerate(party):
             mon['level'] = min(hi, level + j % 2)
             mon['species'] = at_level(mon['species'], mon['level'])
@@ -607,13 +622,21 @@ def build_trainers(trainer_ids):
 
 
 def build_trainer_scripts():
-    """The Trainers' global script (3000): each win against a scav, single or double, ends with its drop."""
+    """The Trainers' global script (3000): each win, single, double or multi, ends with the scavenger's drop
+    (Script_ScavDrop), which takes the Trainer from SCAV_DROP_TRAINER_WORK: the battle's first opponent."""
     path = 'res/field/scripts/global_3000.s'
-    text = orig(path)
-    drop = f'    CallTrainerBattleEnd\n    RTCallGlobal {SCRIPT_SCAV_DROP}\n'
-    assert text.count('    CallTrainerBattleEnd\n') == 5
+    out = []
+    trainer = None
+    for line in orig(path).splitlines(keepends=True):
+        m = re.match(r'    CallTrainer(?:Multi)?Battle (0x[0-9a-f]+), (0x[0-9a-f]+|0)', line)
+        if m:
+            trainer = m.group(2) if 'Multi' in line else m.group(1)
+        out.append(line)
+        if line == '    CallTrainerBattleEnd\n':
+            out.append(f'    WorkSet {SCAV_DROP_TRAINER_WORK:#x}, {trainer}\n    RTCallGlobal {SCRIPT_SCAV_DROP}\n')
+    assert ''.join(out).count('    RTCallGlobal') - orig(path).count('    RTCallGlobal') == 5
     with open(os.path.join(root, path), 'w', newline='\n') as f:
-        f.write(text.replace('    CallTrainerBattleEnd\n', drop))
+        f.write(''.join(out))
 
 
 if __name__ == '__main__':
@@ -625,8 +648,9 @@ if __name__ == '__main__':
     scavs, route_warps = build_events(loot)
     build_places(loot, route_warps)
     scavs.append(build_childcare(loot))
+    scavs.append(CHILDCARE_GENERIC_TRAINER)
     scavs += TARGET_SCAVS
     build_daycare()
     loot.save()
-    build_trainers(scavs)
+    build_trainers(sorted(set(scavs)))
     build_trainer_scripts()

@@ -1180,18 +1180,23 @@ BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
         EventData *eventData = GameData_GetEventData(FieldScriptEnv_GetGameData(env));
         EventWork *eventWork = GameData_GetEventWork(FieldScriptEnv_GetGameData(env));
         ZoneNPC *npc = GetZoneNPCs(eventData);
+        u16 trainer = item;
         u32 count;
 
+        item = x;
+        x = EFU_GROUND_BESIDE_PLAYER;
         for (count = GetZoneNPCsCount(eventData); count != 0; npc++, count--) {
-            if (npc->spawnFlag != 0 && GetNPCTrainerIDFromSCRID(npc->scrId) == item) {
+            if (npc->spawnFlag != 0 && GetNPCTrainerIDFromSCRID(npc->scrId) == trainer) {
                 EventWork_FlagSet(eventWork, npc->spawnFlag);
                 ball = FindFieldActor(mmSys, npc->uid);
                 if (ball != NULL) {
+                    FldAct_GetGPos(ball, &pos);
+                    x = pos.x;
+                    z = pos.z;
                     DeleteActor(ball);
                 }
             }
         }
-        return FALSE;
     }
     if (op == EFU_SPECIAL_SELL_PRICE) {
         *result = GetItemParam(item, ITEM_PARAM_PRICE, Field_GetHeapID(fieldWork->field)) / 2;

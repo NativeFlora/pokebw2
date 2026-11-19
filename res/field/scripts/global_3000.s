@@ -937,6 +937,7 @@ L_0E5A:
     VMStackCmp CMP_EQ
     VMJumpIf CMP_STACK, L_0E97
     CallTrainerBattleEnd
+    WorkSet 0x803f, 0x8020
     RTCallGlobal 11011
     VMJump L_0E99
 
@@ -1170,6 +1171,7 @@ L_1156:
     VMStackCmp CMP_EQ
     VMJumpIf CMP_STACK, L_11A9
     CallTrainerBattleEnd
+    WorkSet 0x803f, 0x8027
     RTCallGlobal 11011
     VMJump L_11AB
 
@@ -1205,6 +1207,7 @@ L_11BD:
     VMStackCmp CMP_EQ
     VMJumpIf CMP_STACK, L_1230
     CallTrainerBattleEnd
+    WorkSet 0x803f, 0x8029
     RTCallGlobal 11011
     VMJump L_1232
 
@@ -1244,6 +1247,7 @@ L_124E:
     VMStackCmp CMP_EQ
     VMJumpIf CMP_STACK, L_12C7
     CallTrainerBattleEnd
+    WorkSet 0x803f, 0x802c
     RTCallGlobal 11011
     VMJump L_12C9
 
@@ -1293,6 +1297,7 @@ L_12E5:
 
 L_137D:
     CallTrainerBattleEnd
+    WorkSet 0x803f, 0x8030
     RTCallGlobal 11011
     VMJump L_1387
 

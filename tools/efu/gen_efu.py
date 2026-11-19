@@ -161,6 +161,8 @@ tmpl = tmpl.replace('@TARGET_SCAV_RESET@\n', ''.join(f'    TrainerFlagReset {t.s
                                                       for t in target_scavs.group(1).split(',')))
 garden = re.search(r'^GARDEN_SCAV = \{.*?\'trainer\': (\d+)', open(os.path.join(here, 'build_raid.py')).read(), re.M | re.S)
 tmpl = tmpl.replace('@GARDEN_SCAV@', garden.group(1))
+childcare = re.search(r'^CHILDCARE_GENERIC_TRAINER = (\d+)', open(os.path.join(here, 'build_raid.py')).read(), re.M)
+tmpl = tmpl.replace('@CHILDCARE_GENERIC@', childcare.group(1))
 tmpl = tmpl.replace('@VOLCARONA@', str(num['SPECIES_VOLCARONA']))
 tmpl = tmpl.replace('@POKE_BALL@', str(items.index('ITEM_POKE_BALL')))
 open(root + '/res/field/scripts/efu.s', 'w').write(tmpl.replace('@STARTER_MENUS@\n', ''.join(s)))

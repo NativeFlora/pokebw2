@@ -1,11 +1,14 @@
 // Wild encounters: the encounter system, the encounter rate while the player walks, and the battles it starts, wild,
 // static, fishing and trainers'. The name is the ROM's own, from GFL_HeapAllocate's file argument. Function names
 // from swan (https://github.com/ds-pokemon-hacking/swan, GPL-3.0)
+#include "efu.h"
 #include "types.h"
 #include "battle/btl_setup.h"
 #include "battle/trainer_data.h"
 #include "constants/battle.h"
+#include "constants/pokemon.h"
 #include "constants/species.h"
+#include "constants/trainer_classes.h"
 #include "field/enc_pokeset.h"
 #include "field/encounter.h"
 #include "field/event_battle.h"
@@ -24,6 +27,7 @@
 #include "gfl/std.h"
 #include "nitro/rtc.h"
 #include "pml/poke_party.h"
+#include "save/event_work.h"
 #include "save/records.h"
 #include "system/game_data.h"
 #include "system/game_system.h"
@@ -393,6 +397,73 @@ static void FieldEncount_SetupNPoke(EncountSystem *system, EncountManager *manag
     GFL_HeapFree(party);
 }
 
+// Escape from Unova: the species of a slot of the zone's wild Pokémon, counting every table's slots one after another
+// (three of grass, then four of water and fishing), or SPECIES_NONE when its table isn't used here
+static u16 Efu_WildSlotSpecies(EncData *encData, u32 slot) {
+    u32 table = slot < 36 ? slot / 12 : 3 + (slot - 36) / 5;
+
+    if (encData->userData[table] == 0) {
+        return SPECIES_NONE;
+    }
+    return encData->grass[slot].species;
+}
+
+// Escape from Unova: a scavenger's team, made again for each exploration from the wild Pokémon of the place they fight
+// in, its grass, water and fishing alike: EFU_SCAV_TEAM_MIN to EFU_SCAV_TEAM_MAX of them, at the levels of the Trainer's
+// own team (build_raid.py). The exploration's count and the Trainer seed the choice, so a team stays the same through an
+// exploration. Billy keeps his own, and so does a scavenger where nothing wild lives
+static void Efu_ScavParty(EncountSystem *system, BtlSetup *setup, u32 trainerId, HeapID heapId) {
+    EventWork *eventWork = GameData_GetEventWork(system->gameData);
+    PokeParty *party = BtlSetup_GetParty(setup, 1);
+    u32 class = TrainerData_GetParam(trainerId, TRAINER_PARAM_CLASS);
+    u16 species[EFU_SCAV_TEAM_MAX];
+    u8 levels[EFU_SCAV_TEAM_MAX];
+    u32 seed;
+    u32 count;
+    u32 known;
+    u32 wild;
+    u32 i;
+    u32 j;
+
+    if (*EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) == 0 || trainerId == EFU_TRAINER_BILLY ||
+        (class != TRAINER_CLASS_TEAM_PLASMA_GRUNT_M && class != TRAINER_CLASS_TEAM_PLASMA_GRUNT_F)) {
+        return;
+    }
+    wild = 0;
+    for (j = 0; j < EFU_WILD_SLOTS; j++) {
+        if (Efu_WildSlotSpecies(system->encData, j) != SPECIES_NONE) {
+            wild++;
+        }
+    }
+    known = PokeParty_GetPkmCount(party);
+    if (wild == 0 || known == 0) {
+        return;
+    }
+    seed = *EventWork_GetWkPtr(eventWork, EFU_WORK_RAID_COUNT) * 0x10000 + trainerId;
+    seed = seed * 1103515245 + 12345;
+    count = EFU_SCAV_TEAM_MIN + (seed >> 16) % (EFU_SCAV_TEAM_MAX - EFU_SCAV_TEAM_MIN + 1);
+    for (i = 0; i < count; i++) {
+        u32 pick;
+
+        levels[i] = PokeParty_GetParam(PokeParty_GetPkm(party, i < known ? i : known - 1), PKM_PARAM_LEVEL, NULL);
+        seed = seed * 1103515245 + 12345;
+        pick = (seed >> 16) % wild;
+        for (j = 0; j < EFU_WILD_SLOTS; j++) {
+            species[i] = Efu_WildSlotSpecies(system->encData, j);
+            if (species[i] != SPECIES_NONE && pick-- == 0) {
+                break;
+            }
+        }
+    }
+    PokeParty_Init(party);
+    for (i = 0; i < count; i++) {
+        PartyPkm *pkm = PokeParty_NewTempPkm(species[i], levels[i], 0xffffffff00000000ULL, heapId);
+
+        PokeParty_AddPkm(party, pkm);
+        GFL_HeapFree(pkm);
+    }
+}
+
 void BtlSetup_SetTrainerLocal(EncountSystem *encountSystem, BtlSetup *setup, u32 style, u32 partnerId, u32 trainerId,
                               u32 trainerId2, HeapID heapId) {
     GameData *gameData = encountSystem->gameData;
@@ -420,6 +491,7 @@ void BtlSetup_SetTrainerLocal(EncountSystem *encountSystem, BtlSetup *setup, u32
             return;
         }
         BtlSetup_SetTrainer1v1Single(setup, gameData, &status, trainerId, heapId);
+        Efu_ScavParty(encountSystem, setup, trainerId, heapId);
         return;
     case BTL_STYLE_TRIPLE:
         BtlSetup_SetTrainer3v3(setup, gameData, &status, trainerId, heapId);

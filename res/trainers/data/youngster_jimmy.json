@@ -1,6 +1,6 @@
 {
     "$schema": "trainer.schema.json",
-    "name": "Jimmy",
+    "name": "Billy",
     "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
@@ -12,7 +12,7 @@
     "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_RATTATA",
+            "species": "SPECIES_POLIWAG",
             "form": 0,
             "level": 17,
             "difficulty": 0,
@@ -20,7 +20,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_FURRET",
+            "species": "SPECIES_ARON",
             "form": 0,
             "level": 18,
             "difficulty": 0,
@@ -28,7 +28,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_ZIGZAGOON",
+            "species": "SPECIES_FLAAFFY",
             "form": 0,
             "level": 17,
             "difficulty": 0,
@@ -36,7 +36,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_BIBAREL",
+            "species": "SPECIES_SHELMET",
             "form": 0,
             "level": 18,
             "difficulty": 0,
@@ -44,7 +44,7 @@
             "ability": 0
         },
         {
-            "species": "SPECIES_PATRAT",
+            "species": "SPECIES_DRIFLOON",
             "form": 0,
             "level": 17,
             "difficulty": 0,

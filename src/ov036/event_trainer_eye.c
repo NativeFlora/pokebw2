@@ -109,6 +109,7 @@ static BOOL Efu_IsOnRaid(Field *field);
 static void EfuScav_StartChase(Field *field, FieldActor *actor);
 static void EfuScav_StopChase(Field *field, FieldActor *actor);
 static BOOL EfuScav_CanSee(FieldActor *actor, const GridPos *pos, const GridPos *playerPos);
+static BOOL EfuScav_InCone(FieldActor *actor, const GridPos *pos, const GridPos *playerPos);
 static u16 EfuScav_DirTo(const GridPos *from, const GridPos *to, int *dist);
 static BOOL EfuScav_CanStep(FieldActor *actor, const GridPos *pos, u16 dir);
 static void EfuScav_Spawn(Field *field, const GridPos *playerPos);
@@ -686,7 +687,7 @@ static BOOL EfuScav_CanSee(FieldActor *actor, const GridPos *pos, const GridPos 
     u16 dir = EfuScav_DirTo(pos, playerPos, &steps);
     int i;
 
-    if (steps > EFU_SCAV_SIGHT) {
+    if (dx * dx + dz * dz > EFU_SCAV_SIGHT * EFU_SCAV_SIGHT + EFU_SCAV_SIGHT) {
         return FALSE;
     }
     for (i = 1; i < steps; i++) {
@@ -699,6 +700,16 @@ static BOOL EfuScav_CanSee(FieldActor *actor, const GridPos *pos, const GridPos 
         }
     }
     return TRUE;
+}
+
+// Whether the player is in the half of the scavenger's sight ahead of them, the line through them across their facing
+// its edge: with EfuScav_CanSee's distance, a semicircle EFU_SCAV_SIGHT tiles across
+static BOOL EfuScav_InCone(FieldActor *actor, const GridPos *pos, const GridPos *playerPos) {
+    int dx = playerPos->x - pos->x;
+    int dz = playerPos->z - pos->z;
+    u16 face = GetActorFaceDir(actor);
+
+    return dx * GetDirectionVectorCompX(face) + dz * GetDirectionVectorCompZ(face) >= 0;
 }
 
 // Whether the scav can take a step in the direction; other actors and its own walking area don't stop it
@@ -791,6 +802,17 @@ static void EfuScav_Spawn(Field *field, const GridPos *playerPos) {
 // Each step the player takes: a scav that isn't chasing may notice the player, every scav on the chase takes one step the most
 // direct way it can toward the tile the player stepped onto, and one within EFU_SCAV_CATCH tiles starts its battle. One
 // that hasn't seen the player for EFU_SCAV_LOSE_STEPS steps in a row gives up and goes back to looking around
+// While the player stands still, the scavengers still look around and close in, every EFU_SCAV_IDLE_FRAMES frames, as
+// if the player had taken a step
+GameEvent *EventTrainerEye_EfuIdle(Field *field) {
+    EventWork *eventWork = GameData_GetEventWork(GSYS_GetGameData(Field_GetGameSystem(field)));
+
+    if (++*EventWork_GetWkPtr(eventWork, EFU_WORK_IDLE_FRAMES) < EFU_SCAV_IDLE_FRAMES) {
+        return NULL;
+    }
+    return EventTrainerEye_EfuPursue(field);
+}
+
 GameEvent *EventTrainerEye_EfuPursue(Field *field) {
     FieldActor *player;
     MMSys *actorSys;
@@ -799,6 +821,7 @@ GameEvent *EventTrainerEye_EfuPursue(Field *field) {
     GridPos pos;
     GridPos playerPos;
 
+    *EventWork_GetWkPtr(GameData_GetEventWork(GSYS_GetGameData(Field_GetGameSystem(field))), EFU_WORK_IDLE_FRAMES) = 0;
     if (!Efu_IsOnRaid(field)) {
         return NULL;
     }
@@ -824,7 +847,7 @@ GameEvent *EventTrainerEye_EfuPursue(Field *field) {
         dir = EfuScav_DirTo(&pos, &playerPos, &dist);
         if (EfuScav_CanSee(actor, &pos, &playerPos)) {
             if (chase == 0) {
-                if (dist > EFU_SCAV_CATCH && dir != GetActorFaceDir(actor)) {
+                if (dist > EFU_SCAV_CATCH && !EfuScav_InCone(actor, &pos, &playerPos)) {
                     continue;
                 }
                 EfuScav_StartChase(field, actor);

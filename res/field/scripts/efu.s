@@ -154,6 +154,7 @@ Script_RaidDepart:
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
     .endr
     FlagSet EFU_FLAG_CHILDCARE_SCAV
+    FlagSet EFU_FLAG_CHILDCARE_GENERIC
     FlagReset EFU_FLAG_TARGET_ENTERED
     FlagReset EFU_FLAG_CHILDCARE_ENTERED
     WorkSetConst EFU_WORK_SCAVS_OUT, 0
@@ -2041,31 +2042,14 @@ L_ItemDone:
     ActorsUnpauseAll
     VMHalt
 
-// After a win against a scav (global_3000.s calls it): it drops an item from the target's table, which the player takes
-// if the bag has room
+// After a win against a scavenger (global_3000.s calls it, with the Trainer in 0x803f): they run off, leaving an item
+// from the target's table on the ground where they stood, for the player to pick up
 Script_ScavDrop:
-    // The scav leaves the area (0x8020 holds the Trainer, global_3000.s)
-    EfuSpecial EFU_SPECIAL_SCAV_GONE, 0x8020, 0, 0, 0x8010
     VMCall L_LootPickScav
-    WordSetItemNameEx 0, 0x800c, 1, 0
-    ItemCheckSpace 0x800c, 1, 0x8010
-    WorkCmpConst 0x8010, 0
-    VMJumpIf CMP_EQ, L_ScavDropFull
-    ItemAdd 0x800c, 1, 0x8010
-    MEPlay SEQ_ME_ITEM
-    SystemMsg Efu_Text_ScavDrop, 2
-    MEWait
-    LastKeyWait
-    SystemMsgClose
-    RTEndGlobal
-    VMHalt
-
-// With the bag's item carried, the drop lands beside the player, or is lost with nowhere to put it
-L_ScavDropFull:
-    EfuSpecial EFU_SPECIAL_DROP, 0x800c, EFU_GROUND_BESIDE_PLAYER, 0, 0x8010
+    EfuSpecial EFU_SPECIAL_SCAV_GONE, 0x803f, 0x800c, 0, 0x8010
     WorkCmpConst 0x8010, 0
     VMJumpIf CMP_EQ, L_ScavDropLost
-    SystemMsg Efu_Text_ScavDropFull, 2
+    SystemMsg Efu_Text_ScavDrop, 2
     LastKeyWait
     SystemMsgClose
     RTEndGlobal
@@ -2078,16 +2062,17 @@ L_ScavDropLost:
     RTEndGlobal
     VMHalt
 
-// Entering Route 3's childcare centre (its init script): a scav waits there always while the Day Care Lady's quest is
-// open; after that, like the target's (Script_TargetEnter), it comes out on EFU_SIDE_SCAV_CHANCE percent of the
-// exploration's first entries and EFU_ROUTE_SCAV_CHANCE percent of the later ones, and stays until it is beaten.
-// Beating it once ends her quest (L_DayCareQuestCheck)
+// Entering Route 3's childcare centre (its init script): Billy (EFU_TRAINER_BILLY) waits there always while the Day
+// Care Lady's quest is open. Once he's beaten, he's gone for good (L_DayCareQuestCheck), and a generic scavenger takes
+// over: like the target's (Script_TargetEnter), they come out on EFU_SIDE_SCAV_CHANCE percent of the exploration's
+// first entries and EFU_ROUTE_SCAV_CHANCE percent of the later ones, and stay until they are beaten
 Script_ChildcareEnter:
     VMCall L_DayCareQuestCheck
-    TrainerFlagReset 401
     FlagGet EFU_FLAG_DAYCARE_QUEST_DONE, 0x8020
     WorkCmpConst 0x8020, 0
-    VMJumpIf CMP_EQ, L_ChildcareScav
+    VMJumpIf CMP_EQ, L_ChildcareBilly
+    FlagSet EFU_FLAG_CHILDCARE_SCAV
+    TrainerFlagReset 398
     WorkSetConst 0x8021, EFU_ROUTE_SCAV_CHANCE
     FlagGet EFU_FLAG_CHILDCARE_ENTERED, 0x8020
     WorkCmpConst 0x8020, 1
@@ -2097,17 +2082,20 @@ Script_ChildcareEnter:
 L_ChildcareRoll:
     Random 0x8020, 100
     WorkCmpWork 0x8020, 0x8021
-    VMJumpIf CMP_LT, L_ChildcareScav
+    VMJumpIf CMP_GE, L_ChildcareEnd
+    FlagReset EFU_FLAG_CHILDCARE_GENERIC
+L_ChildcareEnd:
     VMHalt
 
-L_ChildcareScav:
+L_ChildcareBilly:
+    TrainerFlagReset EFU_TRAINER_BILLY
     FlagReset EFU_FLAG_CHILDCARE_SCAV
     VMHalt
 
-// The Day Care Lady's quest is done once the childcare centre's scav (trainer 401) has been beaten, which its trainer
-// flag holds until the centre is entered again
+// The Day Care Lady's quest is done once Billy has been beaten, which his trainer flag holds until the centre is entered
+// again
 L_DayCareQuestCheck:
-    TrainerFlagGet 401, 0x8020
+    TrainerFlagGet EFU_TRAINER_BILLY, 0x8020
     WorkCmpConst 0x8020, 0
     VMJumpIf CMP_EQ, L_DayCareQuestOpen
     FlagSet EFU_FLAG_DAYCARE_QUEST_DONE

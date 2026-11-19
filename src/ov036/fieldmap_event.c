@@ -263,13 +263,11 @@ static GameEvent *FieldEventProvider_Grid_CheckForEvent(GameSystem *gsys, Field 
             return event;
         }
     }
-    // Escape from Unova: the raid scavs on the player's trail take their step
-    if (wk.stepped) {
-        event = EventTrainerEye_EfuPursue(field);
-        if (event != NULL) {
-            *scriptCalled = TRUE;
-            return event;
-        }
+    // Escape from Unova: the raid's scavengers on the player's trail take their step, or while the player stands still, look around and close in now and then
+    event = wk.stepped ? EventTrainerEye_EfuPursue(field) : EventTrainerEye_EfuIdle(field);
+    if (event != NULL) {
+        *scriptCalled = TRUE;
+        return event;
     }
     event = EventTrainerEye_CheckAll(field);
     if (event != NULL) {

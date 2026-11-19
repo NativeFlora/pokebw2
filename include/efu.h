@@ -104,6 +104,10 @@
 #define EFU_SCAV_SIGHT 12
 #define EFU_SCAV_CATCH 1
 #define EFU_SCAV_LOSE_STEPS 6
+// How often the scavengers look and move while the player stands still, in frames: about a walking step
+#define EFU_SCAV_IDLE_FRAMES 16
+// The frames counted toward it (EventTrainerEye_EfuIdle)
+#define EFU_WORK_IDLE_FRAMES 0x415d
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
 #define EFU_SCAV_PARAM_CHASE 1
 #define EFU_SCAV_PARAM_MOVE_CODE 2
@@ -133,6 +137,15 @@
 #define EFU_FLAG_LOOT_FIRST 0xa90
 // The hide flag of the scav in Route 3's childcare centre, rolled on each entry (Script_ChildcareEnter)
 #define EFU_FLAG_CHILDCARE_SCAV 0xa93
+// The generic scavenger who takes over the childcare centre once Billy is beaten, out by chance like the target's
+#define EFU_FLAG_CHILDCARE_GENERIC 0x91e
+// Billy's Trainer: the childcare centre's named scavenger, whose team is his own on every exploration
+#define EFU_TRAINER_BILLY 401
+// How many Pokémon a scavenger's team has on an exploration (Efu_ScavParty in field_encount.c)
+#define EFU_SCAV_TEAM_MIN 2
+#define EFU_SCAV_TEAM_MAX 5
+// The slots of a zone's wild Pokémon: 12 in each of the three grass tables, 5 in each of the four water and fishing ones
+#define EFU_WILD_SLOTS (12 * 3 + 5 * 4)
 
 // EfuSpecial (script command 0x15f, Scrcmd_Efu_Special in scrcmd_field_actor.c), the hack's odd jobs by operation:
 // put an item on the ground (on a tile, or with EFU_GROUND_BESIDE_PLAYER as its x on a free one of the eight around the
@@ -149,8 +162,9 @@
 #define EFU_SPECIAL_SELL_PRICE 6
 // Marks every species seen in the Pokédex, as a new game starts: the Pokédex starts complete
 #define EFU_SPECIAL_FILL_POKEDEX 7
-// After a win against a scav (Script_ScavDrop), with the Trainer in item's place: the scav leaves the area, its NPC
-// hidden by its flag, until it comes out again
+// After a win against a scavenger (Script_ScavDrop), with the Trainer in item's place and the item they drop in x's:
+// they leave the area, their NPC hidden by its flag until they come out again, and the item lands where they stood
+// (beside the player when they can't be found), as EFU_SPECIAL_DROP's result says
 #define EFU_SPECIAL_SCAV_GONE 8
 // Items on the ground: item ball actors made where an item was tossed or swapped, each holding its item in its user
 // parameter 0, with actor IDs from EFU_GROUND_ID_FIRST. They belong to the zone, and are gone once the player leaves it

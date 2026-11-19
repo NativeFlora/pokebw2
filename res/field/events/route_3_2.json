@@ -47,6 +47,29 @@
                 "z": 5,
                 "y": 0
             }
+        },
+        {
+            "id": 11,
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
+            "movement": "MOVE_CODE_TURN_RANDOM",
+            "type": "ACTOR_EVENT_TYPE_TRAINER",
+            "flag": "EVENT_FLAG_0x091e",
+            "script": 3398,
+            "direction": "DIR_DOWN",
+            "params": [
+                1,
+                0,
+                0
+            ],
+            "area": {
+                "width": 1,
+                "height": 1
+            },
+            "grid": {
+                "x": 5,
+                "z": 5,
+                "y": 0
+            }
         }
     ],
     "warps": [

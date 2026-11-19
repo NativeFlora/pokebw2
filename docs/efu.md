@@ -16,12 +16,15 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   and no more. Put new logic in another overlay or in script and data files, which aren't in the overlays. The party
   wipe is script command 0x2db (`Scrcmd_Efu_PokePartyClear` in ov036), which took over `UnityTowerSetFloor`'s row
   (Unity Tower can't be reached) so the table didn't grow.
-- **ov035 and ov036 grow at a risk.** Main points into ov036's later code and into the overlays after it (ov037 on
-  start where ov036's code and BSS end), so growing either moves those pointers, and main's compressed size, kept in
-  the secure area, may change with them. It is luck: some sizes pass and some don't, so build after every change to
-  them and, if the check fails, change the size a little (natural code, never padding) and try again. ov035 has stayed
-  at its v1 size (11520 bytes); ov036 is 355744 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too, and
-  ov162 (the title menu) is 19680 bytes (the original's 19648) after one failed try at the same size with other code.
+- **Every signed overlay changes main.** Main holds each signed overlay's HMAC (`overlay_signatures` in its
+  config), which `dsd rom build` writes into it before compressing it, and the compressed size goes in the build info
+  inside the secure area. So any change to a signed overlay's bytes (ov035, ov036, ov162, ov167 and the rest) can
+  change main's compressed size, and the build passes only when it comes out at the original's 0x736cc bytes. It is
+  luck, about which overlay bytes come out and not their size: build after every change to an overlay and, if the
+  check fails, write the new code a little differently (natural code, never padding) and build again. Files outside
+  the overlays (scripts, text, event data) never affect it. ov035 has stayed at its v1 size (11520 bytes); ov036 is
+  356352 bytes now (the original's 352672), ov162 (the title menu) 19680 (the original's 19648), and ov167 (battle)
+  grew for fleeing.
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
 
 ## Where things are
@@ -49,7 +52,8 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | The loot tables and the scripts that roll them | `LOOT` in `tools/efu/gen_efu.py`, `Script_Loot*` in `tools/efu/efu.s.in` |
 | The closed warehouses' shut doors, and the Day Care Lady's, which goes once she has joined | `CLOSED_WAREHOUSES` in `tools/efu/build_coast.py`, `Efu_IsOpenedDoor` in `src/ov036/field_buildmodel.c`, `Efu_IsShutDoor` in `src/ov036/fieldmap_event.c`, the door signs in `tools/efu/build_base.py` |
 | Wild Pokémon that count as equivalent, by egg group | `tools/efu/wild_groups.py` → `tools/efu/wild_groups.json` |
-| The scavs' pursuit | `EventTrainerEye_EfuPursue` in `src/ov036/event_trainer_eye.c`, called each step from `src/ov036/fieldmap_event.c` |
+| The scavs' pursuit | `EventTrainerEye_EfuPursue` and `EventTrainerEye_EfuIdle` in `src/ov036/event_trainer_eye.c`, called each step, or each frame the player stands still, from `src/ov036/fieldmap_event.c` |
+| The scavs' teams | `Efu_ScavParty` in `src/ov036/field_encount.c` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs); 0x2db and 0x15f took over unused commands' rows, so the tables keep their size |
 
 Edit the templates, then from `tools/efu` run `python3 build_base.py`, `python3 build_zone.py`, `python3 build_raid.py`,
@@ -86,12 +90,14 @@ Taken so far:
 | `EVENT_WORK_0x41aa` | Retired in version 4: the play time the exploration started at, for the scavs' old 10-minute clock. Not to be reused. |
 | `EVENT_WORK_0x4169` (`EFU_WORK_SCAV_PENDING`) | 1 when a scav is to come out on the route at the next step (`Script_RouteEnter`); 0 after, and on heading out. Version 4. |
 | `EVENT_WORK_0x415e` (`EFU_WORK_DEV_TEST`) | 1 on a game started from the title menu's Dev Test: its first Pokémon is a level 100 Volcarona. |
+| `EVENT_WORK_0x415d` (`EFU_WORK_IDLE_FRAMES`) | Frames the player has stood still on a raid, up to `EFU_SCAV_IDLE_FRAMES` (16), when the scavengers take a look as if the player had stepped; 0 after, and at each step. |
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
 | `EVENT_FLAG_0x0a80` to `0x0a8f`, `0x0a49` to `0x0a4e` | Retired: the routes' scavs' hide flags before they came out at spots (versions 3 and 4). Not to be reused. |
 | `EVENT_FLAG_0x0a01` to `0x0a3f` (`EFU_FLAG_SPOT_FIRST`) | Each route spot's scav's hide flag, in the order `build_raid.py` gives them (Route 3's with the garden's, Route 20's, Route 2's, Route 19's; 47 so far). All set on heading out; one is cleared when its scav comes out, and set again when it is beaten. |
 | `EVENT_FLAG_0x0a4f` (`EFU_FLAG_GARDEN_SCAV`) | The garden's scav's hide flag: cleared on heading out, set when it is beaten. |
 | `EVENT_FLAG_0x0a90` to `0x0a92` (`EFU_FLAG_LOOT_FIRST`) | The hide flags of the item balls put where the original had none (the Cave of Being's three). Rolled on heading out. |
-| `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | The childcare centre's scav's hide flag: out on each entry while the Day Care Lady's quest is open, then by chance as the target's (75% on the first entry, 25% after); set on heading out and when it is beaten. |
+| `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | Billy's hide flag, the childcare centre's named scavenger: out on each entry while the Day Care Lady's quest is open, set on heading out, when he is beaten and on every entry after the quest. |
+| `EVENT_FLAG_0x091e` (`EFU_FLAG_CHILDCARE_GENERIC`) | The hide flag of the generic scavenger who takes Billy's place once the quest is done: out by chance as the target's (75% on the first entry, 25% after); set on heading out and when they are beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
 | `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
 | `EVENT_FLAG_0x0a95` (`EFU_FLAG_BASE_JOY_HIDDEN`) | Her base NPC's hide flag, set from the above on entering the Pokémon Center. |
@@ -116,10 +122,10 @@ Taken so far:
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x091e to 0x095f; take them upward from 0x091e. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x091f to 0x095f; take them upward from 0x091f. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415d. Take the next from the end of the list back, and move it into the table above.
+0x4156 to 0x415c. Take the next from the end of the list back, and move it into the table above.
 
 ## Raids and saving
 
@@ -255,8 +261,8 @@ Tossing an item from the bag opened in the field puts it on the ground: the bag 
 the first free tile of the eight around the player (below, left, right, above, then the corners), or says it's gone
 when none is free. The balls are actors that `EfuSpecial` makes (IDs from `EFU_GROUND_ID_FIRST`, 16 at most), with
 the item in user parameter 0 and `Script_GroundItem` as their script: it gives the item if the bag has room, or else
-swaps the bag's item for it without asking, leaving the bag's item in its place. A scav's drop that doesn't fit lands
-beside the player the same way. The balls are the zone's actors, so they last through menus and battles but are gone
+swaps the bag's item for it without asking, leaving the bag's item in its place. A beaten scavenger's drop lands the
+same way on the tile where they stood, and the player picks it up like any other. The balls are the zone's actors, so they last through menus and battles but are gone
 once the player leaves the zone.
 
 
@@ -291,8 +297,8 @@ confirm, and B closes either menu.
 - **The Day Care Lady** is in Route 3's Day Care, whose door is never shut. There she takes Pokémon in but gives
   none back (`Script_DayCareJoin` runs her original script, global 2201, with `EFU_FLAG_DAYCARE_DEPOSIT_ONLY` set,
   which `build_raid.py` patches into `global_2200.s` to leave Withdraw out of its menu): an early form of the
-  insurance broker. Until she has joined, she asks the player to drive out the scav in the childcare centre next
-  door, which is always there while her quest is open; once it is beaten (`EFU_FLAG_DAYCARE_QUEST_DONE`, from its
+  insurance broker. Until she has joined, she asks the player to drive out Billy, the scavenger in the childcare
+  centre next door, who is always there while her quest is open; once he is beaten (`EFU_FLAG_DAYCARE_QUEST_DONE`, from its
   trainer flag) she moves into the abandoned warehouse east of the Pokémon Center (`NACRENE_CITY_7`, `DAYCARE_DOOR`)
   and keeps coming out to the route after. Until then the warehouse's doorway has a shut door like the other closed
   warehouses' (`build_coast.py`), its two door warps (`EFU_DAYCARE_WARP`, `EFU_DAYCARE_UPPER_WARP`) lead nowhere
@@ -340,8 +346,13 @@ Each route has a scav at every spot where one of its own people stood in the ori
 not objects or Pokémon; Route 3's include Striaton's people in the garden; 47 spots in all), each fighting as one of
 its route's Trainers in turn (Route 19, with none, takes Route 20's; Floccesy Ranch has none yet). The Trainers are
 made single battles with two to six Pokémon from the zone's wild ones at 65 to 90% of its level cap (14 to 20),
-evolved to their levels, dressed as Team Plasma Grunts (the classes renamed Scav) and given new lines by
-`build_raid.py`. Every spot's scav starts hidden: heading out sets their flags (`EFU_FLAG_SPOT_FIRST`). The garden's
+evolved to their levels, dressed as Team Plasma Grunts (the classes renamed Scavenger) and given new lines by
+`build_raid.py`. In battle, `Efu_ScavParty` (`src/ov036/field_encount.c`) replaces a scavenger's team with 2 to 5
+(`EFU_SCAV_TEAM_MIN`, `EFU_SCAV_TEAM_MAX`) Pokémon drawn from the wild slots of the zone they stand in, grass, dark
+grass, rustling grass, surfing and fishing alike, at the levels of the built team, seeded by the raid count and the Trainer, so
+a scavenger keeps one team through an exploration and gets a new one on the next. Billy, the childcare centre's named
+scavenger, keeps his built team, drawn from the starters' pool (`starters.json`). Named scavengers come out only until
+they are beaten: after Billy, a generic scavenger (trainer 398) takes his place. Every spot's scav starts hidden: heading out sets their flags (`EFU_FLAG_SPOT_FIRST`). The garden's
 own scav, on the Pokémon Breeder's spot, is out from the start of every raid (`EFU_FLAG_GARDEN_SCAV`). Each step the
 player takes, `EventTrainerEye_EfuPursue` runs before the original sight check:
 
@@ -354,21 +365,25 @@ player takes, `EventTrainerEye_EfuPursue` runs before the original sight check:
   `EFU_ROUTE_SCAV_CHANCE` (25%) of later ones.
 - Scavs only ever add up over an exploration: leaving an area and coming back never hides one that is out. Only
   beating one takes it away (`EFU_SPECIAL_SCAV_GONE`, from `Script_ScavDrop`, sets its hide flag and removes its
-  actor), until heading out again hides them all.
+  actor), until the player leaves the area and comes back, when the entry's roll may bring one out again, or heading
+  out again hides them all.
 - A scav that is out stands where it came out, looking around (`MOVE_CODE_TURN_RANDOM`), and never steps until it
   has seen the player: a scav wandering by its move code could be caught between two tiles when a chase or battle
   began, and the game locked up.
 - Distances are in steps without diagonal ones, and `EFU_SCAV_CATCH` is 1, so only a scav straight beside the player
-  fights. After a win, `Script_ScavDrop` (called from the Trainer battle scripts in `global_3000.s`) gives an item of
-  the target's table, or puts it on the ground beside the player when the bag is full.
+  fights. After a win, `Script_ScavDrop` (called from the Trainer battle scripts in `global_3000.s`, with the Trainer in
+  0x803f) says the scavenger ran off, removes them and puts an item of the target's table on the ground where they
+  stood.
 - A scav that sees the player (nothing in the way on the straight line between them) within
-  `EFU_SCAV_CATCH` tiles whichever way it faces, or up to `EFU_SCAV_SIGHT` (12) tiles away in the quarter it faces,
-  shows a "!" and gives chase: the soft detection. The hard detection, a battle, is only straight beside the player
+  `EFU_SCAV_CATCH` tiles whichever way it faces, or up to `EFU_SCAV_SIGHT` (12) tiles away (in a straight line, not
+  in steps) in the half it faces, a semicircle with the line across it at its edge (`EfuScav_InCone`), shows a "!"
+  and gives chase: the soft detection. The hard detection, a battle, is only straight beside the player
   (`EFU_SCAV_CATCH`, which is also the scavs' Trainer sight range in the event data, so the original's sight check
   never starts one further off).
 - A chasing scav takes one walking step (`ACMD_WALK_8F`, so it falls behind a running player) toward the tile the
   player stepped onto, the longer way first, the other if that's blocked, or to the side when the player is straight
-  ahead and the way is blocked. It moves only when the player steps. Within `EFU_SCAV_CATCH` tiles it starts its
+  ahead and the way is blocked. It moves when the player steps, and while the player stands still every `EFU_SCAV_IDLE_FRAMES` (16)
+  frames (`EventTrainerEye_EfuIdle`), when the scavs that aren't chasing look for the player too. Within `EFU_SCAV_CATCH` tiles it starts its
   battle, and after `EFU_SCAV_LOSE_STEPS` steps in a row out of sight it shows a "?" and goes back to looking around where it stopped. The
   chase lives in the actor's user parameters 1 and 2, which the event data leaves 0.
 
