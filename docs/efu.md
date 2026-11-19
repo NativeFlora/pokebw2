@@ -41,7 +41,8 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | The zone's events, wild Pokémon (2 to 15 on the route, 8 to 18 in the caves, 12 to 22 in the target), the scavs (teams of 2 to 6 at 65 to 90% of the cap, 14 to 20) and their lines, the caves and the target, the childcare centre, Route 3's Day Care, Nurse Joy, and the loot spots (`tools/efu/loot.json`) | `tools/efu/build_raid.py` |
 | The one-item bag (one item a Pokémon can hold at a time; Key Items and TMs are free) | `include/efu_bag.h`, used by `Scrcmd_Item_ItemCheckSpace` (`src/ov036/scrcmd_item.c`), taking a held item in `src/ov165/plist_sys.c` and in the PC in `src/ov255/box2_seq.c`, and buying in `src/ov036/scrcmd_shop.c` |
 | The bag's pockets (Items, TMs and Key Items; Medicine and Berries show as Items), Give first, A in the empty Items pocket for the party screen, the quicker animations, and the toss to the ground | `src/ov142/itemmenu.c`, `src/ov142/itemmenu_disp.c`, `tools/efu/build_bag.py` (the items' `field_pocket`) |
-| Items on the ground, the party's total level, the Day Care's growth (`EfuSpecial`, script command 0x15f) | `Scrcmd_Efu_Special` in `src/ov036/scrcmd_field_actor.c`, `Efu_DayCareGrow` in `src/ov036/day_care.c` |
+| Items on the ground, the party's total level, the Day Care's growth, the locker's held items and sell price (`EfuSpecial`, script command 0x15f) | `Scrcmd_Efu_Special` in `src/ov036/scrcmd_field_actor.c`, `Efu_DayCareGrow` in `src/ov036/day_care.c` |
+| The locker: its furniture and tiles, its script, and the routines that read and write its slots | `LOCKERS` and `build_lockers` in `tools/efu/build_base.py`, `Script_Locker` in `tools/efu/efu.s.in`, `LOCKER_WORKS` in `tools/efu/gen_efu.py` |
 | The base's people: Nurse Joy, the clerk and the Day Care Lady, and the gate's guide | `build_interiors` in `tools/efu/build_base.py`, `Script_Nurse` and below in `tools/efu/efu.s.in`, the mart's prices in `src/ov036/scrcmd_shop.c` |
 | The loot tables and the scripts that roll them | `LOOT` in `tools/efu/gen_efu.py`, `Script_Loot*` in `tools/efu/efu.s.in` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` in `src/ov036/event_trainer_eye.c`, called each step from `src/ov036/fieldmap_event.c` |
@@ -94,6 +95,7 @@ Taken so far:
 | `EVENT_FLAG_0x0a9e` (`EFU_FLAG_GUIDE_MET`) | The guide has been met on Route 3 (and their Route 3 NPC's hide flag). |
 | `EVENT_FLAG_0x0a9f` (`EFU_FLAG_BASE_GUIDE_HIDDEN`) | The gate guide's hide flag, set from the above on entering the gate. |
 | `EVENT_FLAG_0x0a40` to `0x0a42` (`EFU_FLAG_TARGET_SCAV_FIRST`) | The target's scavs' hide flags, rolled on each entry (40% out each). |
+| `EVENT_WORK_0x41a7` to `0x41a0`, `0x419e` to `0x4197`, `0x4193`, `0x418b`, `0x4180`, `0x4177` (`LOCKER_WORKS` in `gen_efu.py`) | The locker's 20 slots, in that order: each the item plus its count shifted left 10 (up to 63), 0 when empty. Kept packed, used slots first. A save from before the locker has them all 0, an empty locker. |
 
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
@@ -102,8 +104,7 @@ Free event flags (nothing refers to them) include 0x0a43 to 0x0a4f, 0x0a01 to 0x
 them upward from 0x0a43. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415f, 0x4163, 0x4169, 0x4177, 0x4180, 0x418b, 0x4193, 0x4197 to 0x419e, 0x41a0 to 0x41a7. Take the next
-from the top of the list down, and move it into the table above.
+0x4156 to 0x415f, 0x4163, 0x4169. Take the next from the top of the list down, and move it into the table above.
 
 ## Raids and saving
 
@@ -211,6 +212,22 @@ swaps the bag's item for it without asking, leaving the bag's item in its place.
 beside the player the same way. The balls are the zone's actors, so they last through menus and battles but are gone
 once the player leaves the zone.
 
+
+## The locker
+
+The player's storage: 20 slots, each one kind of item, up to 63 of it, in event work values of their own
+(`LOCKER_WORKS`), so one locker shared by its two spots. It is Nimbasa's stadium locker (field prop 126, `shelf06`) in
+two places: upstairs in the player's warehouse, against the back wall right of the bed, and in the Pokémon Center,
+its back to the Poké Mart counter's west side. Its tiles are blocked and talking to either runs `Script_Locker`.
+The warehouse's is in a copy of the warehouse's map model (`efu_home`, its own matrix), since the Day Care Lady's
+warehouse shares the original; the Pokémon Center's model is edited in place (a skinned model, which the packer can't
+write whole), so every Pokémon Center has the locker, though no other can be reached.
+
+The locker lists its items with their counts, then Store everything and Close, with the player's money in the corner.
+Store everything moves the bag's item and every held item of the party (eggs' and mail aside) into the locker,
+stacking onto a slot of the same item, and says when the locker is full. An item offers Take (one into the bag, or a
+message if the bag already has its item) or Sell (one, for half its price, the usual sell price). Neither asks to
+confirm, and B closes either menu.
 
 ## The base's people
 

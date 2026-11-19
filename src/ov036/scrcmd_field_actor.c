@@ -6,10 +6,12 @@
 // Additional helper and table names are our descriptive guesses.
 #include "types.h"
 #include "constants/directions.h"
+#include "constants/items.h"
 #include "constants/move_codes.h"
 #include "constants/obj_codes.h"
 #include "constants/pokemon.h"
 #include "constants/sound.h"
+#include "constants/species.h"
 #include "efu.h"
 #include "efu_bag.h"
 #include "field/event_action_call.h"
@@ -31,6 +33,7 @@
 #include "gfl/heap.h"
 #include "gfl/sound.h"
 #include "nitro/fx.h"
+#include "pml/item.h"
 #include "pml/poke_party.h"
 #include "system/game_data.h"
 #include "system/game_system.h"
@@ -1130,6 +1133,36 @@ BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
     }
     if (op == EFU_SPECIAL_DAYCARE_GROW) {
         Efu_DayCareGrow(Field_GetDayCare(fieldWork->field));
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_HELD_ITEM || op == EFU_SPECIAL_TAKE_HELD) {
+        PokeParty *party = GameData_GetParty(FieldScriptEnv_GetGameData(env));
+        PartyPkm *pkm;
+
+        *result = ITEM_NONE;
+        if (item >= PokeParty_GetPkmCount(party)) {
+            return FALSE;
+        }
+        pkm = PokeParty_GetPkm(party, item);
+        if (op == EFU_SPECIAL_TAKE_HELD) {
+            PokeParty_SetParam(pkm, PKM_PARAM_ITEM, ITEM_NONE);
+            // The forms that held items give, as the party screen changes them (plist_item.c)
+            if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_ARCEUS) {
+                PokeParty_ChangeForme(pkm, _getTypeForPlate(ITEM_NONE));
+            }
+            if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_GENESECT) {
+                PokeParty_ChangeForme(pkm, PML_ItemGetGenesectDriveForme(ITEM_NONE));
+            }
+            return FALSE;
+        }
+        x = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
+        if (!PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL) && !PML_ItemIsMail(x)) {
+            *result = x;
+        }
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_SELL_PRICE) {
+        *result = GetItemParam(item, ITEM_PARAM_PRICE, Field_GetHeapID(fieldWork->field)) / 2;
         return FALSE;
     }
     *result = FALSE;

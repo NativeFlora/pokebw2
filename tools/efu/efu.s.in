@@ -49,6 +49,7 @@
     ScriptEntry Script_GateInit
     ScriptEntry Script_GuideMeet
     ScriptEntry Script_TargetEnter
+    ScriptEntry Script_Locker
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -678,3 +679,140 @@ Script_GateGuide:
     VMHalt
 
 @LOOT@
+
+// The locker, in the player's warehouse and by the Pokémon Center's Poké Mart counter (build_base.py), one store
+// shared by both: @LOCKER_SLOTS@ slots of an item and its count, in event work values of their own (gen_efu.py's
+// LOCKER_WORKS). Its list shows each slot, then Store everything (the bag's holdable item, and every item the party
+// holds but mail) and Close. A slot offers Take, one at a time into the bag if it has room (include/efu_bag.h), or
+// Sell, one at a time for half its price. Neither asks first, and the cursor stays on the slot, so a stack goes quickly
+Script_Locker:
+    ActorsPauseAll
+    MoneyWinDisp 31, 1
+    WorkSetConst 0x8028, 0
+L_LockerMenu:
+    ListMenuAnchorTopLeft 1, 1, 0x8028, 1, 0x8020
+    VMCall L_LockerList
+    ListMenuAdd Efu_Text_LockerStore, 65535, 100
+    ListMenuAdd Efu_Text_LockerClose, 65535, 101
+    WordSetNumber 0, 0x8029, 2
+    SystemMsg Efu_Text_LockerHolds, 2
+    ListMenuShow
+    WorkCmpConst 0x8020, 100
+    VMJumpIf CMP_EQ, L_LockerStore
+    WorkCmpConst 0x8020, @LOCKER_SLOTS@
+    VMJumpIf CMP_GE, L_LockerClose
+    WorkGet 0x8027, 0x8020
+    WorkGet 0x8028, 0x8020
+    VMCall L_LockerGet
+    WorkGet 0x8022, 0x8026
+    WorkAnd 0x8022, 1023
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    EfuSpecial EFU_SPECIAL_SELL_PRICE, 0x8022, 0, 0, 0x8023
+    WordSetNumber 1, 0x8023, 5
+    SystemMsg Efu_Text_LockerWhat, 2
+    ListMenuAnchorTopRight 31, 7, 0, 1, 0x8024
+    ListMenuAdd Efu_Text_LockerTake, 65535, 0
+    ListMenuAdd Efu_Text_LockerSell, 65535, 1
+    ListMenuAdd Efu_Text_LockerCancel, 65535, 2
+    ListMenuShow
+    WorkCmpConst 0x8024, 0
+    VMJumpIf CMP_EQ, L_LockerTake
+    WorkCmpConst 0x8024, 1
+    VMJumpIf CMP_EQ, L_LockerSell
+    VMJump L_LockerMenu
+
+L_LockerTake:
+    ItemCheckSpace 0x8022, 1, 0x8025
+    WorkCmpConst 0x8025, 0
+    VMJumpIf CMP_EQ, L_LockerBagFull
+    ItemAdd 0x8022, 1, 0x8025
+    SEPlay SEQ_SE_DECIDE1
+    VMJump L_LockerTakeOne
+
+L_LockerSell:
+    WorkCmpConst 0x8023, 0
+    VMJumpIf CMP_EQ, L_LockerNoSale
+    MoneyAdd 0x8023
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_22
+// One of the slot's item is gone: the slot loses one, and empties under a count of one
+L_LockerTakeOne:
+    WorkSub 0x8026, 1024
+    WorkCmpConst 0x8026, 1024
+    VMJumpIf CMP_GE, L_LockerTakeSet
+    WorkSetConst 0x8026, 0
+L_LockerTakeSet:
+    VMCall L_LockerSet
+    VMCall L_LockerCompact
+    VMJump L_LockerMenu
+
+L_LockerBagFull:
+    SystemMsg Efu_Text_LockerBagFull, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+L_LockerNoSale:
+    SystemMsg Efu_Text_LockerNoSale, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+// Store everything: the bag's holdable item, then each Pokémon's held item, while there is room. 0x802a counts what
+// went in and 0x802b what didn't fit
+L_LockerStore:
+    WorkSetConst 0x802a, 0
+    WorkSetConst 0x802b, 0
+    EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8030
+    WorkCmpConst 0x8030, 0
+    VMJumpIf CMP_EQ, L_LockerStoreParty
+    VMCall L_LockerPut
+    WorkCmpConst 0x8031, 0
+    VMJumpIf CMP_EQ, L_LockerStoreBagFull
+    ItemSub 0x8030, 1, 0x8025
+    WorkAdd 0x802a, 1
+    VMJump L_LockerStoreParty
+L_LockerStoreBagFull:
+    WorkAdd 0x802b, 1
+L_LockerStoreParty:
+    WorkSetConst 0x802c, 0
+L_LockerStorePkm:
+    EfuSpecial EFU_SPECIAL_HELD_ITEM, 0x802c, 0, 0, 0x8030
+    WorkCmpConst 0x8030, 0
+    VMJumpIf CMP_EQ, L_LockerStoreNext
+    VMCall L_LockerPut
+    WorkCmpConst 0x8031, 0
+    VMJumpIf CMP_EQ, L_LockerStorePkmFull
+    EfuSpecial EFU_SPECIAL_TAKE_HELD, 0x802c, 0, 0, 0x8031
+    WorkAdd 0x802a, 1
+    VMJump L_LockerStoreNext
+L_LockerStorePkmFull:
+    WorkAdd 0x802b, 1
+L_LockerStoreNext:
+    WorkAdd 0x802c, 1
+    WorkCmpConst 0x802c, 6
+    VMJumpIf CMP_LT, L_LockerStorePkm
+    WordSetNumber 0, 0x802a, 2
+    WordSetNumber 1, 0x802b, 2
+    WorkCmpConst 0x802b, 0
+    VMJumpIf CMP_NE, L_LockerStoredFull
+    WorkCmpConst 0x802a, 0
+    VMJumpIf CMP_EQ, L_LockerNothing
+    SEPlay SEQ_SE_DECIDE1
+    VMJump L_LockerMenu
+
+L_LockerStoredFull:
+    SystemMsg Efu_Text_LockerStoredFull, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+L_LockerNothing:
+    SystemMsg Efu_Text_LockerNothing, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+L_LockerClose:
+    SystemMsgClose
+    MoneyWinClose
+    ActorsUnpauseAll
+    VMHalt
+
+@LOCKER@

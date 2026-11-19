@@ -49,6 +49,9 @@
 #define EFU_SCRIPT_GUIDE_MEET (EFU_SCRIPT_FIRST + 25)
 // The target's init script: each of its scavs is out on EFU_TARGET_SCAV_CHANCE percent of entries
 #define EFU_SCRIPT_TARGET_ENTER (EFU_SCRIPT_FIRST + 26)
+// The locker, in the player's warehouse and by the Pokémon Center's Poké Mart counter: 20 slots, each in an event work
+// value of its own (gen_efu.py's LOCKER_WORKS, docs/efu.md)
+#define EFU_SCRIPT_LOCKER (EFU_SCRIPT_FIRST + 27)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -96,11 +99,16 @@
 // EfuSpecial (script command 0x15f, Scrcmd_Efu_Special in scrcmd_field_actor.c), the hack's odd jobs by operation:
 // put an item on the ground (on a tile, or with EFU_GROUND_BESIDE_PLAYER as its x on a free one of the eight around the
 // player), read the bag's holdable item (efu_bag.h), add up the party's levels (eggs aside), or give each Pokémon in
-// the Day Care a level, up to EFU_LEVEL_CAP (Efu_DayCareGrow in day_care.c)
+// the Day Care a level, up to EFU_LEVEL_CAP (Efu_DayCareGrow in day_care.c), and the locker's jobs below
 #define EFU_SPECIAL_DROP 0
 #define EFU_SPECIAL_BAG_ITEM 1
 #define EFU_SPECIAL_PARTY_LEVELS 2
 #define EFU_SPECIAL_DAYCARE_GROW 3
+// The locker (EFU_WORK_LOCKER_*): the held item of the party's Pokémon in item's place (eggs' and mail aside), or
+// ITEM_NONE; taking it away; and an item's sell price, half its price
+#define EFU_SPECIAL_HELD_ITEM 4
+#define EFU_SPECIAL_TAKE_HELD 5
+#define EFU_SPECIAL_SELL_PRICE 6
 // Items on the ground: item ball actors made where an item was tossed or swapped, each holding its item in its user
 // parameter 0, with actor IDs from EFU_GROUND_ID_FIRST. They belong to the zone, and are gone once the player leaves it
 #define EFU_GROUND_BESIDE_PLAYER 0xffff

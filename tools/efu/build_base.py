@@ -167,7 +167,88 @@ def build_spawn():
     # A new game starts beside the bed upstairs in the warehouse
     z = json.loads(orig('res/field/zones/nacrene_city_8.json'))
     z['fly'] = {'x': 3, 'y': 3, 'z': 3}
+    z['matrix'] = LOCKERS['nacrene_city_8']['matrix']
     write('res/field/zones/nacrene_city_8.json', json.dumps(z, indent=4, ensure_ascii=False) + '\n')
+
+
+# The locker (EFU_SCRIPT_LOCKER): the grey locker of Nimbasa's stadiums (shelf06, resource 126, which both rooms' prop
+# bundles hold), two tiles wide, against a wall. The warehouse gets a copy of its map model with the locker in it, since
+# the Day Care Lady's warehouse shares the original; the Pokémon Center's model is edited in place, since a copy would
+# have to be written whole and its model is a skinned one the packer can't write, and no other Pokémon Center can be
+# reached. By zone: the model, the copy's folder and its matrix (None to edit in place), the locker's centre (tiles)
+# and height, its rotation (facing south, or west against a right wall), and the tiles it stands on, which are blocked
+# and talked to
+LOCKER_PROP = 126
+FACE_SOUTH, FACE_WEST = [0, 0.0, 0, 1.0], [0, 0.7071067811865476, 0, -0.7071067811865475]
+LOCKERS = {
+    # Upstairs in the player's warehouse, against the back wall right of the bed
+    'nacrene_city_8': {'model': 'nacrene_city_6_m_whouse01_00_00', 'folder': 'efu_home', 'matrix': 'MAP_MATRIX_EFU_HOME',
+                       'at': (11.0, 2.5), 'y': 48, 'rotation': FACE_SOUTH, 'tiles': [(10, 2), (11, 2)]},
+    # In the Pokémon Center, its back to the Poké Mart counter's west side, south of where the player talks to the clerk
+    # (by the right wall north of the counter, the counter's back piece hid it)
+    'nacrene_city_pokemon_center': {'model': 'black_city_pokemon_center_m_pc01_00_00', 'folder': None,
+                                    'matrix': None, 'at': (9.5, 18.0), 'y': 0,
+                                    'rotation': FACE_WEST, 'tiles': [(9, 17), (9, 18)]},
+}
+
+
+def add_constant(lst, constant):
+    path = os.path.join(root, lst)
+    names = [l.split('=')[0].strip() for l in open(path).read().split('\n')]
+    if constant not in names:
+        with open(path, 'a') as f:
+            f.write(constant + '\n')
+
+
+def build_lockers():
+    for zone, L in LOCKERS.items():
+        src = f'res/field/maps/models/{L["model"]}'
+        folder = f'res/field/maps/models/{L["folder"]}' if L['folder'] else src
+        if L['folder']:
+            os.makedirs(os.path.join(root, folder), exist_ok=True)
+            constant = 'MAP_MODEL_' + L['folder'].upper()
+            add_constant('generated/map_models.txt', constant)
+            data = json.loads(orig(f'{src}/data.json'))
+            data.update(written=True, template='MAP_MODEL_' + L['model'].upper())
+            write(f'{folder}/data.json', json.dumps(data, indent=4) + '\n')
+            write(f'{folder}/terrain_0_splits.csv', orig(f'{src}/terrain_0_splits.csv').decode())
+        rows = list(csv.DictReader(io.StringIO(orig(f'{src}/terrain_0.csv').decode())))
+        for r in rows:
+            if (int(r['x']), int(r['z'])) in L['tiles']:
+                r['tile_type'] = str(BLOCKED_TILE)
+        f = io.StringIO()
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()), lineterminator='\n')
+        w.writeheader()
+        w.writerows(rows)
+        write(f'{folder}/terrain_0.csv', f.getvalue())
+        b = orig(f'{src}/model.glb')
+        jl = struct.unpack('<I', b[12:16])[0]
+        j = json.loads(b[20:20 + jl])
+        rest = b[20 + jl:]
+        count = sum(1 for n in j['nodes'] if n.get('name', '').startswith('bw2_prop_'))
+        x, z = L['at']
+        j['nodes'].append({'name': f'bw2_prop_{count:04d}_id_{LOCKER_PROP:05d}',
+                           'translation': [x * 16 - 256.0, float(L['y']), z * 16 - 256.0], 'rotation': L['rotation']})
+        j['scenes'][0]['nodes'].append(len(j['nodes']) - 1)
+        js = json.dumps(j, separators=(',', ':')).encode()
+        js += b' ' * (-len(js) % 4)
+        out = b[:12] + struct.pack('<I', len(js)) + b'JSON' + js + rest
+        out = out[:8] + struct.pack('<I', len(out)) + out[12:]
+        with open(os.path.join(root, folder, 'model.glb'), 'wb') as f:
+            f.write(out)
+        if not L['matrix']:
+            continue
+        add_constant('generated/map_matrices.txt', L['matrix'])
+        write(f'res/field/matrices/{L["matrix"][len("MAP_MATRIX_"):].lower()}.json',
+              '{\n    "$schema": "map_matrix.schema.json",\n    "maps": [\n        [ "' + constant + '" ]\n    ]\n}\n')
+
+
+def locker_events(zone):
+    # A background event on each of the locker's tiles, at the floor's height and the heights beside it (a background
+    # event's height must be within 2 of the player's)
+    L = LOCKERS[zone]
+    return [{'script': efu_script('LOCKER'), 'condition': 0, 'direction': 4, 'grid': {'x': x, 'y': z, 'z': L['y'] + h}}
+            for x, z in L['tiles'] for h in (-4, 0, 4)]
 
 
 def build_interiors():
@@ -177,6 +258,7 @@ def build_interiors():
     e['init_scripts'] = []
     # The bed's tiles; a background event's height (z, world units) must be within 2 of the player's
     e['bg_events'] = [{'script': 11003, 'condition': 0, 'direction': 4, 'grid': {'x': 2, 'y': yy, 'z': h}} for yy in (2, 3) for h in (44, 48, 52)]
+    e['bg_events'] += locker_events('nacrene_city_8')
     write('res/field/events/nacrene_city_8.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
     # The Day Care Lady's warehouse, east of the Pokémon Center, the same as the player's: she is downstairs once she
     # has joined (her hide flag set from that by Script_DayCareInit), and a boulder shuts its door until then
@@ -199,6 +281,7 @@ def build_interiors():
     ]
     e['init_scripts'] = [{'type': 2, 'script': efu_script('POKECEN_INIT')}]
     e['bg_events'] = [b for b in e['bg_events'] if b['script'] == 2108]
+    e['bg_events'] += locker_events('nacrene_city_pokemon_center')
     write('res/field/events/nacrene_city_pokemon_center.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
     # The east gate, where raids start: nobody there. The hall runs from Nacrene's door (x 1) to Route 3's (x 15) over
     # rows 4 to 6. Stepping onto column 14, by Route 3's door, while home asks to leave (and saves); stepping onto
@@ -245,6 +328,7 @@ def build_gate_board():
 if __name__ == '__main__':
     build_gate_board()
     build_mart()
+    build_lockers()
     build_spawn()
     build_interiors()
     build_matrix()

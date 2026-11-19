@@ -49,6 +49,7 @@
     ScriptEntry Script_GateInit
     ScriptEntry Script_GuideMeet
     ScriptEntry Script_TargetEnter
+    ScriptEntry Script_Locker
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -3040,4 +3041,949 @@ L_LootNext_30:
 L_LootOut_31:
     FlagReset 0x564
 L_LootNext_31:
+    VMReturn
+
+// The locker, in the player's warehouse and by the Pokémon Center's Poké Mart counter (build_base.py), one store
+// shared by both: 20 slots of an item and its count, in event work values of their own (gen_efu.py's
+// LOCKER_WORKS). Its list shows each slot, then Store everything (the bag's holdable item, and every item the party
+// holds but mail) and Close. A slot offers Take, one at a time into the bag if it has room (include/efu_bag.h), or
+// Sell, one at a time for half its price. Neither asks first, and the cursor stays on the slot, so a stack goes quickly
+Script_Locker:
+    ActorsPauseAll
+    MoneyWinDisp 31, 1
+    WorkSetConst 0x8028, 0
+L_LockerMenu:
+    ListMenuAnchorTopLeft 1, 1, 0x8028, 1, 0x8020
+    VMCall L_LockerList
+    ListMenuAdd Efu_Text_LockerStore, 65535, 100
+    ListMenuAdd Efu_Text_LockerClose, 65535, 101
+    WordSetNumber 0, 0x8029, 2
+    SystemMsg Efu_Text_LockerHolds, 2
+    ListMenuShow
+    WorkCmpConst 0x8020, 100
+    VMJumpIf CMP_EQ, L_LockerStore
+    WorkCmpConst 0x8020, 20
+    VMJumpIf CMP_GE, L_LockerClose
+    WorkGet 0x8027, 0x8020
+    WorkGet 0x8028, 0x8020
+    VMCall L_LockerGet
+    WorkGet 0x8022, 0x8026
+    WorkAnd 0x8022, 1023
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    EfuSpecial EFU_SPECIAL_SELL_PRICE, 0x8022, 0, 0, 0x8023
+    WordSetNumber 1, 0x8023, 5
+    SystemMsg Efu_Text_LockerWhat, 2
+    ListMenuAnchorTopRight 31, 7, 0, 1, 0x8024
+    ListMenuAdd Efu_Text_LockerTake, 65535, 0
+    ListMenuAdd Efu_Text_LockerSell, 65535, 1
+    ListMenuAdd Efu_Text_LockerCancel, 65535, 2
+    ListMenuShow
+    WorkCmpConst 0x8024, 0
+    VMJumpIf CMP_EQ, L_LockerTake
+    WorkCmpConst 0x8024, 1
+    VMJumpIf CMP_EQ, L_LockerSell
+    VMJump L_LockerMenu
+
+L_LockerTake:
+    ItemCheckSpace 0x8022, 1, 0x8025
+    WorkCmpConst 0x8025, 0
+    VMJumpIf CMP_EQ, L_LockerBagFull
+    ItemAdd 0x8022, 1, 0x8025
+    SEPlay SEQ_SE_DECIDE1
+    VMJump L_LockerTakeOne
+
+L_LockerSell:
+    WorkCmpConst 0x8023, 0
+    VMJumpIf CMP_EQ, L_LockerNoSale
+    MoneyAdd 0x8023
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_22
+// One of the slot's item is gone: the slot loses one, and empties under a count of one
+L_LockerTakeOne:
+    WorkSub 0x8026, 1024
+    WorkCmpConst 0x8026, 1024
+    VMJumpIf CMP_GE, L_LockerTakeSet
+    WorkSetConst 0x8026, 0
+L_LockerTakeSet:
+    VMCall L_LockerSet
+    VMCall L_LockerCompact
+    VMJump L_LockerMenu
+
+L_LockerBagFull:
+    SystemMsg Efu_Text_LockerBagFull, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+L_LockerNoSale:
+    SystemMsg Efu_Text_LockerNoSale, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+// Store everything: the bag's holdable item, then each Pokémon's held item, while there is room. 0x802a counts what
+// went in and 0x802b what didn't fit
+L_LockerStore:
+    WorkSetConst 0x802a, 0
+    WorkSetConst 0x802b, 0
+    EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8030
+    WorkCmpConst 0x8030, 0
+    VMJumpIf CMP_EQ, L_LockerStoreParty
+    VMCall L_LockerPut
+    WorkCmpConst 0x8031, 0
+    VMJumpIf CMP_EQ, L_LockerStoreBagFull
+    ItemSub 0x8030, 1, 0x8025
+    WorkAdd 0x802a, 1
+    VMJump L_LockerStoreParty
+L_LockerStoreBagFull:
+    WorkAdd 0x802b, 1
+L_LockerStoreParty:
+    WorkSetConst 0x802c, 0
+L_LockerStorePkm:
+    EfuSpecial EFU_SPECIAL_HELD_ITEM, 0x802c, 0, 0, 0x8030
+    WorkCmpConst 0x8030, 0
+    VMJumpIf CMP_EQ, L_LockerStoreNext
+    VMCall L_LockerPut
+    WorkCmpConst 0x8031, 0
+    VMJumpIf CMP_EQ, L_LockerStorePkmFull
+    EfuSpecial EFU_SPECIAL_TAKE_HELD, 0x802c, 0, 0, 0x8031
+    WorkAdd 0x802a, 1
+    VMJump L_LockerStoreNext
+L_LockerStorePkmFull:
+    WorkAdd 0x802b, 1
+L_LockerStoreNext:
+    WorkAdd 0x802c, 1
+    WorkCmpConst 0x802c, 6
+    VMJumpIf CMP_LT, L_LockerStorePkm
+    WordSetNumber 0, 0x802a, 2
+    WordSetNumber 1, 0x802b, 2
+    WorkCmpConst 0x802b, 0
+    VMJumpIf CMP_NE, L_LockerStoredFull
+    WorkCmpConst 0x802a, 0
+    VMJumpIf CMP_EQ, L_LockerNothing
+    SEPlay SEQ_SE_DECIDE1
+    VMJump L_LockerMenu
+
+L_LockerStoredFull:
+    SystemMsg Efu_Text_LockerStoredFull, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+L_LockerNothing:
+    SystemMsg Efu_Text_LockerNothing, 2
+    LastKeyWait
+    VMJump L_LockerMenu
+
+L_LockerClose:
+    SystemMsgClose
+    MoneyWinClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_LockerList:
+    WorkSetConst 0x8029, 0
+    WorkCmpConst 0x41a7, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a7
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a7
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 0
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x41a6, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a6
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a6
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 1
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x41a5, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a5
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a5
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 2
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x41a4, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a4
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a4
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 3
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x41a3, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a3
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a3
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 4
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x41a2, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a2
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a2
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 5
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x41a1, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a1
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a1
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 6
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x41a0, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x41a0
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x41a0
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 7
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x419e, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x419e
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x419e
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 8
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x419d, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x419d
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x419d
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 9
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x419c, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x419c
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x419c
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 10
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x419b, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x419b
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x419b
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 11
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x419a, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x419a
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x419a
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 12
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x4199, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x4199
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x4199
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 13
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x4198, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x4198
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x4198
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 14
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x4197, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x4197
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x4197
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 15
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x4193, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x4193
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x4193
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 16
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x418b, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x418b
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x418b
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 17
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x4180, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x4180
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x4180
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 18
+    WorkAdd 0x8029, 1
+    WorkCmpConst 0x4177, 0
+    VMJumpIf CMP_EQ, L_LockerListDone
+    WorkGet 0x8022, 0x4177
+    WorkAnd 0x8022, 1023
+    WorkGet 0x8021, 0x4177
+    WorkDiv 0x8021, 1024
+    WordSetItemNameEx 0, 0x8022, 1, 0
+    WordSetNumber 1, 0x8021, 2
+    ListMenuAdd Efu_Text_LockerSlot, 65535, 19
+    WorkAdd 0x8029, 1
+L_LockerListDone:
+    VMReturn
+L_LockerGet:
+    WorkCmpConst 0x8027, 0
+    VMJumpIf CMP_EQ, L_LockerGet_0
+    WorkCmpConst 0x8027, 1
+    VMJumpIf CMP_EQ, L_LockerGet_1
+    WorkCmpConst 0x8027, 2
+    VMJumpIf CMP_EQ, L_LockerGet_2
+    WorkCmpConst 0x8027, 3
+    VMJumpIf CMP_EQ, L_LockerGet_3
+    WorkCmpConst 0x8027, 4
+    VMJumpIf CMP_EQ, L_LockerGet_4
+    WorkCmpConst 0x8027, 5
+    VMJumpIf CMP_EQ, L_LockerGet_5
+    WorkCmpConst 0x8027, 6
+    VMJumpIf CMP_EQ, L_LockerGet_6
+    WorkCmpConst 0x8027, 7
+    VMJumpIf CMP_EQ, L_LockerGet_7
+    WorkCmpConst 0x8027, 8
+    VMJumpIf CMP_EQ, L_LockerGet_8
+    WorkCmpConst 0x8027, 9
+    VMJumpIf CMP_EQ, L_LockerGet_9
+    WorkCmpConst 0x8027, 10
+    VMJumpIf CMP_EQ, L_LockerGet_10
+    WorkCmpConst 0x8027, 11
+    VMJumpIf CMP_EQ, L_LockerGet_11
+    WorkCmpConst 0x8027, 12
+    VMJumpIf CMP_EQ, L_LockerGet_12
+    WorkCmpConst 0x8027, 13
+    VMJumpIf CMP_EQ, L_LockerGet_13
+    WorkCmpConst 0x8027, 14
+    VMJumpIf CMP_EQ, L_LockerGet_14
+    WorkCmpConst 0x8027, 15
+    VMJumpIf CMP_EQ, L_LockerGet_15
+    WorkCmpConst 0x8027, 16
+    VMJumpIf CMP_EQ, L_LockerGet_16
+    WorkCmpConst 0x8027, 17
+    VMJumpIf CMP_EQ, L_LockerGet_17
+    WorkCmpConst 0x8027, 18
+    VMJumpIf CMP_EQ, L_LockerGet_18
+    WorkCmpConst 0x8027, 19
+    VMJumpIf CMP_EQ, L_LockerGet_19
+    VMReturn
+L_LockerGet_0:
+    WorkGet 0x8026, 0x41a7
+    VMReturn
+L_LockerGet_1:
+    WorkGet 0x8026, 0x41a6
+    VMReturn
+L_LockerGet_2:
+    WorkGet 0x8026, 0x41a5
+    VMReturn
+L_LockerGet_3:
+    WorkGet 0x8026, 0x41a4
+    VMReturn
+L_LockerGet_4:
+    WorkGet 0x8026, 0x41a3
+    VMReturn
+L_LockerGet_5:
+    WorkGet 0x8026, 0x41a2
+    VMReturn
+L_LockerGet_6:
+    WorkGet 0x8026, 0x41a1
+    VMReturn
+L_LockerGet_7:
+    WorkGet 0x8026, 0x41a0
+    VMReturn
+L_LockerGet_8:
+    WorkGet 0x8026, 0x419e
+    VMReturn
+L_LockerGet_9:
+    WorkGet 0x8026, 0x419d
+    VMReturn
+L_LockerGet_10:
+    WorkGet 0x8026, 0x419c
+    VMReturn
+L_LockerGet_11:
+    WorkGet 0x8026, 0x419b
+    VMReturn
+L_LockerGet_12:
+    WorkGet 0x8026, 0x419a
+    VMReturn
+L_LockerGet_13:
+    WorkGet 0x8026, 0x4199
+    VMReturn
+L_LockerGet_14:
+    WorkGet 0x8026, 0x4198
+    VMReturn
+L_LockerGet_15:
+    WorkGet 0x8026, 0x4197
+    VMReturn
+L_LockerGet_16:
+    WorkGet 0x8026, 0x4193
+    VMReturn
+L_LockerGet_17:
+    WorkGet 0x8026, 0x418b
+    VMReturn
+L_LockerGet_18:
+    WorkGet 0x8026, 0x4180
+    VMReturn
+L_LockerGet_19:
+    WorkGet 0x8026, 0x4177
+    VMReturn
+L_LockerSet:
+    WorkCmpConst 0x8027, 0
+    VMJumpIf CMP_EQ, L_LockerSet_0
+    WorkCmpConst 0x8027, 1
+    VMJumpIf CMP_EQ, L_LockerSet_1
+    WorkCmpConst 0x8027, 2
+    VMJumpIf CMP_EQ, L_LockerSet_2
+    WorkCmpConst 0x8027, 3
+    VMJumpIf CMP_EQ, L_LockerSet_3
+    WorkCmpConst 0x8027, 4
+    VMJumpIf CMP_EQ, L_LockerSet_4
+    WorkCmpConst 0x8027, 5
+    VMJumpIf CMP_EQ, L_LockerSet_5
+    WorkCmpConst 0x8027, 6
+    VMJumpIf CMP_EQ, L_LockerSet_6
+    WorkCmpConst 0x8027, 7
+    VMJumpIf CMP_EQ, L_LockerSet_7
+    WorkCmpConst 0x8027, 8
+    VMJumpIf CMP_EQ, L_LockerSet_8
+    WorkCmpConst 0x8027, 9
+    VMJumpIf CMP_EQ, L_LockerSet_9
+    WorkCmpConst 0x8027, 10
+    VMJumpIf CMP_EQ, L_LockerSet_10
+    WorkCmpConst 0x8027, 11
+    VMJumpIf CMP_EQ, L_LockerSet_11
+    WorkCmpConst 0x8027, 12
+    VMJumpIf CMP_EQ, L_LockerSet_12
+    WorkCmpConst 0x8027, 13
+    VMJumpIf CMP_EQ, L_LockerSet_13
+    WorkCmpConst 0x8027, 14
+    VMJumpIf CMP_EQ, L_LockerSet_14
+    WorkCmpConst 0x8027, 15
+    VMJumpIf CMP_EQ, L_LockerSet_15
+    WorkCmpConst 0x8027, 16
+    VMJumpIf CMP_EQ, L_LockerSet_16
+    WorkCmpConst 0x8027, 17
+    VMJumpIf CMP_EQ, L_LockerSet_17
+    WorkCmpConst 0x8027, 18
+    VMJumpIf CMP_EQ, L_LockerSet_18
+    WorkCmpConst 0x8027, 19
+    VMJumpIf CMP_EQ, L_LockerSet_19
+    VMReturn
+L_LockerSet_0:
+    WorkSet 0x41a7, 0x8026
+    VMReturn
+L_LockerSet_1:
+    WorkSet 0x41a6, 0x8026
+    VMReturn
+L_LockerSet_2:
+    WorkSet 0x41a5, 0x8026
+    VMReturn
+L_LockerSet_3:
+    WorkSet 0x41a4, 0x8026
+    VMReturn
+L_LockerSet_4:
+    WorkSet 0x41a3, 0x8026
+    VMReturn
+L_LockerSet_5:
+    WorkSet 0x41a2, 0x8026
+    VMReturn
+L_LockerSet_6:
+    WorkSet 0x41a1, 0x8026
+    VMReturn
+L_LockerSet_7:
+    WorkSet 0x41a0, 0x8026
+    VMReturn
+L_LockerSet_8:
+    WorkSet 0x419e, 0x8026
+    VMReturn
+L_LockerSet_9:
+    WorkSet 0x419d, 0x8026
+    VMReturn
+L_LockerSet_10:
+    WorkSet 0x419c, 0x8026
+    VMReturn
+L_LockerSet_11:
+    WorkSet 0x419b, 0x8026
+    VMReturn
+L_LockerSet_12:
+    WorkSet 0x419a, 0x8026
+    VMReturn
+L_LockerSet_13:
+    WorkSet 0x4199, 0x8026
+    VMReturn
+L_LockerSet_14:
+    WorkSet 0x4198, 0x8026
+    VMReturn
+L_LockerSet_15:
+    WorkSet 0x4197, 0x8026
+    VMReturn
+L_LockerSet_16:
+    WorkSet 0x4193, 0x8026
+    VMReturn
+L_LockerSet_17:
+    WorkSet 0x418b, 0x8026
+    VMReturn
+L_LockerSet_18:
+    WorkSet 0x4180, 0x8026
+    VMReturn
+L_LockerSet_19:
+    WorkSet 0x4177, 0x8026
+    VMReturn
+L_LockerPut:
+    WorkSetConst 0x8031, 1
+    WorkGet 0x8032, 0x41a7
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_0
+    WorkCmpConst 0x41a7, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_0
+    WorkAdd 0x41a7, 1024
+    VMReturn
+L_LockerPutNext_0:
+    WorkGet 0x8032, 0x41a6
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_1
+    WorkCmpConst 0x41a6, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_1
+    WorkAdd 0x41a6, 1024
+    VMReturn
+L_LockerPutNext_1:
+    WorkGet 0x8032, 0x41a5
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_2
+    WorkCmpConst 0x41a5, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_2
+    WorkAdd 0x41a5, 1024
+    VMReturn
+L_LockerPutNext_2:
+    WorkGet 0x8032, 0x41a4
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_3
+    WorkCmpConst 0x41a4, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_3
+    WorkAdd 0x41a4, 1024
+    VMReturn
+L_LockerPutNext_3:
+    WorkGet 0x8032, 0x41a3
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_4
+    WorkCmpConst 0x41a3, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_4
+    WorkAdd 0x41a3, 1024
+    VMReturn
+L_LockerPutNext_4:
+    WorkGet 0x8032, 0x41a2
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_5
+    WorkCmpConst 0x41a2, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_5
+    WorkAdd 0x41a2, 1024
+    VMReturn
+L_LockerPutNext_5:
+    WorkGet 0x8032, 0x41a1
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_6
+    WorkCmpConst 0x41a1, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_6
+    WorkAdd 0x41a1, 1024
+    VMReturn
+L_LockerPutNext_6:
+    WorkGet 0x8032, 0x41a0
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_7
+    WorkCmpConst 0x41a0, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_7
+    WorkAdd 0x41a0, 1024
+    VMReturn
+L_LockerPutNext_7:
+    WorkGet 0x8032, 0x419e
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_8
+    WorkCmpConst 0x419e, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_8
+    WorkAdd 0x419e, 1024
+    VMReturn
+L_LockerPutNext_8:
+    WorkGet 0x8032, 0x419d
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_9
+    WorkCmpConst 0x419d, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_9
+    WorkAdd 0x419d, 1024
+    VMReturn
+L_LockerPutNext_9:
+    WorkGet 0x8032, 0x419c
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_10
+    WorkCmpConst 0x419c, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_10
+    WorkAdd 0x419c, 1024
+    VMReturn
+L_LockerPutNext_10:
+    WorkGet 0x8032, 0x419b
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_11
+    WorkCmpConst 0x419b, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_11
+    WorkAdd 0x419b, 1024
+    VMReturn
+L_LockerPutNext_11:
+    WorkGet 0x8032, 0x419a
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_12
+    WorkCmpConst 0x419a, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_12
+    WorkAdd 0x419a, 1024
+    VMReturn
+L_LockerPutNext_12:
+    WorkGet 0x8032, 0x4199
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_13
+    WorkCmpConst 0x4199, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_13
+    WorkAdd 0x4199, 1024
+    VMReturn
+L_LockerPutNext_13:
+    WorkGet 0x8032, 0x4198
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_14
+    WorkCmpConst 0x4198, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_14
+    WorkAdd 0x4198, 1024
+    VMReturn
+L_LockerPutNext_14:
+    WorkGet 0x8032, 0x4197
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_15
+    WorkCmpConst 0x4197, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_15
+    WorkAdd 0x4197, 1024
+    VMReturn
+L_LockerPutNext_15:
+    WorkGet 0x8032, 0x4193
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_16
+    WorkCmpConst 0x4193, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_16
+    WorkAdd 0x4193, 1024
+    VMReturn
+L_LockerPutNext_16:
+    WorkGet 0x8032, 0x418b
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_17
+    WorkCmpConst 0x418b, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_17
+    WorkAdd 0x418b, 1024
+    VMReturn
+L_LockerPutNext_17:
+    WorkGet 0x8032, 0x4180
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_18
+    WorkCmpConst 0x4180, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_18
+    WorkAdd 0x4180, 1024
+    VMReturn
+L_LockerPutNext_18:
+    WorkGet 0x8032, 0x4177
+    WorkAnd 0x8032, 1023
+    WorkCmpWork 0x8032, 0x8030
+    VMJumpIf CMP_NE, L_LockerPutNext_19
+    WorkCmpConst 0x4177, 64512
+    VMJumpIf CMP_GE, L_LockerPutNext_19
+    WorkAdd 0x4177, 1024
+    VMReturn
+L_LockerPutNext_19:
+    WorkCmpConst 0x41a7, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_0
+    WorkSet 0x41a7, 0x8030
+    WorkAdd 0x41a7, 1024
+    VMReturn
+L_LockerPutFree_0:
+    WorkCmpConst 0x41a6, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_1
+    WorkSet 0x41a6, 0x8030
+    WorkAdd 0x41a6, 1024
+    VMReturn
+L_LockerPutFree_1:
+    WorkCmpConst 0x41a5, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_2
+    WorkSet 0x41a5, 0x8030
+    WorkAdd 0x41a5, 1024
+    VMReturn
+L_LockerPutFree_2:
+    WorkCmpConst 0x41a4, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_3
+    WorkSet 0x41a4, 0x8030
+    WorkAdd 0x41a4, 1024
+    VMReturn
+L_LockerPutFree_3:
+    WorkCmpConst 0x41a3, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_4
+    WorkSet 0x41a3, 0x8030
+    WorkAdd 0x41a3, 1024
+    VMReturn
+L_LockerPutFree_4:
+    WorkCmpConst 0x41a2, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_5
+    WorkSet 0x41a2, 0x8030
+    WorkAdd 0x41a2, 1024
+    VMReturn
+L_LockerPutFree_5:
+    WorkCmpConst 0x41a1, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_6
+    WorkSet 0x41a1, 0x8030
+    WorkAdd 0x41a1, 1024
+    VMReturn
+L_LockerPutFree_6:
+    WorkCmpConst 0x41a0, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_7
+    WorkSet 0x41a0, 0x8030
+    WorkAdd 0x41a0, 1024
+    VMReturn
+L_LockerPutFree_7:
+    WorkCmpConst 0x419e, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_8
+    WorkSet 0x419e, 0x8030
+    WorkAdd 0x419e, 1024
+    VMReturn
+L_LockerPutFree_8:
+    WorkCmpConst 0x419d, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_9
+    WorkSet 0x419d, 0x8030
+    WorkAdd 0x419d, 1024
+    VMReturn
+L_LockerPutFree_9:
+    WorkCmpConst 0x419c, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_10
+    WorkSet 0x419c, 0x8030
+    WorkAdd 0x419c, 1024
+    VMReturn
+L_LockerPutFree_10:
+    WorkCmpConst 0x419b, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_11
+    WorkSet 0x419b, 0x8030
+    WorkAdd 0x419b, 1024
+    VMReturn
+L_LockerPutFree_11:
+    WorkCmpConst 0x419a, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_12
+    WorkSet 0x419a, 0x8030
+    WorkAdd 0x419a, 1024
+    VMReturn
+L_LockerPutFree_12:
+    WorkCmpConst 0x4199, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_13
+    WorkSet 0x4199, 0x8030
+    WorkAdd 0x4199, 1024
+    VMReturn
+L_LockerPutFree_13:
+    WorkCmpConst 0x4198, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_14
+    WorkSet 0x4198, 0x8030
+    WorkAdd 0x4198, 1024
+    VMReturn
+L_LockerPutFree_14:
+    WorkCmpConst 0x4197, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_15
+    WorkSet 0x4197, 0x8030
+    WorkAdd 0x4197, 1024
+    VMReturn
+L_LockerPutFree_15:
+    WorkCmpConst 0x4193, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_16
+    WorkSet 0x4193, 0x8030
+    WorkAdd 0x4193, 1024
+    VMReturn
+L_LockerPutFree_16:
+    WorkCmpConst 0x418b, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_17
+    WorkSet 0x418b, 0x8030
+    WorkAdd 0x418b, 1024
+    VMReturn
+L_LockerPutFree_17:
+    WorkCmpConst 0x4180, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_18
+    WorkSet 0x4180, 0x8030
+    WorkAdd 0x4180, 1024
+    VMReturn
+L_LockerPutFree_18:
+    WorkCmpConst 0x4177, 0
+    VMJumpIf CMP_NE, L_LockerPutFree_19
+    WorkSet 0x4177, 0x8030
+    WorkAdd 0x4177, 1024
+    VMReturn
+L_LockerPutFree_19:
+    WorkSetConst 0x8031, 0
+    VMReturn
+L_LockerCompact:
+    WorkCmpConst 0x41a7, 0
+    VMJumpIf CMP_NE, L_LockerCompact_0
+    WorkSet 0x41a7, 0x41a6
+    WorkSetConst 0x41a6, 0
+L_LockerCompact_0:
+    WorkCmpConst 0x41a6, 0
+    VMJumpIf CMP_NE, L_LockerCompact_1
+    WorkSet 0x41a6, 0x41a5
+    WorkSetConst 0x41a5, 0
+L_LockerCompact_1:
+    WorkCmpConst 0x41a5, 0
+    VMJumpIf CMP_NE, L_LockerCompact_2
+    WorkSet 0x41a5, 0x41a4
+    WorkSetConst 0x41a4, 0
+L_LockerCompact_2:
+    WorkCmpConst 0x41a4, 0
+    VMJumpIf CMP_NE, L_LockerCompact_3
+    WorkSet 0x41a4, 0x41a3
+    WorkSetConst 0x41a3, 0
+L_LockerCompact_3:
+    WorkCmpConst 0x41a3, 0
+    VMJumpIf CMP_NE, L_LockerCompact_4
+    WorkSet 0x41a3, 0x41a2
+    WorkSetConst 0x41a2, 0
+L_LockerCompact_4:
+    WorkCmpConst 0x41a2, 0
+    VMJumpIf CMP_NE, L_LockerCompact_5
+    WorkSet 0x41a2, 0x41a1
+    WorkSetConst 0x41a1, 0
+L_LockerCompact_5:
+    WorkCmpConst 0x41a1, 0
+    VMJumpIf CMP_NE, L_LockerCompact_6
+    WorkSet 0x41a1, 0x41a0
+    WorkSetConst 0x41a0, 0
+L_LockerCompact_6:
+    WorkCmpConst 0x41a0, 0
+    VMJumpIf CMP_NE, L_LockerCompact_7
+    WorkSet 0x41a0, 0x419e
+    WorkSetConst 0x419e, 0
+L_LockerCompact_7:
+    WorkCmpConst 0x419e, 0
+    VMJumpIf CMP_NE, L_LockerCompact_8
+    WorkSet 0x419e, 0x419d
+    WorkSetConst 0x419d, 0
+L_LockerCompact_8:
+    WorkCmpConst 0x419d, 0
+    VMJumpIf CMP_NE, L_LockerCompact_9
+    WorkSet 0x419d, 0x419c
+    WorkSetConst 0x419c, 0
+L_LockerCompact_9:
+    WorkCmpConst 0x419c, 0
+    VMJumpIf CMP_NE, L_LockerCompact_10
+    WorkSet 0x419c, 0x419b
+    WorkSetConst 0x419b, 0
+L_LockerCompact_10:
+    WorkCmpConst 0x419b, 0
+    VMJumpIf CMP_NE, L_LockerCompact_11
+    WorkSet 0x419b, 0x419a
+    WorkSetConst 0x419a, 0
+L_LockerCompact_11:
+    WorkCmpConst 0x419a, 0
+    VMJumpIf CMP_NE, L_LockerCompact_12
+    WorkSet 0x419a, 0x4199
+    WorkSetConst 0x4199, 0
+L_LockerCompact_12:
+    WorkCmpConst 0x4199, 0
+    VMJumpIf CMP_NE, L_LockerCompact_13
+    WorkSet 0x4199, 0x4198
+    WorkSetConst 0x4198, 0
+L_LockerCompact_13:
+    WorkCmpConst 0x4198, 0
+    VMJumpIf CMP_NE, L_LockerCompact_14
+    WorkSet 0x4198, 0x4197
+    WorkSetConst 0x4197, 0
+L_LockerCompact_14:
+    WorkCmpConst 0x4197, 0
+    VMJumpIf CMP_NE, L_LockerCompact_15
+    WorkSet 0x4197, 0x4193
+    WorkSetConst 0x4193, 0
+L_LockerCompact_15:
+    WorkCmpConst 0x4193, 0
+    VMJumpIf CMP_NE, L_LockerCompact_16
+    WorkSet 0x4193, 0x418b
+    WorkSetConst 0x418b, 0
+L_LockerCompact_16:
+    WorkCmpConst 0x418b, 0
+    VMJumpIf CMP_NE, L_LockerCompact_17
+    WorkSet 0x418b, 0x4180
+    WorkSetConst 0x4180, 0
+L_LockerCompact_17:
+    WorkCmpConst 0x4180, 0
+    VMJumpIf CMP_NE, L_LockerCompact_18
+    WorkSet 0x4180, 0x4177
+    WorkSetConst 0x4177, 0
+L_LockerCompact_18:
     VMReturn

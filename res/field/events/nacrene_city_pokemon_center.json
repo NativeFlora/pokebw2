@@ -30,6 +30,66 @@
                 "y": 6,
                 "z": 48
             }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 9,
+                "y": 17,
+                "z": -4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 9,
+                "y": 17,
+                "z": 0
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 9,
+                "y": 17,
+                "z": 4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 9,
+                "y": 18,
+                "z": -4
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 9,
+                "y": 18,
+                "z": 0
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 9,
+                "y": 18,
+                "z": 4
+            }
         }
     ],
     "npcs": [

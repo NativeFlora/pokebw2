@@ -60,6 +60,66 @@
                 "y": 3,
                 "z": 52
             }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 10,
+                "y": 2,
+                "z": 44
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 10,
+                "y": 2,
+                "z": 48
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 10,
+                "y": 2,
+                "z": 52
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 11,
+                "y": 2,
+                "z": 44
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 11,
+                "y": 2,
+                "z": 48
+            }
+        },
+        {
+            "script": 11027,
+            "condition": 0,
+            "direction": 4,
+            "grid": {
+                "x": 11,
+                "y": 2,
+                "z": 52
+            }
         }
     ],
     "npcs": [],

@@ -115,7 +115,44 @@ for i, spot in enumerate(spots):
                 f'    FlagSet {flag:#x}\n    VMJump L_LootNext_{i}\nL_LootOut_{i}:\n    FlagReset {flag:#x}\n'
                 f'L_LootNext_{i}:\n')
 loot.append('    VMReturn\n')
+# The locker: LOCKER_SLOTS slots, each in an event work value of its own (docs/efu.md), holding an item and its count
+# as item | count << 10 (BW2's items are under 1024), 0 when empty. The used slots come first, so the list menu's rows
+# are the slots. L_LockerList adds a row per used slot (its value the slot) and counts them in 0x8029; L_LockerGet and
+# L_LockerSet read and write slot 0x8027 through 0x8026; L_LockerPut puts one of item 0x8030 in its slot, or the first
+# free one, and says in 0x8031 whether it did; L_LockerCompact closes the gap a slot that emptied leaves
+LOCKER_WORKS = [0x41a7, 0x41a6, 0x41a5, 0x41a4, 0x41a3, 0x41a2, 0x41a1, 0x41a0, 0x419e, 0x419d, 0x419c, 0x419b, 0x419a,
+                0x4199, 0x4198, 0x4197, 0x4193, 0x418b, 0x4180, 0x4177]
+LOCKER_STACK = 63
+lk = ['L_LockerList:\n    WorkSetConst 0x8029, 0\n']
+for i, w in enumerate(LOCKER_WORKS):
+    lk.append(f'    WorkCmpConst {w:#x}, 0\n    VMJumpIf CMP_EQ, L_LockerListDone\n'
+              f'    WorkGet 0x8022, {w:#x}\n    WorkAnd 0x8022, 1023\n    WorkGet 0x8021, {w:#x}\n    WorkDiv 0x8021, 1024\n'
+              f'    WordSetItemNameEx 0, 0x8022, 1, 0\n    WordSetNumber 1, 0x8021, 2\n'
+              f'    ListMenuAdd Efu_Text_LockerSlot, 65535, {i}\n    WorkAdd 0x8029, 1\n')
+lk.append('L_LockerListDone:\n    VMReturn\n')
+for name, op in (('Get', 'WorkGet 0x8026, {w:#x}'), ('Set', 'WorkSet {w:#x}, 0x8026')):
+    lk.append(f'L_Locker{name}:\n')
+    for i, w in enumerate(LOCKER_WORKS):
+        lk.append(f'    WorkCmpConst 0x8027, {i}\n    VMJumpIf CMP_EQ, L_Locker{name}_{i}\n')
+    lk.append('    VMReturn\n')
+    for i, w in enumerate(LOCKER_WORKS):
+        lk.append(f'L_Locker{name}_{i}:\n    {op.format(w=w)}\n    VMReturn\n')
+lk.append('L_LockerPut:\n    WorkSetConst 0x8031, 1\n')
+for i, w in enumerate(LOCKER_WORKS):
+    lk.append(f'    WorkGet 0x8032, {w:#x}\n    WorkAnd 0x8032, 1023\n    WorkCmpWork 0x8032, 0x8030\n'
+              f'    VMJumpIf CMP_NE, L_LockerPutNext_{i}\n    WorkCmpConst {w:#x}, {LOCKER_STACK << 10}\n'
+              f'    VMJumpIf CMP_GE, L_LockerPutNext_{i}\n    WorkAdd {w:#x}, 1024\n    VMReturn\nL_LockerPutNext_{i}:\n')
+for i, w in enumerate(LOCKER_WORKS):
+    lk.append(f'    WorkCmpConst {w:#x}, 0\n    VMJumpIf CMP_NE, L_LockerPutFree_{i}\n'
+              f'    WorkSet {w:#x}, 0x8030\n    WorkAdd {w:#x}, 1024\n    VMReturn\nL_LockerPutFree_{i}:\n')
+lk.append('    WorkSetConst 0x8031, 0\n    VMReturn\nL_LockerCompact:\n')
+for i, (w, nxt) in enumerate(zip(LOCKER_WORKS, LOCKER_WORKS[1:])):
+    lk.append(f'    WorkCmpConst {w:#x}, 0\n    VMJumpIf CMP_NE, L_LockerCompact_{i}\n'
+              f'    WorkSet {w:#x}, {nxt:#x}\n    WorkSetConst {nxt:#x}, 0\nL_LockerCompact_{i}:\n')
+lk.append('    VMReturn\n')
 tmpl = open(os.path.join(here, 'efu.s.in')).read()
+tmpl = tmpl.replace('@LOCKER@\n', ''.join(lk))
+tmpl = tmpl.replace('@LOCKER_SLOTS@', str(len(LOCKER_WORKS)))
 tmpl = tmpl.replace('@LOST_SOUL@\n', ''.join(ls))
 tmpl = tmpl.replace('@LOOT@\n', ''.join(loot))
 # The target's scavs fight again on each entry they are out (build_raid.py's TARGET_SCAVS)
