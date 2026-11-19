@@ -3,8 +3,9 @@
 Idempotent, like build_base.py. The zone runs Route 3 → Route 2 → Pinwheel Forest → Route 19 → Route 20 (docs/efu.md):
 - MAP_MATRIX_EFU_ZONE_1 (res/field/matrices/efu_zone_1.json): Route 3, the west chunk of Striaton (its garden) and
   Route 2, each where it is in the overworld, so their ground meets as it always did and their events keep their
-  coordinates. Striaton's other chunks are forest, and a path is cut through the trees between the garden and Route 2
-  (CUTS), the way on from Route 3's road south;
+  coordinates. Striaton's other chunks are forest. A path is cut south through the trees at the garden's foot (CUTS)
+  to the forest's way in (a warp, build_raid.py), and the garden's road east ends at a warp to Route 2's south end;
+  Route 2's own way north to Striaton ends in the trees;
 - MAP_MATRIX_EFU_ZONE_2 (efu_zone_2.json): Route 19 moved one chunk east and one north, into Floccesy Town's place, and
   raised 16 units, so its path east meets Route 20's path west; Route 20 and Floccesy Ranch where they are;
 - copies of the chunks that change (res/field/maps/models/efu_zone_*): cut, raised or with tiles blocked at a seam;
@@ -65,7 +66,7 @@ RAISED = {(1, 21): 16, (2, 21): 16}
 # The paths cut through the trees: in each chunk, a rectangle of tiles (x0, z0, x1, z1, the ends exclusive) where
 # everything above the ground goes, grass is laid and the tiles are walked on. Tree rows stand every 32 units from
 # x 16, so a cut from tile 17 to 20 keeps the rows at its sides as its walls
-CUTS = {(23, 18): [(17, 28, 21, 32)], (23, 19): [(17, 0, 21, 10)]}
+CUTS = {(23, 18): [(17, 28, 21, 32)]}
 # Tiles blocked in a copy: Route 19's high ground at its east edge, which met Floccesy Town's and would let the player
 # step down onto Route 20's lower ground
 BLOCKED = {(2, 21): [(31, 0), (31, 1)]}

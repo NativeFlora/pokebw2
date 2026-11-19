@@ -6,11 +6,12 @@ Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) an
 - the scavs' Trainers (res/trainers/data): single battles with two to six Pokémon at 65 to 90% of the level cap,
   evolved as far as that level takes them, with new lines;
 - the events of its routes (Route 3, Route 2, Route 19, Route 20 and Floccesy Ranch, in their matrices' coordinates,
-  build_zone.py): nobody but the scavs and the items; each scav, a Team Plasma Grunt to look at, is hidden by its own
-  flag (EFU_FLAG_SCAV_FIRST, then EFU_FLAG_SCAV2_FIRST), stands looking around (MOVE_CODE_TURN_RANDOM) once it comes
+  build_zone.py): nobody but the scavs and the items; a scav at each spot where one of the route's people stood, a
+  Team Plasma Grunt to look at, hidden by its own flag (EFU_FLAG_SPOT_FIRST), and the garden's; each stands looking around (MOVE_CODE_TURN_RANDOM) once it comes
   out, never stepping until it has seen the player, and its Trainer sight is EFU_SCAV_CATCH tiles; the pursuit
-  (event_trainer_eye.c), which sees EFU_SCAV_SIGHT, does the rest. Their doors are rewired into the zone: Route 2's
-  north end into Pinwheel Forest, the forest out to Route 19, Route 2's and Route 20's gates home;
+  (event_trainer_eye.c), which sees EFU_SCAV_SIGHT, does the rest. Their doors are rewired into the zone: the garden's
+  path south into Pinwheel Forest and its road east to Route 2's south end, the forest out to Route 19, Route 2's and
+  Route 20's gates home;
 - the caves' and the target's events, the childcare centre's and the Day Care's;
 - the Grunts' Trainer classes, named Scav.
 """
@@ -86,15 +87,15 @@ SCAVS = {
                             "The deeper you go, the more\nyou find. And the more find you."),
     'youngster_keita_2': (False, "I heard you coming a mile off.\nDrop the bag!{be01}", "Aw, man...",
                           "There's good stuff under these\ntrees. I'm not telling you where."),
-    # Route 2's (their hide flags from EFU_FLAG_SCAV2_FIRST)
+    # Route 2's
     'veteran_rayne': (False, "I've seen worse than you crawl\nout of that forest.{be01}", "Heh. Not bad, kid.",
-                      "The forest gate's up north.\nGo in light, come out heavy."),
+                      "The forest's way in is past the\ngarden. Go in light, come out heavy."),
     'lass_henrietta': (True, "Nobody walks this road anymore.\nExcept people with stuff!{be01}", "Hmph! Lucky shot!",
                        "The old gate south still works.\nFor a price."),
     'lass_mali': (True, "You look like you've got\nsomething to share!{be01}", "Okay, okay, I'll share mine...",
                   "I used to pick flowers here.\nNow I pick pockets."),
     'youngster_mikey': (False, "This is my road!\nPay the toll!{be01}", "Toll waived... this time.",
-                        "Everybody heading north passes\nme. Everybody pays."),
+                        "Everybody heading home passes\nme. Everybody pays."),
     'veteran_oriana': (True, "I've fought through three winters\nout here. You won't stop me!{be01}",
                        "Maybe it's time to rest...", "Stay off the main path after\ndark. That's when we hunt."),
 }
@@ -102,10 +103,8 @@ SCAVS = {
 SCAV_CLASS = {False: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_M', True: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_F'}
 SCAV_MODEL = {False: 'OBJ_CODE_TEAM_PLASMA_GRUNT_M', True: 'OBJ_CODE_TEAM_PLASMA_GRUNT_F'}
 SCAV_CLASS_NAME = 'Scav'
-FLAG_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
-SCAV_MAX = int(re.search(r'#define EFU_SCAV_MAX (\d+)', efu_h).group(1))
-FLAG_SCAV2_FIRST = int(re.search(r'#define EFU_FLAG_SCAV2_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
-SCAV2_MAX = int(re.search(r'#define EFU_SCAV2_MAX (\d+)', efu_h).group(1))
+FLAG_SPOT_FIRST = int(re.search(r'#define EFU_FLAG_SPOT_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+SPOT_MAX = int(re.search(r'#define EFU_SPOT_MAX (\d+)', efu_h).group(1))
 FLAG_DOOR_FIRST = int(re.search(r'#define EFU_FLAG_DOOR_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 assert int(re.search(r'#define EFU_DOOR_COUNT (\d+)', efu_h).group(1)) == 3
 FLAG_TARGET_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_TARGET_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
@@ -155,15 +154,17 @@ DOORS = ['ZONE_ROUTE_3_2', 'ZONE_WELLSPRING_CAVE', 'ZONE_CAVE_OF_BEING']
 # The tile a warp is walked into from, by the direction the player faces on arriving there (the warp's unk4, a DIR_*
 # plus 1): the player walks into it the other way
 APPROACH = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+# The routes' scavs' NPC IDs, from this one (the garden's is the one before)
+SPOT_ID_FIRST = 128
 # The guide, out on Route 3 by the way in, until the player has met them (Script_GuideMeet)
 GUIDE = {'id': 121, 'model': 'OBJ_CODE_76', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
          'flag': efu_flag('GUIDE_MET'), 'script': efu_script('GUIDE_MEET'), 'direction': 'DIR_DOWN',
          'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': {'x': 684, 'z': 594, 'y': 0}}
-# The inner forest's ways out, by the zone each led to: A, its way in from Route 2's north end (its old way out to the
+# The inner forest's ways out, by the zone each led to: A, its way in from the garden's path south (its old way out to the
 # outer forest), B, out to Route 19's old gate to Aspertia (its old gate to Skyarrow Bridge), and C, Rumination Field's
 # (unchanged)
 FOREST_WAYS = {
-    'ZONE_PINWHEEL_FOREST': lambda route_warps: {'zone': 'ZONE_ROUTE_2', 'warp': route_warps['route_2']},
+    'ZONE_PINWHEEL_FOREST': lambda route_warps: {'zone': 'ZONE_ROUTE_3', 'warp': route_warps['garden_south']},
     'ZONE_BRIDGE_GATE': lambda route_warps: {'zone': 'ZONE_ROUTE_19', 'warp': 0},
 }
 # New item balls, where nothing was: where the lake trio stood in the Cave of Being
@@ -294,21 +295,39 @@ def is_item_ball(n):
     return ITEM_SCRIPTS[0] <= n['script'] <= ITEM_SCRIPTS[1] and n['flag']
 
 
+def scav_npc(n, tid, npc_id, flag):
+    """A scav standing where n stood, fighting as Trainer tid, hidden by flag until it comes out."""
+    female = SCAVS[scav_key(tid)][0]
+    return dict(n, id=npc_id, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM',
+                type='ACTOR_EVENT_TYPE_TRAINER', script=3000 + tid, params=[SCAV_SIGHT, 0, 0],
+                flag='EVENT_FLAG_0x%04x' % flag, area={'width': SCAV_WANDER, 'height': SCAV_WANDER})
+
+
+def is_person(n):
+    # A person, not an object (a boulder, a sign, a Pokémon), whose model is named for what they are
+    model = n['model'][len('OBJ_CODE_'):]
+    return not model[0].isdigit() and not model.startswith('MODEL_') and not (
+        ITEM_SCRIPTS[0] <= n['script'] <= ITEM_SCRIPTS[1])
+
+
 class Scavs:
-    """The route scavs' hide flags, handed out in order: the first range (EFU_FLAG_SCAV_FIRST), then the second."""
+    """The routes' scavs: one at each spot where one of a route's people stood (and the garden's, Striaton's west
+    chunk, on Route 3), each hidden by its own flag from EFU_FLAG_SPOT_FIRST until a roll brings it out
+    (Script_RouteEnter, EfuScav_Spawn). Each fights as one of its route's Trainers, in turn."""
 
     def __init__(self):
-        self.flags = [FLAG_SCAV_FIRST + i for i in range(SCAV_MAX)] + [FLAG_SCAV2_FIRST + i for i in range(SCAV2_MAX)]
-        self.trainers = []
+        self.next_flag = FLAG_SPOT_FIRST
+        self.trainers = set()
 
-    def scav(self, n, **changes):
-        tid = n['script'] - 3000
-        female = SCAVS[scav_key(tid)][0]
-        # Hidden by their own flag until EventTrainerEye_EfuPursue brings them out
-        flag = self.flags[len(self.trainers)]
-        self.trainers.append(tid)
-        return dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM', params=[SCAV_SIGHT, 0, 0],
-                    flag='EVENT_FLAG_0x%04x' % flag, area={'width': SCAV_WANDER, 'height': SCAV_WANDER}, **changes)
+    def spots(self, people, pool):
+        npcs = []
+        for i, n in enumerate(people):
+            assert self.next_flag < FLAG_SPOT_FIRST + SPOT_MAX
+            tid = pool[i % len(pool)]
+            self.trainers.add(tid)
+            npcs.append(move_npc(scav_npc(n, tid, SPOT_ID_FIRST + i, self.next_flag)))
+            self.next_flag += 1
+        return npcs
 
 
 def is_scav(n):
@@ -339,17 +358,21 @@ def door_flag(zone):
     return 'EVENT_FLAG_0x%04x' % (FLAG_DOOR_FIRST + DOORS.index(zone))
 
 
-def build_route(name, loot, scavs, warps=None, extra_npcs=(), triggers=None):
-    """A route of the zone: its scavs and item balls (loot), in the matrix's coordinates, its signs, and its doors
-    (warps: each original warp's new zone and warp, None to keep it); a scav may come out on each later entry
-    (Script_RouteEnter)."""
+def route_trainers(name):
+    e = json.loads(orig(f'res/field/events/{name}.json'))
+    return [n['script'] - 3000 for n in e['npcs'] if is_scav(n)]
+
+
+def build_route(name, loot, scavs, pool, warps=None, extra_npcs=(), triggers=None, spot_extra=()):
+    """A route of the zone: its scavs (one at each of its people's spots, and spot_extra's, fighting as pool's
+    Trainers) and item balls (loot), in the matrix's coordinates, its signs, and its doors (warps: each original warp's
+    new zone and warp, None to keep it); a scav may come out on each entry (Script_RouteEnter)."""
     e = json.loads(orig(f'res/field/events/{name}.json'))
     npcs = []
     for n in e['npcs']:
-        if is_scav(n):
-            npcs.append(move_npc(scavs.scav(n)))
-        elif is_item_ball(n):
+        if is_item_ball(n):
             npcs.append(move_npc(loot.ball(n, 'route')))
+    npcs += scavs.spots([n for n in e['npcs'] if is_person(n)] + list(spot_extra), pool)
     # Signs and the like stay (the route's own scripts); the hidden items go, since they can't be rolled again
     e['bg_events'] = [move_bg(b) for b in e['bg_events'] if not HIDDEN_SCRIPTS[0] <= b['script'] <= HIDDEN_SCRIPTS[1]]
     # Their story's triggers (the rival's and Bianca's lessons) go, Route 3's aside
@@ -374,40 +397,72 @@ def build_route(name, loot, scavs, warps=None, extra_npcs=(), triggers=None):
     return e['warps']
 
 
-# Route 2's way north out of the zone, where it met Striaton: the forest's way in (A on Tom's map), a warp walked into
-# (WARP_TRANSITION_WALK_IN, going up) on the forest's blocked row just north of the path's end (tiles 16 to 21 of chunk
-# 24, 19)
-ROUTE_2_NORTH = {'zone': 'ZONE_PINWHEEL_FOREST_2', 'warp': 0, 'unk4': 2, 'transition': 4,
-                 'grid': {'x': (24 * 32 + 16) * 16 + 8, 'y': 0, 'z': (19 * 32 - 1) * 16 + 8, 'width': 6, 'height': 1,
-                          'unk0a': 0}}
+# The garden's road east, where it met the rest of Striaton: a warp walked into (going right) on the forest's first
+# column, to Route 2's south end, and that end's way back (going down), below the path's last tiles (tiles 14 and 15 of
+# chunk 23, 20)
+GARDEN_EAST = {'zone': 'ZONE_ROUTE_2', 'unk4': 3, 'transition': 4,
+               'grid': {'x': (24 * 32) * 16 + 8, 'y': 0, 'z': (18 * 32 + 14) * 16 + 8, 'width': 1, 'height': 4,
+                        'unk0a': 0}}
+ROUTE_2_SOUTH = {'zone': 'ZONE_ROUTE_3', 'unk4': 1, 'transition': 4,
+                 'grid': {'x': (23 * 32 + 14) * 16 + 8, 'y': 0, 'z': (20 * 32 + 14) * 16 + 8, 'width': 2,
+                          'height': 1, 'unk0a': 0}}
+# The forest's way in (A on Tom's map): the end of the path cut south from the garden (build_zone.py's CUTS), a warp
+# walked into going down on the trees' first row past it (tiles 17 to 20 of chunk 23, 19)
+GARDEN_SOUTH = {'zone': 'ZONE_PINWHEEL_FOREST_2', 'warp': 0, 'unk4': 1, 'transition': 4,
+                'grid': {'x': (23 * 32 + 17) * 16 + 8, 'y': 0, 'z': (19 * 32) * 16 + 8, 'width': 4, 'height': 1,
+                         'unk0a': 0}}
+# The garden's scav, out on every raid from the start (EFU_FLAG_GARDEN_SCAV): its Trainer, and the spot it stands on
+# (the Pokémon Breeder's), which no other scav takes
+GARDEN_SCAV = {'trainer': 395, 'grid': {'x': 755, 'z': 588}}
+# Striaton's people in the garden: Route 3's spots there
+GARDEN_CHUNK = (23, 18)
+
+
+def garden_people():
+    e = json.loads(orig('res/field/events/striaton_city.json'))
+    return [n for n in e['npcs'] if is_person(n) and chunk_of(n['grid']['x'], n['grid']['z']) == GARDEN_CHUNK
+            and (n['grid']['x'], n['grid']['z']) != (GARDEN_SCAV['grid']['x'], GARDEN_SCAV['grid']['z'])]
+
+
+def garden_scav():
+    e = json.loads(orig('res/field/events/striaton_city.json'))
+    n = next(n for n in e['npcs'] if (n['grid']['x'], n['grid']['z']) == (GARDEN_SCAV['grid']['x'],
+                                                                         GARDEN_SCAV['grid']['z']))
+    return move_npc(scav_npc(n, GARDEN_SCAV['trainer'], SPOT_ID_FIRST - 1,
+                             int(efu_flag('GARDEN_SCAV')[len('EVENT_FLAG_'):], 16)))
 
 
 def build_events(loot):
-    """The zone's routes: Route 3, Route 2, Route 19, Route 20 and Floccesy Ranch."""
+    """The zone's routes: Route 3 (with Striaton's garden), Route 2, Route 19, Route 20 and Floccesy Ranch."""
     scavs = Scavs()
-    route_3 = build_route('route_3', loot, scavs, extra_npcs=[GUIDE])
-    route_20 = build_route('route_20', loot, scavs, warps={
+    route_3_pool = route_trainers('route_3')
+    route_20_pool = route_trainers('route_20')
+    route_2_pool = route_trainers('route_2')
+    scavs.trainers.add(GARDEN_SCAV['trainer'])
+    route_2_n = len(json.loads(orig('res/field/events/route_2.json'))['warps'])
+    route_3_n = len(json.loads(orig('res/field/events/route_3.json'))['warps'])
+    route_3 = build_route('route_3', loot, scavs, route_3_pool, extra_npcs=[GUIDE, garden_scav()],
+                          spot_extra=garden_people(),
+                          warps={'new': [dict(GARDEN_EAST, warp=route_2_n), GARDEN_SOUTH]})
+    build_route('route_20', loot, scavs, route_20_pool, warps={
         # The gate to Virbank is a way home, and the Cave of Being a cave
         0: {'zone': 'ZONE_NACRENE_GATE', 'warp': 0}}, triggers=[])
-    # Route 2's Trainers take the second range of flags
-    assert len(scavs.trainers) <= SCAV_MAX
-    scavs.trainers += [None] * (SCAV_MAX - len(scavs.trainers))
     gate = json.loads(orig('res/field/events/route_2.json'))['warps'][0]['grid']
     dx, dz = APPROACH[3]
-    route_2 = build_route('route_2', loot, scavs, warps={
+    build_route('route_2', loot, scavs, route_2_pool, warps={
         # Its old gate to Accumula Town is a ride home for a fee (Script_PaidExit, a trigger in front of it)
-        0: {'zone': 'ZONE_NACRENE_GATE', 'warp': 0}, 'new': [ROUTE_2_NORTH]},
+        0: {'zone': 'ZONE_NACRENE_GATE', 'warp': 0}, 'new': [dict(ROUTE_2_SOUTH, warp=route_3_n)]},
         triggers=[{'script': efu_script('PAID_EXIT'), 'var': 'EVENT_WORK_0x%04x' % EFU_WORK_RAID, 'value': 1,
                    'type': 0, 'grid': {'x': gate['x'] // 16 + dx, 'z': gate['z'] // 16 + dz, 'width': 1,
                                        'height': gate['height'], 'y': 0}, 'unk14': 0}])
-    # Route 19's gate to Aspertia is the forest's way out (B), now a path into the trees
-    build_route('route_19', loot, scavs, warps={0: {'zone': 'ZONE_PINWHEEL_FOREST_2', 'warp': 1}}, triggers=[])
-    build_route('floccesy_ranch', loot, scavs, triggers=[])
-    scavs.trainers = [t for t in scavs.trainers if t is not None]
-    assert len(scavs.trainers) <= SCAV_MAX + SCAV2_MAX
-    route_warps = {'route_3': {w['zone']: i for i, w in enumerate(route_3)},
-                   'route_2': len(route_2) - 1}
-    return scavs.trainers, route_warps
+    # Route 19's gate to Aspertia is the forest's way out (B), now a path into the trees. It has no Trainers of its
+    # own, so its scavs are Route 20's
+    build_route('route_19', loot, scavs, route_20_pool, warps={0: {'zone': 'ZONE_PINWHEEL_FOREST_2', 'warp': 1}},
+                triggers=[])
+    build_route('floccesy_ranch', loot, scavs, route_20_pool, triggers=[])
+    print('route spots', scavs.next_flag - FLAG_SPOT_FIRST, 'of', SPOT_MAX)
+    route_warps = {'route_3': {w['zone']: i for i, w in enumerate(route_3)}, 'garden_south': route_3_n + 1}
+    return sorted(scavs.trainers), route_warps
 
 
 def build_daycare():

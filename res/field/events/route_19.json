@@ -251,6 +251,75 @@
                 "z": 655,
                 "y": 131072
             }
+        },
+        {
+            "id": 128,
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
+            "movement": "MOVE_CODE_TURN_RANDOM",
+            "type": "ACTOR_EVENT_TYPE_TRAINER",
+            "flag": "EVENT_FLAG_0x0a2d",
+            "script": 3392,
+            "direction": "DIR_DOWN",
+            "params": [
+                1,
+                0,
+                0
+            ],
+            "area": {
+                "width": 3,
+                "height": 3
+            },
+            "grid": {
+                "x": 113,
+                "z": 658,
+                "y": 131072
+            }
+        },
+        {
+            "id": 129,
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
+            "movement": "MOVE_CODE_TURN_RANDOM",
+            "type": "ACTOR_EVENT_TYPE_TRAINER",
+            "flag": "EVENT_FLAG_0x0a2e",
+            "script": 3176,
+            "direction": "DIR_LEFT",
+            "params": [
+                1,
+                0,
+                0
+            ],
+            "area": {
+                "width": 3,
+                "height": 3
+            },
+            "grid": {
+                "x": 109,
+                "z": 665,
+                "y": 131072
+            }
+        },
+        {
+            "id": 130,
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
+            "movement": "MOVE_CODE_TURN_RANDOM",
+            "type": "ACTOR_EVENT_TYPE_TRAINER",
+            "flag": "EVENT_FLAG_0x0a2f",
+            "script": 3164,
+            "direction": "DIR_UP",
+            "params": [
+                1,
+                0,
+                0
+            ],
+            "area": {
+                "width": 3,
+                "height": 3
+            },
+            "grid": {
+                "x": 123,
+                "z": 647,
+                "y": 458752
+            }
         }
     ],
     "warps": [

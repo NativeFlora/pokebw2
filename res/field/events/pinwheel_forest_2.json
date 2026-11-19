@@ -582,8 +582,8 @@
     ],
     "warps": [
         {
-            "zone": "ZONE_ROUTE_2",
-            "warp": 1,
+            "zone": "ZONE_ROUTE_3",
+            "warp": 5,
             "unk4": 3,
             "transition": 4,
             "grid": {

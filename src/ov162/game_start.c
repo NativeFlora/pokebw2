@@ -1,3 +1,4 @@
+#include "efu.h"
 #include "types.h"
 #include "app/game_start.h"
 #include "app/name_entry.h"
@@ -27,6 +28,7 @@
 #include "nitro/gx.h"
 #include "nitro/hw.h"
 #include "save/config.h"
+#include "save/event_work.h"
 #include "save/player_info.h"
 #include "save/save_control.h"
 #include "save/save_control_intr.h"
@@ -223,6 +225,9 @@ static BOOL NewGame_Init(GameProc *proc, u32 *state, void *param, void *work) {
     wk->saveTask = SaveControlIntr_Create(HEAPID_USER, save);
     NewGame_EraseOutsideKeys(save);
     SaveControl_InitNewGame(save);
+    if (param != NULL) {
+        *EventWork_GetWkPtr(getConstDataBlock(save), EFU_WORK_DEV_TEST) = TRUE;
+    }
     wk->save = save;
     wk->newPlayerInfo = PlayerInfo_Create(HEAPID_USER);
     wk->newConfig = Config_Create(HEAPID_USER);

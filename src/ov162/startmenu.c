@@ -475,7 +475,8 @@ static BOOL StartMenu_Exit(GameProc *proc, u32 *state, void *param, void *work) 
         GCTX_ProcMgrReplaceProc(OVERLAY_ID(182), &DWC_UTILITY_RESET_PROC_FUNCTIONS, NULL);
         break;
     case ITEM_MIC_TEST:
-        GCTX_ProcMgrReplaceProc(OVERLAY_ID(253), &MIC_TEST_PROC_FUNCTIONS, NULL);
+        // Escape from Unova: Dev Test, a new game whose first Pokémon is a play tester's (NewGame_Init)
+        GCTX_ProcMgrReplaceProc(OVERLAY_ID(162), &NEW_GAME_PROC_FUNCTIONS, (void *)TRUE);
         break;
     case ITEM_MB_PARENT:
         mbParentParam = GFL_HeapAllocate(HEAPID_USER, sizeof(MBParentParam), TRUE, "startmenu.c", 605);
@@ -1432,12 +1433,15 @@ static void StartMenu_SetBlend(void) {
 static void StartMenu_InitItems(StartMenuWork *wk) {
     u32 n = 0;
 
-    // Escape from Unova: only Continue and New Game
+    // Escape from Unova: only Continue, New Game and Dev Test (the Mic Test's item, renamed: a new game with a
+    // play tester's Pokémon, GameStart_DevTest)
     if (SaveControl_IsDataAlreadyPresent(wk->save) == TRUE) {
         wk->items[n] = ITEM_CONTINUE;
         n++;
     }
     wk->items[n] = ITEM_NEW_GAME;
+    n++;
+    wk->items[n] = ITEM_MIC_TEST;
     n++;
     while (n < ITEM_COUNT) {
         wk->items[n++] = ITEM_NONE;

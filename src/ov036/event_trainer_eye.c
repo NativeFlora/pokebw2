@@ -18,6 +18,7 @@
 #include "field/trainer_script.h"
 #include "field/zone.h"
 #include "gfl/heap.h"
+#include "gfl/random.h"
 #include "save/event_work.h"
 #include "save/save_control.h"
 #include "system/game_data.h"
@@ -707,47 +708,83 @@ static BOOL EfuScav_CanStep(FieldActor *actor, const GridPos *pos, u16 dir) {
             ~ACTOR_COLL_WALK_AREA) == 0;
 }
 
-// A scav comes out when the route's init script asks (EFU_WORK_SCAV_PENDING, Script_RouteEnter): the hidden one
-// furthest from the player, with its defeat on an earlier exploration forgotten
+// Whether the flag hides one of the routes' scavs: a spot's (EFU_FLAG_SPOT_FIRST) or the garden's
+static BOOL EfuScav_IsRouteScav(u16 flag) {
+    return (flag >= EFU_FLAG_SPOT_FIRST && flag < EFU_FLAG_SPOT_FIRST + EFU_SPOT_MAX) || flag == EFU_FLAG_GARDEN_SCAV;
+}
+
+// Whether a spot's scav can come out: it is hidden, far enough from the player, and its Trainer isn't already out at
+// another spot (beating one hides every spot of its Trainer, EFU_SPECIAL_SCAV_GONE)
+static BOOL EfuScav_CanComeOut(EventWork *eventWork, ZoneNPC *npcs, u32 count, ZoneNPC *npc,
+                               const GridPos *playerPos) {
+    GridPos pos;
+    int dist;
+
+    if (npc->spawnFlag < EFU_FLAG_SPOT_FIRST || npc->spawnFlag >= EFU_FLAG_SPOT_FIRST + EFU_SPOT_MAX ||
+        !EventWork_FlagGet(eventWork, npc->spawnFlag)) {
+        return FALSE;
+    }
+    pos.x = npc->pos.grid.x;
+    pos.z = npc->pos.grid.z;
+    EfuScav_DirTo(playerPos, &pos, &dist);
+    if (dist < EFU_SCAV_SPAWN_DIST) {
+        return FALSE;
+    }
+    for (; count != 0; npcs++, count--) {
+        if (EfuScav_IsRouteScav(npcs->spawnFlag) && !EventWork_FlagGet(eventWork, npcs->spawnFlag) &&
+            npcs->scrId == npc->scrId) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+// A scav comes out when the route's init script asks (EFU_WORK_SCAV_PENDING, Script_RouteEnter): at a random one of
+// the route's spots that can take one, unless EFU_ROUTE_SCAV_MAX are out already, with its defeat on an earlier
+// exploration forgotten
 static void EfuScav_Spawn(Field *field, const GridPos *playerPos) {
     GameData *gameData = GSYS_GetGameData(Field_GetGameSystem(field));
     EventWork *eventWork = GameData_GetEventWork(gameData);
     u16 *pending = EventWork_GetWkPtr(eventWork, EFU_WORK_SCAV_PENDING);
     u16 *out = EventWork_GetWkPtr(eventWork, EFU_WORK_SCAVS_OUT);
     EventData *eventData;
+    ZoneNPC *npcs;
     ZoneNPC *npc;
-    ZoneNPC *furthest;
+    u32 total;
     u32 count;
-    int furthestDist;
+    u32 shown;
+    u32 open;
 
     if (*pending == 0) {
         return;
     }
     *pending = 0;
     eventData = GameData_GetEventData(gameData);
-    furthest = NULL;
-    furthestDist = -1;
-    for (npc = GetZoneNPCs(eventData), count = GetZoneNPCsCount(eventData); count != 0; npc++, count--) {
-        GridPos pos;
-        int dist;
-
-        pos.x = npc->pos.grid.x;
-        pos.z = npc->pos.grid.z;
-        EfuScav_DirTo(playerPos, &pos, &dist);
-        if (((npc->spawnFlag >= EFU_FLAG_SCAV_FIRST && npc->spawnFlag < EFU_FLAG_SCAV_FIRST + EFU_SCAV_MAX) ||
-             (npc->spawnFlag >= EFU_FLAG_SCAV2_FIRST && npc->spawnFlag < EFU_FLAG_SCAV2_FIRST + EFU_SCAV2_MAX)) &&
-            EventWork_FlagGet(eventWork, npc->spawnFlag) && dist > furthestDist) {
-            furthest = npc;
-            furthestDist = dist;
+    npcs = GetZoneNPCs(eventData);
+    total = GetZoneNPCsCount(eventData);
+    shown = 0;
+    open = 0;
+    for (npc = npcs, count = total; count != 0; npc++, count--) {
+        if (EfuScav_IsRouteScav(npc->spawnFlag) && !EventWork_FlagGet(eventWork, npc->spawnFlag)) {
+            shown++;
+        }
+        if (EfuScav_CanComeOut(eventWork, npcs, total, npc, playerPos)) {
+            open++;
         }
     }
-    if (furthest != NULL) {
-        (*out)++;
-        EventWork_FlagReset(eventWork, furthest->spawnFlag);
-        clearTrainerBattleFlag(eventWork, GetNPCTrainerIDFromSCRID(furthest->scrId));
-        SpawnZoneNPCByUID(Field_GetActorSystem(field), GetZoneNPCs(eventData),
-                          PlayerState_GetZoneID(GameData_GetPlayerState(gameData)), GetZoneNPCsCount(eventData),
-                          eventWork, furthest->uid);
+    if (shown >= EFU_ROUTE_SCAV_MAX || open == 0) {
+        return;
+    }
+    open = GFL_RandomLC(open);
+    for (npc = npcs, count = total; count != 0; npc++, count--) {
+        if (EfuScav_CanComeOut(eventWork, npcs, total, npc, playerPos) && open-- == 0) {
+            (*out)++;
+            EventWork_FlagReset(eventWork, npc->spawnFlag);
+            clearTrainerBattleFlag(eventWork, GetNPCTrainerIDFromSCRID(npc->scrId));
+            SpawnZoneNPCByUID(Field_GetActorSystem(field), npcs,
+                              PlayerState_GetZoneID(GameData_GetPlayerState(gameData)), total, eventWork, npc->uid);
+            return;
+        }
     }
 }
 

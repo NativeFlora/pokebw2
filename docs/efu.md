@@ -20,7 +20,8 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   start where ov036's code and BSS end), so growing either moves those pointers, and main's compressed size, kept in
   the secure area, may change with them. It is luck: some sizes pass and some don't, so build after every change to
   them and, if the check fails, change the size a little (natural code, never padding) and try again. ov035 has stayed
-  at its v1 size (11520 bytes); ov036 is 355584 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too.
+  at its v1 size (11520 bytes); ov036 is 355744 bytes now (the original's 352672). ov167 (battle) grew for fleeing and passed too, and
+  ov162 (the title menu) is 19680 bytes (the original's 19648) after one failed try at the same size with other code.
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
 
 ## Where things are
@@ -84,9 +85,11 @@ Taken so far:
 | `EVENT_WORK_0x41ab` (`EFU_WORK_RAID_COUNT`) | Raids set out on, which picks the season (`EFU_SEASON`). Version 2; a version 1 save has 0, so winter. |
 | `EVENT_WORK_0x41aa` | Retired in version 4: the play time the exploration started at, for the scavs' old 10-minute clock. Not to be reused. |
 | `EVENT_WORK_0x4169` (`EFU_WORK_SCAV_PENDING`) | 1 when a scav is to come out on the route at the next step (`Script_RouteEnter`); 0 after, and on heading out. Version 4. |
+| `EVENT_WORK_0x415e` (`EFU_WORK_DEV_TEST`) | 1 on a game started from the title menu's Dev Test: its first Pokémon is a level 100 Volcarona. |
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
-| `EVENT_FLAG_0x0a80` to `0x0a8f` (`EFU_FLAG_SCAV_FIRST`) | Each scav NPC's hide flag, in the order `build_raid.py` gives them (Route 3's, then Route 20's). All set on heading out. Version 3. |
-| `EVENT_FLAG_0x0a49` to `0x0a4e` (`EFU_FLAG_SCAV2_FIRST`) | The same for the scavs past the first range's (Route 2's). Version 4. |
+| `EVENT_FLAG_0x0a80` to `0x0a8f`, `0x0a49` to `0x0a4e` | Retired: the routes' scavs' hide flags before they came out at spots (versions 3 and 4). Not to be reused. |
+| `EVENT_FLAG_0x0a01` to `0x0a3f` (`EFU_FLAG_SPOT_FIRST`) | Each route spot's scav's hide flag, in the order `build_raid.py` gives them (Route 3's with the garden's, Route 20's, Route 2's, Route 19's; 47 so far). All set on heading out; one is cleared when its scav comes out, and set again when it is beaten. |
+| `EVENT_FLAG_0x0a4f` (`EFU_FLAG_GARDEN_SCAV`) | The garden's scav's hide flag: cleared on heading out, set when it is beaten. |
 | `EVENT_FLAG_0x0a90` to `0x0a92` (`EFU_FLAG_LOOT_FIRST`) | The hide flags of the item balls put where the original had none (the Cave of Being's three). Rolled on heading out. |
 | `EVENT_FLAG_0x0a93` (`EFU_FLAG_CHILDCARE_SCAV`) | The childcare centre's scav's hide flag: out on each entry while the Day Care Lady's quest is open, then by chance as the target's (75% on the first entry, 25% after); set on heading out and when it is beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
@@ -98,7 +101,7 @@ Taken so far:
 | `EVENT_FLAG_0x0a99` (`EFU_FLAG_BASE_DAYCARE_HIDDEN`) | Her NPC's hide flag in her warehouse (`NACRENE_CITY_7`), set from the above on entering it. |
 | `EVENT_FLAG_0x0a9a` to `0x0a9c` (`EFU_FLAG_DOOR_FIRST`) | The hide flags of the boulders in front of the zone's doors that can be shut (`DOORS` in `build_raid.py`), rolled on heading out. `0x0a9d` was the Day Care's, whose door is never shut now; an older save may have it set, and nothing reads it. |
 | `EVENT_FLAG_0x0a43` (`EFU_FLAG_DAYCARE_DEPOSIT_ONLY`) | Set while the Day Care Lady's original script runs for her Route 3 NPC, which leaves Withdraw out of its menu. Cleared after. |
-| `EVENT_FLAG_0x0a45` (`EFU_FLAG_ROUTE_ENTERED`) | Set on the first entry to Route 3 on an exploration (from the east gate), cleared on heading out (`Script_RouteEnter`). Version 4. |
+| `EVENT_FLAG_0x0a45` | Retired: set on the first entry to Route 3 on an exploration, when the first entry brought no scav (version 4). Not to be reused. |
 | `EVENT_FLAG_0x0a44` (`EFU_FLAG_DAYCARE_QUEST_DONE`) | Set once the childcare centre's scav (trainer 401) has been beaten: the Day Care Lady's quest. |
 | `EVENT_FLAG_0x0a9e` (`EFU_FLAG_GUIDE_MET`) | The guide has been met on Route 3 (and their Route 3 NPC's hide flag). |
 | `EVENT_FLAG_0x0a9f` (`EFU_FLAG_BASE_GUIDE_HIDDEN`) | The gate guide's hide flag, set from the above on entering the gate. |
@@ -113,11 +116,10 @@ Taken so far:
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x0a4f, 0x0a01 to 0x0a3f and 0x091e to 0x095f; take
-them upward from 0x0a4f. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x091e to 0x095f; take them upward from 0x091e. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415e. Take the next from the end of the list back, and move it into the table above.
+0x4156 to 0x415d. Take the next from the end of the list back, and move it into the table above.
 
 ## Raids and saving
 
@@ -148,23 +150,24 @@ Rumination Field off the forest (Tom's map of 19 November). Its maps are two mat
 
 - `MAP_MATRIX_EFU_ZONE_1`: Route 3's five chunks, Striaton's west chunk (its garden, at the end of Route 3's road
   south) and Route 2's three. Their ground meets as it always did, and their events keep their coordinates, so a
-  position saved by an older build still stands. A path is cut through the trees between the garden's south side and
-  Route 2's north-west chunk (`CUTS`: everything above the ground in the rectangle goes, grass is laid and its tiles
-  copy the nearest walkable ones; the tree rows at its sides stay as its walls). The garden's road east and Route 2's
-  path north end in the forest.
+  position saved by an older build still stands. A short path is cut south through the trees at the garden's foot
+  (`CUTS`: everything above the ground in the rectangle goes, grass is laid and its tiles copy the nearest walkable
+  ones; the tree rows at its sides stay as its walls) to the forest's way in. The garden's road east and Route 2's
+  path north end in the forest, and Route 2's ground no longer meets the garden's.
 - `MAP_MATRIX_EFU_ZONE_2`: Route 19 moved one chunk east and one north, into Floccesy Town's place, and raised 16
   units (`RAISED`, with cliff faces down from its edges), so its path east meets Route 20's path west; Route 20 and
   Floccesy Ranch where they are. Two tiles of Route 19's high ground at that seam are blocked (`BLOCKED`).
 
-Each matrix carries its chunks' zones (garden with Route 3), so walking from Route 3 into Route 2, or Route 19 into
-Route 20, changes zone without a fade: the new zone's events load and its init script runs (`Script_RouteEnter`, the
+Each matrix carries its chunks' zones (garden with Route 3), so walking from Route 19 into Route 20 changes zone without a fade: the new zone's events load and its init script runs (`Script_RouteEnter`, the
 25% chance of a scav). The changed chunks are copies (`efu_zone_1_*`, `efu_zone_2_*`).
 
 Its ways (`build_raid.py`, A to C on Tom's map):
 
 - the east gate's Route 3 door, home;
-- Route 2's north end (a walk-into warp where its path met Striaton) into Pinwheel Forest's inner forest at A, its
-  old way out to the outer forest;
+- the end of the path cut south from the garden (a walk-into warp on the trees' first row past it) into Pinwheel
+  Forest's inner forest at A, its old way out to the outer forest;
+- the garden's road east (a walk-into warp on the forest's first column) to Route 2's south end, the dead end below
+  its path by the old gate to Accumula (a walk-into warp on the row below), and back;
 - the forest's top gate (B, once to Skyarrow Bridge) out to Route 19, where Route 19's old gate to Aspertia was: its
   path now runs into the trees;
 - the forest's C, as in the original, to Rumination Field and back;
@@ -303,8 +306,10 @@ confirm, and B closes either menu.
 - **The gate's guide** is first met on Route 3, then waits behind the east gate's counter. They will take the player
   to the farther zones; for now they say Route 3 is as far as anyone goes.
 
-The player's warehouse (`NACRENE_CITY_8`) is theirs alone. The title menu offers only Continue and New Game
-(`StartMenu_InitItems`). A Pokémon taken out of the PC (withdrawn, moved or swapped into the party) comes out with half
+The player's warehouse (`NACRENE_CITY_8`) is theirs alone. The title menu offers only Continue, New Game and Dev Test
+(`StartMenu_InitItems`; Dev Test is the Mic Test's item, renamed), a new game for play testing that starts with a
+level 100 Volcarona instead of a random level 5 Pokémon (`NewGame_Init` sets `EFU_WORK_DEV_TEST`, which
+`Script_NewGameStart` reads). A Pokémon taken out of the PC (withdrawn, moved or swapped into the party) comes out with half
 its HP and half of each move's PP, rounded up (`Efu_RecoverHalf` in `box2_main.c`).
 
 Each base NPC is hidden by its own flag, which the zone's init script (`Script_PokecenInit`, `Script_DayCareInit`, `Script_GateInit`) sets
@@ -331,18 +336,22 @@ can be caught in the wild. Nothing in the game reads the groups yet.
 
 ## The scavs
 
-Route 3's, Route 20's and Route 2's Trainers, made single battles with two to six Pokémon from the zone's wild ones at 65 to 90%
-of its level cap (14 to 20; Route 2's take the second range of flags, `EFU_FLAG_SCAV2_FIRST`), evolved to their levels, dressed as Team Plasma Grunts (the classes renamed
-Scav) and given new lines by `build_raid.py`, start hidden: heading out sets their flags. Each step the player takes,
-`EventTrainerEye_EfuPursue` runs before the original sight check:
+Each route has a scav at every spot where one of its own people stood in the original (its Trainers and passers-by,
+not objects or Pokémon; Route 3's include Striaton's people in the garden; 47 spots in all), each fighting as one of
+its route's Trainers in turn (Route 19, with none, takes Route 20's; Floccesy Ranch has none yet). The Trainers are
+made single battles with two to six Pokémon from the zone's wild ones at 65 to 90% of its level cap (14 to 20),
+evolved to their levels, dressed as Team Plasma Grunts (the classes renamed Scav) and given new lines by
+`build_raid.py`. Every spot's scav starts hidden: heading out sets their flags (`EFU_FLAG_SPOT_FIRST`). The garden's
+own scav, on the Pokémon Breeder's spot, is out from the start of every raid (`EFU_FLAG_GARDEN_SCAV`). Each step the
+player takes, `EventTrainerEye_EfuPursue` runs before the original sight check:
 
-- None are out on the way in from the east gate. Each later entry to the route, coming back from a side area (a
-  building, a cave or the target) or walking over from the next route, `Script_RouteEnter` (every route's init
-  script) asks for one on
-  `EFU_ROUTE_SCAV_CHANCE` (25%) of entries, and at the next step `EfuScav_Spawn` brings out the hidden scav furthest
-  from the player on the current map, with its defeat on an earlier exploration forgotten. The side areas' own scavs
-  (the target's three and the childcare centre's) each come out on `EFU_SIDE_SCAV_CHANCE` (75%) of first entries
-  and `EFU_ROUTE_SCAV_CHANCE` (25%) of later ones.
+- Every entry to a route, the first from the east gate too, `Script_RouteEnter` (every route's init script) asks for
+  a scav on `EFU_ROUTE_SCAV_CHANCE` (25%) of entries, and at the next step `EfuScav_Spawn` brings one out at a random
+  spot of the route's that can take one: hidden, at least `EFU_SCAV_SPAWN_DIST` (6) steps from the player, and with
+  no scav of the same Trainer out. None comes out while `EFU_ROUTE_SCAV_MAX` (3) are out on the route already, the
+  garden's counting on Route 3. Its defeat on an earlier exploration is forgotten. The side areas' own scavs (the
+  target's three and the childcare centre's) each come out on `EFU_SIDE_SCAV_CHANCE` (75%) of first entries and
+  `EFU_ROUTE_SCAV_CHANCE` (25%) of later ones.
 - Scavs only ever add up over an exploration: leaving an area and coming back never hides one that is out. Only
   beating one takes it away (`EFU_SPECIAL_SCAV_GONE`, from `Script_ScavDrop`, sets its hide flag and removes its
   actor), until heading out again hides them all.

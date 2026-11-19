@@ -83,7 +83,11 @@ Script_NewGameStart:
     ActorsPauseAll
     SystemMsg Efu_Text_Wake, 2
     LastKeyWait
-    VMCall L_LostSoul
+    // A game from the title menu's Dev Test starts with a play tester's Pokémon instead (GameStart_DevTest)
+    WorkCmpConst EFU_WORK_DEV_TEST, 0
+    VMCallIf CMP_NE, L_DevTestPokemon
+    WorkCmpConst EFU_WORK_DEV_TEST, 0
+    VMCallIf CMP_EQ, L_LostSoul
     SystemMsgClose
     FinishAllEvents
     ActorsUnpauseAll
@@ -138,15 +142,13 @@ Script_RaidDepart:
     GiveRunningShoes
     WorkCmpConst EFU_WORK_SAVE_VERSION, 4
     VMCallIf CMP_LT, L_PokedexFill
-    // The route's scavs hide until the player comes back to it from a side area (Script_RouteEnter)
-    .irp i, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-    FlagSet EFU_FLAG_SCAV_FIRST + \i
+    // Every spot's scav hides until a roll brings it out (Script_RouteEnter); the garden's is out from the start
+    .irp i, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62
+    FlagSet EFU_FLAG_SPOT_FIRST + \i
     .endr
-    .irp i, 0,1,2,3,4,5
-    FlagSet EFU_FLAG_SCAV2_FIRST + \i
-    .endr
+    FlagReset EFU_FLAG_GARDEN_SCAV
+    TrainerFlagReset 395
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
-    FlagReset EFU_FLAG_ROUTE_ENTERED
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
     .irp i, 0,1,2
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
@@ -1542,9 +1544,17 @@ L_LostSoulPick_H_H_H_H_H_H_H_L:
 L_LostSoulPick_H_H_H_H_H_H_H_H:
     WorkSetConst 0x8025, 636
     VMJump L_LostSoulFound
+// Dev Test's Pokémon: a level 100 Volcarona
+L_DevTestPokemon:
+    WorkSetConst 0x8025, 637
+    WordSetPokeSpecies 1, 0x8025
+    PokePartyAdd 0x8010, 0x8025, 0, 100
+    VMJump L_LostSoulGot
+
 L_LostSoulFound:
     WordSetPokeSpecies 1, 0x8025
     PokePartyAdd 0x8010, 0x8025, 0, EFU_LOST_SOUL_LEVEL
+L_LostSoulGot:
     FlagSet EVENT_FLAG_0x0961
     MEPlay SEQ_ME_POKEGET
     SystemMsg Efu_Text_LostSoul, 2
@@ -2382,22 +2392,14 @@ L_DayCareDeposit:
     FlagReset EFU_FLAG_DAYCARE_DEPOSIT_ONLY
     VMHalt
 
-// Entering Route 3 (its init script): the first time on an exploration, from the east gate, nothing; after that, coming
-// back from a side area, a scav comes out at the player's next step on EFU_ROUTE_SCAV_CHANCE percent of entries
-// (EventTrainerEye_EfuPursue)
+// Entering a route (its init script), from anywhere: a scav comes out at the player's next step on
+// EFU_ROUTE_SCAV_CHANCE percent of entries (EfuScav_Spawn, in EventTrainerEye_EfuPursue)
 Script_RouteEnter:
-    FlagGet EFU_FLAG_ROUTE_ENTERED, 0x8020
-    WorkCmpConst 0x8020, 0
-    VMJumpIf CMP_EQ, L_RouteFirstEntry
     Random 0x8020, 100
     WorkCmpConst 0x8020, EFU_ROUTE_SCAV_CHANCE
     VMJumpIf CMP_GE, L_RouteEnterEnd
     WorkSetConst EFU_WORK_SCAV_PENDING, 1
 L_RouteEnterEnd:
-    VMHalt
-
-L_RouteFirstEntry:
-    FlagSet EFU_FLAG_ROUTE_ENTERED
     VMHalt
 
 // The signs on the Day Care Lady's warehouse doors, which are shut until she has joined (GetWarpForWalkIn)

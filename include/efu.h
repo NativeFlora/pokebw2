@@ -91,6 +91,8 @@
 // A raid's hour of the day plus 1, rolled on heading out, or 0 at home for the real clock's (Efu_GetDaySeconds in
 // fieldmap.c: the field's light, its day period and the battles' backgrounds)
 #define EFU_WORK_RAID_HOUR 0x415f
+// 1 on a game started from the title menu's Dev Test (GameStart_DevTest): its first Pokémon is a level 100 Volcarona
+#define EFU_WORK_DEV_TEST 0x415e
 // The level of the Pokémon that joins a player with none
 #define EFU_LOST_SOUL_LEVEL 5
 #define EFU_SEASON(raids) ((SEASON_WINTER + (raids)) % SEASON_COUNT)
@@ -105,14 +107,16 @@
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
 #define EFU_SCAV_PARAM_CHASE 1
 #define EFU_SCAV_PARAM_MOVE_CODE 2
-// The route's scavs: none on the way out, but coming back to the route from a side area (a building, a cave or the
-// target) brings one out on EFU_ROUTE_SCAV_CHANCE percent of entries (Script_RouteEnter). Each scav's NPC is hidden by
-// its own flag from EFU_FLAG_SCAV_FIRST (build_raid.py), all set on heading out. The side areas' own scavs are out on
-// EFU_SIDE_SCAV_CHANCE percent of entries, whenever the player comes in
+// The routes' scavs: each entry to a route (Script_RouteEnter) brings one out on EFU_ROUTE_SCAV_CHANCE percent of them,
+// at a random spot of the route's where one of its own people stood (EfuScav_Spawn), while fewer than
+// EFU_ROUTE_SCAV_MAX are out there and none nearer the player than EFU_SCAV_SPAWN_DIST steps. Each spot has its own
+// scav, hidden by its own flag from EFU_FLAG_SPOT_FIRST (build_raid.py), all set on heading out, so a scav stays until
+// it is beaten. The garden's (EFU_FLAG_GARDEN_SCAV) is out from the start of every raid. The side areas' own scavs are
+// out on EFU_SIDE_SCAV_CHANCE percent of entries, whenever the player comes in
 #define EFU_ROUTE_SCAV_CHANCE 25
 #define EFU_SIDE_SCAV_CHANCE 75
-// Set on the first entry to the route on an exploration, the one from the east gate; cleared on heading out
-#define EFU_FLAG_ROUTE_ENTERED 0xa45
+#define EFU_ROUTE_SCAV_MAX 3
+#define EFU_SCAV_SPAWN_DIST 6
 // The same for the target and the childcare centre: the first entry rolls EFU_SIDE_SCAV_CHANCE, later ones
 // EFU_ROUTE_SCAV_CHANCE
 #define EFU_FLAG_TARGET_ENTERED 0xa46
@@ -121,11 +125,9 @@
 // open and the zone's own weather is clear (GetDefaultWeatherValue, src/ov012/field_encount_st.c)
 #define EFU_FLAG_DOWNFALL 0xa48
 #define EFU_DOWNFALL_CHANCE 30
-#define EFU_FLAG_SCAV_FIRST 0xa80
-#define EFU_SCAV_MAX 16
-// The second range of route scavs' hide flags, for the scavs past the first range's (Route 2's)
-#define EFU_FLAG_SCAV2_FIRST 0xa49
-#define EFU_SCAV2_MAX 6
+#define EFU_FLAG_SPOT_FIRST 0xa01
+#define EFU_SPOT_MAX 63
+#define EFU_FLAG_GARDEN_SCAV 0xa4f
 // The hide flags of the item balls placed where the original had none (build_raid.py's NEW_BALLS), from this one.
 // Heading out rolls every loot spot's flag again, these and the original balls' (tools/efu/loot.json)
 #define EFU_FLAG_LOOT_FIRST 0xa90
