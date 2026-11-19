@@ -7,7 +7,7 @@
             "model": "OBJ_CODE_29",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0a98",
+            "flag": 0,
             "script": 11019,
             "direction": "DIR_DOWN",
             "params": [

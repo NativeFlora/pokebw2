@@ -20,7 +20,7 @@ It writes:
 
 Run by build_base.py after it has written the chunks' rubble and collision.
 """
-import csv, io, json, math, os, struct
+import csv, io, json, math, os, re, struct
 
 here = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(os.path.dirname(here))
@@ -65,10 +65,21 @@ NACRENE_SEA_ROWS = 16
 RAIL_FENCE = {'chunk': 'overworld_2_map18_18', 'material': 'saku01a', 'x': (29.5, 32), 'z': (20, 29),
               'blocked': [(31, z) for z in range(22, 28)]}
 
-# The warehouses boarded up (build_base.py), by chunk and the prop's local tile column, and the warehouse prop drawn with
-# its door shut (resource 15 of FIELD_PROPS_EXTERIOR_SHARED_PC_01_3, c2_build_03, the two on the street without a door)
+# A shut door (resource 259 of FIELD_PROPS_EXTERIOR_SHARED_PC_01_3, door_normal01) in the doorway of each warehouse
+# without a way in (build_base.py), by chunk and the warehouse prop's local tile column. WAREHOUSE_DOORWAY gives each
+# warehouse model's doorway from the prop: c2_build_01's is a tile west of it and its dark face 18 units in front,
+# c2_build_02's under it and 17 units in front; the door (2 units deep each way) stands just in front of the face. The
+# door's model reaches from 17 units west of its origin to 1 east, so its origin is half a tile east of the doorway's
+# middle. The Day Care Lady's door goes
+# once she has joined (EFU_DAYCARE_DOOR_PROP, Efu_IsOpenedDoor in src/ov036/field_buildmodel.c)
+DOOR_PROP = 259
+WAREHOUSE_DOORWAY = {13: (-16, 20), 14: (0, 19)}
 CLOSED_WAREHOUSES = {('overworld_2_map19_18', 13), ('overworld_2_map20_18', 9), ('overworld_2_map20_18', 18)}
-WAREHOUSE_SHUT = 15
+efu_h = open(os.path.join(root, 'include/efu.h')).read()
+DAYCARE_DOOR = ('overworld_2_map20_18',
+                int(re.search(r'#define EFU_DAYCARE_DOOR_PROP_X \((-?\d+)\)', efu_h).group(1)),
+                int(re.search(r'#define EFU_DAYCARE_DOOR_PROP_Z (\d+)', efu_h).group(1)))
+assert int(re.search(r'#define EFU_DAYCARE_DOOR_PROP (\d+)', efu_h).group(1)) == DOOR_PROP
 
 BLOCKED = {'shape': '0', 'slope': '0', 'offset': '3', 'tile_type': str(0x810001), 'diagonal': '0'}
 SAND = {'shape': '0', 'slope': '0', 'offset': '3', 'tile_type': str(0x880019), 'diagonal': '0'}
@@ -465,18 +476,28 @@ def build_nacrene_chunk(pos, folder):
                                                                                      (x0 + TILE, z0 + TILE),
                                                                                      (x0, z0 + TILE))])
     w.add_prims(prims)
-    # The props: those north of the edge go (the rubble along it stays)
-    for node in doc['nodes']:
-        name = node.get('name', '')
-        if name.startswith('bw2_prop_') and node['translation'][2] >= edge:
+    # The props: those north of the edge go (the rubble along it stays), and a shut door goes in each closed
+    # warehouse's doorway
+    props = [n for n in doc['nodes'] if n.get('name', '').startswith('bw2_prop_')]
+    index = max(int(n['name'][9:13]) for n in props) + 1
+    doors = []
+    for node in props:
+        if node['translation'][2] >= edge:
             node = {k: node[k] for k in ('name', 'translation', 'rotation', 'scale') if k in node}
-            # A boarded-up warehouse is the one whose door is drawn shut (c2_build_03): the others' doors are holes
-            # that the game fills with a door only where there is a warp
-            tx = int((node['translation'][0] + 256) // TILE)
-            if (folder, tx) in CLOSED_WAREHOUSES:
-                node['name'] = name[:-5] + '%05d' % WAREHOUSE_SHUT
+            x, y, z = node['translation']
+            res = int(node['name'][-5:])
+            if (folder, int((x + 256) // TILE)) in CLOSED_WAREHOUSES:
+                doors.append({'name': 'bw2_prop_%04d_id_%05d' % (index + len(doors), DOOR_PROP),
+                              'translation': [x + WAREHOUSE_DOORWAY[res][0] + TILE / 2, y, z + WAREHOUSE_DOORWAY[res][1]],
+                              'rotation': [0, 0.0, 0, 1.0]})
             w.doc['nodes'].append(node)
             w.doc['scenes'][0]['nodes'].append(len(w.doc['nodes']) - 1)
+    assert len(doors) == sum(f == folder for f, _ in CLOSED_WAREHOUSES)
+    if folder == DAYCARE_DOOR[0]:
+        assert [DAYCARE_DOOR[1], DAYCARE_DOOR[2]] in [[d['translation'][0], d['translation'][2]] for d in doors]
+    for node in doors:
+        w.doc['nodes'].append(node)
+        w.doc['scenes'][0]['nodes'].append(len(w.doc['nodes']) - 1)
     w.save(os.path.join(path, 'model.glb'))
     data = json.load(open(os.path.join(path, 'data.json')))
     data = {'$schema': data['$schema'], 'texture_set': NACRENE_SETS[0], 'written': True}

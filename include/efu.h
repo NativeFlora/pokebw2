@@ -41,7 +41,7 @@
 #define EFU_SCRIPT_DAYCARE_INIT (EFU_SCRIPT_FIRST + 21)
 // The east gate's guide, who will take the player to the farther zones
 #define EFU_SCRIPT_GATE_GUIDE (EFU_SCRIPT_FIRST + 22)
-// A boulder in front of a door that is shut (EFU_FLAG_DOOR_FIRST, the Day Care's warehouse)
+// A boulder in front of a zone door that is shut on this exploration (EFU_FLAG_DOOR_FIRST)
 #define EFU_SCRIPT_BLOCKED_DOOR (EFU_SCRIPT_FIRST + 23)
 // The east gate's init script: its guide is there once the player has met them (EFU_FLAG_GUIDE_MET)
 #define EFU_SCRIPT_GATE_INIT (EFU_SCRIPT_FIRST + 24)
@@ -52,6 +52,10 @@
 // The locker, in the player's warehouse and by the Pokémon Center's Poké Mart counter: 20 slots, each in an event work
 // value of its own (gen_efu.py's LOCKER_WORKS, docs/efu.md)
 #define EFU_SCRIPT_LOCKER (EFU_SCRIPT_FIRST + 27)
+// The base's init script: the Day Care Lady's warehouse door leads in once she has joined (EFU_DAYCARE_WARP)
+#define EFU_SCRIPT_NACRENE_INIT (EFU_SCRIPT_FIRST + 28)
+// That door's tiles: shut until she has joined
+#define EFU_SCRIPT_DAYCARE_DOOR (EFU_SCRIPT_FIRST + 29)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -75,10 +79,11 @@
 #define EFU_LOST_SOUL_LEVEL 5
 #define EFU_SEASON(raids) ((SEASON_WINTER + (raids)) % SEASON_COUNT)
 
-// The scavs' pursuit (event_trainer_eye.c): how far they see, the distance at which they notice the player whichever
-// way they face and a chase becomes a battle (straight beside them), and the steps out of sight before they give up.
-// Distances are in steps without diagonal ones
-#define EFU_SCAV_SIGHT 7
+// The scavs' pursuit (event_trainer_eye.c): how far they see, which starts a chase (the soft detection), the distance
+// at which they notice the player whichever way they face and a chase becomes a battle (straight beside them, the hard
+// detection, which is also their Trainer sight range, so the original's sight check never starts a battle further off),
+// and the steps out of sight before they give up. Distances are in steps without diagonal ones
+#define EFU_SCAV_SIGHT 12
 #define EFU_SCAV_CATCH 1
 #define EFU_SCAV_LOSE_STEPS 6
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
@@ -134,6 +139,20 @@
 #define EFU_FLAG_BASE_CLERK_HIDDEN 0xa97
 #define EFU_FLAG_DAYCARE_JOINED 0xa98
 #define EFU_FLAG_BASE_DAYCARE_HIDDEN 0xa99
+// Set while the Day Care Lady's original script (global 2201) runs for her Route 3 NPC (Script_DayCareJoin), where it
+// leaves Withdraw out of its menu: she only takes Pokémon in there (build_raid.py patches global_2200.s)
+#define EFU_FLAG_DAYCARE_DEPOSIT_ONLY 0xa43
+// The shut door in the Day Care Lady's warehouse's doorway (build_coast.py): its field prop (door_normal01 of
+// FIELD_PROPS_EXTERIOR_SHARED_PC_01_3) and its place in its chunk (overworld_2_map20_18), which
+// FieldPropSystem_InstantiateFromInfo leaves out once EFU_FLAG_DAYCARE_JOINED is set. Each closed warehouse has one
+#define EFU_DAYCARE_DOOR_PROP 259
+// Its warp (Nacrene's warp 2), which build_base.py parks in the sea with the closed doors' and Script_NacreneInit
+// puts back on the door's tile, in the base's tiles, once she has joined
+#define EFU_DAYCARE_WARP 2
+#define EFU_DAYCARE_WARP_X 72
+#define EFU_DAYCARE_WARP_Z 53
+#define EFU_DAYCARE_DOOR_PROP_X (-112)
+#define EFU_DAYCARE_DOOR_PROP_Z 84
 // The guide, met out in the zone (their NPC's hide flag there), and their NPC's hide flag at the east gate, which its
 // init script sets from that (Script_GateInit)
 #define EFU_FLAG_GUIDE_MET 0xa9e
@@ -142,7 +161,7 @@
 // Doors that are shut on some explorations: each has a boulder in front of it, hidden by its flag from this one
 // (build_raid.py's DOORS, in their order), which heading out rolls (L_DoorRoll): shut on EFU_DOOR_SHUT_CHANCE percent
 #define EFU_FLAG_DOOR_FIRST 0xa9a
-#define EFU_DOOR_COUNT 4
+#define EFU_DOOR_COUNT 3
 #define EFU_DOOR_SHUT_CHANCE 30
 // The target's scavs, each hidden by its flag from this one and out on EFU_TARGET_SCAV_CHANCE percent of entries
 #define EFU_FLAG_TARGET_SCAV_FIRST 0xa40

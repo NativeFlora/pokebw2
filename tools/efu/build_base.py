@@ -6,7 +6,8 @@ be run again after changing it. It edits:
   and forest around the rest, which ZONE_NACRENE_CITY uses instead of the overworld's;
 - res/field/zones/nacrene_city.json, for that matrix and its Fly point;
 - res/field/events/nacrene_city.json: everything moved to the new matrix's coordinates, no NPCs, and only the doors
-  of the player's warehouse, the Pokémon Center and the gate open, the rest boarded up;
+  of the player's warehouse, the Pokémon Center and the gate open, the rest shut (the Day Care Lady's until she
+  has joined);
 - the two chunks' collision and props: the passages north are blocked with rubble.
 """
 import csv, io, json, os, re, struct, subprocess
@@ -41,8 +42,8 @@ MATRIX_CONST = 'MAP_MATRIX_EFU_NACRENE'
 
 # Doors: the warps kept by their target zone, and the others boarded up
 OPEN_ZONES = {'ZONE_NACRENE_CITY_8', 'ZONE_NACRENE_CITY_POKEMON_CENTER', 'ZONE_NACRENE_GATE'}
-# The Day Care Lady's warehouse's ground floor door (Nacrene's warp 2), open with a boulder in front of it until she has
-# joined (EFU_FLAG_DAYCARE_JOINED hides the boulder)
+# The Day Care Lady's warehouse's ground floor door (Nacrene's warp 2, EFU_DAYCARE_WARP): shut like the closed doors
+# until she has joined, when Script_NacreneInit puts its warp back and its shut door prop goes (build_coast.py)
 DAYCARE_DOOR = 2
 SCRIPT_BOARDED = 11002  # EFU_SCRIPT_BOARDED_DOOR
 
@@ -65,6 +66,10 @@ efu_h = open(os.path.join(root, 'include/efu.h')).read()
 
 def efu_script(name):
     return 11000 + int(re.search(r'#define EFU_SCRIPT_%s \(EFU_SCRIPT_FIRST \+ (\d+)\)' % name, efu_h).group(1))
+
+
+def efu_const(name):
+    return int(re.search(r'#define EFU_%s (\d+)' % name, efu_h).group(1))
 
 
 def efu_flag(name):
@@ -108,22 +113,24 @@ def build_events():
         g = dict(w['grid'])
         g['x'] += DX * 16
         g['z'] += DZ * 16
-        if i == DAYCARE_DOOR:
-            # The boulder stands on the tile the door is walked into from, below it
-            assert w['unk4'] == 2 and g['y'] == 0
-            out['npcs'].append(npc(0, 'OBJ_CODE_MODEL_3', efu_script('BLOCKED_DOOR'), efu_flag('DAYCARE_JOINED'),
-                                   g['x'] // 16, g['z'] // 16 + 1, 'DIR_DOWN'))
-        elif w['zone'] not in OPEN_ZONES:
+        if w['zone'] not in OPEN_ZONES:
+            if i == DAYCARE_DOOR:
+                assert (efu_const('DAYCARE_WARP'), efu_const('DAYCARE_WARP_X'), efu_const('DAYCARE_WARP_Z')) == \
+                    (i, g['x'] // 16, g['z'] // 16)
             if g['y'] == 0:
-                # A boarded door: a sign on the door's tile and the tiles beside it, since the doors are drawn wider
+                # A shut door: a sign on the door's tile and the tiles beside it, since the doors are drawn wider
                 # than their one-tile warp
+                script = efu_script('DAYCARE_DOOR') if i == DAYCARE_DOOR else SCRIPT_BOARDED
                 for dx in (-1, 0, 1):
-                    out['bg_events'].append({'script': SCRIPT_BOARDED, 'condition': 0, 'direction': 4,
+                    out['bg_events'].append({'script': script, 'condition': 0, 'direction': 4,
                                              'grid': {'x': g['x'] // 16 + dx, 'y': g['z'] // 16, 'z': 0}})
             # The interiors' doors name Nacrene's warps by number, so a closed door's warp stays in the list, moved to
             # a corner of the sea where nobody can step on it
             g['x'], g['z'] = 8, 8
         out['warps'].append(dict(w, grid=g))
+    # Run as the field starts (types 3 and 4, a new load and a reload), after the zone's events are loaded for it
+    out['init_scripts'] = [{'type': 3, 'script': efu_script('NACRENE_INIT')},
+                           {'type': 4, 'script': efu_script('NACRENE_INIT')}]
     write('res/field/events/nacrene_city.json', json.dumps(out, indent=4, ensure_ascii=False) + '\n')
     return [i for i, w in enumerate(e['warps']) if w['zone'] in OPEN_ZONES or i == DAYCARE_DOOR]
 
@@ -261,8 +268,7 @@ def build_interiors():
     e['bg_events'] += locker_events('nacrene_city_8')
     write('res/field/events/nacrene_city_8.json', json.dumps(e, indent=4, ensure_ascii=False) + '\n')
     # The Day Care Lady's warehouse, east of the Pokémon Center, the same as the player's: she is downstairs once she
-    # has joined (her hide flag set from that by Script_DayCareInit), and a boulder shuts its door until then
-    # (build_events). Its way out upstairs leads out of its ground floor door instead, since the upper one stays shut
+    # has joined (her hide flag set from that by Script_DayCareInit), and its door is shut until then (build_events). Its way out upstairs leads out of its ground floor door instead, since the upper one stays shut
     e = json.loads(orig('res/field/events/nacrene_city_7.json'))
     e['npcs'] = [npc(0, 'OBJ_CODE_29', 2201, efu_flag('BASE_DAYCARE_HIDDEN'), 3, 8, 'DIR_RIGHT', 'MOVE_CODE_FACE_RIGHT')]
     e['init_scripts'] = [{'type': 2, 'script': efu_script('DAYCARE_INIT')}]

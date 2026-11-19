@@ -519,7 +519,7 @@
             "script": 3643,
             "direction": "DIR_LEFT",
             "params": [
-                7,
+                1,
                 0,
                 0
             ],
@@ -542,7 +542,7 @@
             "script": 3642,
             "direction": "DIR_UP",
             "params": [
-                7,
+                1,
                 0,
                 0
             ],
@@ -565,7 +565,7 @@
             "script": 3645,
             "direction": "DIR_DOWN",
             "params": [
-                7,
+                1,
                 0,
                 0
             ],

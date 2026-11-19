@@ -1,11 +1,14 @@
 #include "types.h"
+#include "efu.h"
 #include "constants/arc.h"
 #include "constants/sound.h"
+#include "constants/zones.h"
 #include "field/field.h"
 #include "field/field_actor.h"
 #include "field/field_g3d_mapper.h"
 #include "field/field_map.h"
 #include "field/field_prop.h"
+#include "field/player_state.h"
 #include "field/zone.h"
 #include "gfl/arc.h"
 #include "gfl/g3d.h"
@@ -13,7 +16,10 @@
 #include "gfl/sound.h"
 #include "gfl/std.h"
 #include "nitro/fx.h"
+#include "save/event_work.h"
 #include "system/area_data.h"
+#include "system/game_data.h"
+#include "system/game_system.h"
 #include "system/rtc.h"
 
 // The sounds of a prop type's animations
@@ -181,6 +187,23 @@ void FieldPropSystem_UnlinkChunk(FieldPropSystem *system, FieldChunk *chunk) {
     FieldPropSystem_ReleaseChunkPropHolders(system, chunk);
 }
 
+// Escape from Unova: the door that build_coast.py puts in the Day Care Lady's warehouse's doorway is gone once she
+// has joined the base, which leaves the warehouse's own open doorway. Checked each time its chunk loads, so it holds
+// however the player walks about. Only in the base, in case another zone's chunk has a door there
+static BOOL Efu_IsOpenedDoor(u16 resId, const VecFx32 *position) {
+    GameData *gameData;
+
+    if (resId != EFU_DAYCARE_DOOR_PROP || position->x != FX32_CONST(EFU_DAYCARE_DOOR_PROP_X) ||
+        position->z != FX32_CONST(EFU_DAYCARE_DOOR_PROP_Z)) {
+        return FALSE;
+    }
+    gameData = GSYS_GetGameData(g_GameSystem);
+    if (PlayerState_GetZoneID(GameData_GetPlayerState(gameData)) != ZONE_NACRENE_CITY) {
+        return FALSE;
+    }
+    return EventWork_FlagGet(GameData_GetEventWork(gameData), EFU_FLAG_DAYCARE_JOINED);
+}
+
 void FieldPropSystem_InstantiateFromInfo(FieldPropSystem *system, FieldChunk *chunk,
                                          const struct FieldPropSourceInfo *info, u32 propIndex) {
     FieldPropInstance instance;
@@ -190,6 +213,9 @@ void FieldPropSystem_InstantiateFromInfo(FieldPropSystem *system, FieldChunk *ch
     instance.resIndex = FieldPropSystem_ConvResIDToIndex(system, resId);
     VEC_Set(&instance.pos.position, info->x, info->y, -info->z);
     instance.pos.rotationY = info->rotationY;
+    if (Efu_IsOpenedDoor(resId, &instance.pos.position)) {
+        instance.resIndex = FIELD_PROP_RES_INDEX_NONE;
+    }
     FieldPropSystem_LinkPropToChunk(system, chunk, &instance, propIndex);
 }
 

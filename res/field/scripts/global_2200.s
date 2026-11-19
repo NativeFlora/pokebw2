@@ -254,6 +254,10 @@ L_038C:
     VMStackPushConst 0
     VMStackCmp CMP_GT
     VMJumpIf CMP_STACK, L_03A7
+    // Escape from Unova: no Withdraw where she only takes Pokémon in (build_raid.py)
+    FlagGet 0xa43, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_03A7
     ListMenuAdd 31, 65535, 31
 
 L_03A7:

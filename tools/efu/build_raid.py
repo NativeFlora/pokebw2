@@ -6,8 +6,8 @@ Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) an
 - the route's Trainers (res/trainers/data): the scavs, single battles with their Pokémon at 40 to 60, evolved as far as
   that level takes them;
 - res/field/events/route_3.json: nobody but the scavs and the items; each scav, a Team Plasma Grunt to look at, is
-  hidden by its own flag from EFU_FLAG_SCAV_FIRST, stands looking around (MOVE_CODE_TURN_RANDOM) once it comes out, never stepping until it has seen the player, and sees
-  EFU_SCAV_SIGHT tiles, and the pursuit (event_trainer_eye.c) does the rest;
+  hidden by its own flag from EFU_FLAG_SCAV_FIRST, stands looking around (MOVE_CODE_TURN_RANDOM) once it comes out, never stepping until it has seen the player, and its
+  Trainer sight is EFU_SCAV_CATCH tiles; the pursuit (event_trainer_eye.c), which sees EFU_SCAV_SIGHT, does the rest;
 - the Grunts' Trainer classes, named Scav.
 """
 import json, os, random, re, subprocess
@@ -27,7 +27,9 @@ assert LEVEL_CAP == int(re.search(r'#define EFU_LEVEL_CAP (\d+)', open(os.path.j
 SCAV_LEVELS = (round(LEVEL_CAP * 0.65), round(LEVEL_CAP * 0.9))
 SCAV_TEAM = (2, 6)
 efu_h = open(os.path.join(root, 'include/efu.h')).read()
-SCAV_SIGHT = int(re.search(r'#define EFU_SCAV_SIGHT (\d+)', efu_h).group(1))
+# The scavs' Trainer sight, the original's battle on sight: only straight beside them (EFU_SCAV_CATCH); their pursuit
+# notices the player much further off (EFU_SCAV_SIGHT, event_trainer_eye.c)
+SCAV_SIGHT = int(re.search(r'#define EFU_SCAV_CATCH (\d+)', efu_h).group(1))
 # How far a scav wanders from where it starts, in tiles either way
 SCAV_WANDER = 3
 # A Pokémon that evolves by a stone, trading or friendship has done so by this level
@@ -86,7 +88,7 @@ SCAV_CLASS_NAME = 'Scav'
 FLAG_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 SCAV_MAX = int(re.search(r'#define EFU_SCAV_MAX (\d+)', efu_h).group(1))
 FLAG_DOOR_FIRST = int(re.search(r'#define EFU_FLAG_DOOR_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
-assert int(re.search(r'#define EFU_DOOR_COUNT (\d+)', efu_h).group(1)) == 4
+assert int(re.search(r'#define EFU_DOOR_COUNT (\d+)', efu_h).group(1)) == 3
 FLAG_TARGET_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_TARGET_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 assert int(re.search(r'#define EFU_TARGET_SCAV_COUNT (\d+)', efu_h).group(1)) == 3
 FLAG_LOOT_FIRST = int(re.search(r'#define EFU_FLAG_LOOT_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
@@ -127,8 +129,9 @@ PLACES = {
 # (Script_TargetEnter), with a hide flag of their own from EFU_FLAG_TARGET_SCAV_FIRST
 TARGET_SCAVS = [643, 642, 645]
 # The zone's doors that are shut on some explorations, a boulder in front of each, hidden by its flag from
-# EFU_FLAG_DOOR_FIRST in this order: the childcare centre, the Day Care, Wellspring Cave and the Cave of Being
-DOORS = ['ZONE_ROUTE_3_2', 'ZONE_ROUTE_3_3', 'ZONE_WELLSPRING_CAVE', 'ZONE_CAVE_OF_BEING']
+# EFU_FLAG_DOOR_FIRST in this order: the childcare centre, Wellspring Cave and the Cave of Being (the Day Care's door is
+# never shut, so the Day Care Lady can always be reached)
+DOORS = ['ZONE_ROUTE_3_2', 'ZONE_WELLSPRING_CAVE', 'ZONE_CAVE_OF_BEING']
 # The tile a warp is walked into from, by the direction the player faces on arriving there (the warp's unk4, a DIR_*
 # plus 1): the player walks into it the other way
 APPROACH = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
@@ -337,12 +340,23 @@ def build_events(loot):
 
 
 def build_daycare():
-    """Route 3's Day Care (ROUTE_3_3): only the Day Care Lady, who joins the base for a fee (Script_DayCareJoin) and
-    is gone from here once she has."""
+    """Route 3's Day Care (ROUTE_3_3): only the Day Care Lady, who offers to join the base for a fee and takes
+    Pokémon in but never gives them back here (Script_DayCareJoin); they come back at her base warehouse. Her original
+    script (global 2201) leaves Withdraw out of its menu while EFU_FLAG_DAYCARE_DEPOSIT_ONLY is set."""
     e = json.loads(orig('res/field/events/route_3_3.json'))
     lady = [n for n in e['npcs'] if n['script'] == 2201][0]
-    e['npcs'] = [dict(lady, script=efu_script('DAYCARE_JOIN'), flag=efu_flag('DAYCARE_JOINED'))]
+    e['npcs'] = [dict(lady, script=efu_script('DAYCARE_JOIN'))]
     write('res/field/events/route_3_3.json', e)
+    path = 'res/field/scripts/global_2200.s'
+    text = orig(path)
+    withdraw = '    VMJumpIf CMP_STACK, L_03A7\n    ListMenuAdd 31, 65535, 31\n'
+    assert text.count(withdraw) == 1
+    flag = int(re.search(r'#define EFU_FLAG_DAYCARE_DEPOSIT_ONLY (0x[0-9a-f]+)', efu_h).group(1), 16)
+    with open(os.path.join(root, path), 'w', newline='\n') as f:
+        f.write(text.replace(withdraw, '    VMJumpIf CMP_STACK, L_03A7\n'
+                             '    // Escape from Unova: no Withdraw where she only takes Pokémon in (build_raid.py)\n'
+                             f'    FlagGet 0x{flag:x}, 0x8020\n    WorkCmpConst 0x8020, 1\n    VMJumpIf CMP_EQ, L_03A7\n'
+                             '    ListMenuAdd 31, 65535, 31\n'))
 
 
 def build_childcare(loot):

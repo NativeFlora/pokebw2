@@ -635,7 +635,8 @@ static GameEvent *CreateTrainerClashEvent(Field *field, FieldActor *actor) {
 }
 
 // Escape from Unova: the scavs' pursuit. A raid's Trainers stand looking around, never stepping until they have seen
-// the player, and their sight range (user parameter 0) is EFU_SCAV_SIGHT. A scav that isn't chasing notices the player
+// the player, and their Trainer sight range (user parameter 0) is EFU_SCAV_CATCH, so the original sight check only
+// starts a battle with one straight beside the player. A scav that isn't chasing notices the player
 // with nothing in between, within EFU_SCAV_CATCH tiles whichever way it faces or up to EFU_SCAV_SIGHT tiles away in the
 // quarter it faces, and gives chase. While it chases, its user parameter EFU_SCAV_PARAM_CHASE is 1 more than the steps
 // the player has been out of its sight, and EFU_SCAV_PARAM_MOVE_CODE keeps the move code it goes back to once it loses

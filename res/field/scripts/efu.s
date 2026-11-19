@@ -50,6 +50,8 @@
     ScriptEntry Script_GuideMeet
     ScriptEntry Script_TargetEnter
     ScriptEntry Script_Locker
+    ScriptEntry Script_NacreneInit
+    ScriptEntry Script_DayCareDoor
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -57,6 +59,8 @@ Script_NewGameSetup:
     ActorsPauseAll
     WorkSetConst EFU_WORK_SAVE_VERSION, EFU_SAVE_VERSION
     GiveRunningShoes
+    // No money to start with: the zones are where it comes from (the subtraction stops at 0)
+    MoneySub 0x3fff
     FinishAllEvents
     ActorsUnpauseAll
     VMHalt
@@ -2191,10 +2195,14 @@ Script_Clerk:
     ActorsUnpauseAll
     VMHalt
 
-// The Day Care Lady in Route 3's Day Care: she moves into a warehouse of the base for EFU_DAYCARE_HIRE, where the
-// original Day Care Lady's script (global 2201) runs her (Script_DayCareInit shows her there, and EFU_FLAG_DAYCARE_JOINED
-// takes away the boulder in front of its door)
+// The Day Care Lady in Route 3's Day Care: until she has joined, she offers to move into a warehouse of the base for
+// EFU_DAYCARE_HIRE, where the original Day Care Lady's script (global 2201) runs her (Script_DayCareInit shows her there,
+// and Script_NacreneInit opens its door). Either way she then takes Pokémon in, but gives none back here: her original
+// script runs with EFU_FLAG_DAYCARE_DEPOSIT_ONLY set, which leaves Withdraw out of its menu
 Script_DayCareJoin:
+    FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_DayCareDeposit
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
@@ -2213,16 +2221,8 @@ Script_DayCareJoin:
     SEPlay SEQ_SE_SYS_08
     ActorMsg MSGFILE_SCRIPT, Efu_Text_DayCareJoined, 0x8011, 2, 0
     LastKeyWait
-    ActorMsgClose
-    MoneyWinClose
     FlagSet EFU_FLAG_DAYCARE_JOINED
-    FadeEx 3, 0, 16, 2
-    FadeExWait
-    ActorDelete 0x8011
-    FadeEx 3, 16, 0, 2
-    FadeExWait
-    ActorsUnpauseAll
-    VMHalt
+    VMJump L_DayCareStay
 
 L_DayCarePoor:
     ActorMsg MSGFILE_SCRIPT, Efu_Text_NotEnoughMoney, 0x8011, 2, 0
@@ -2231,9 +2231,37 @@ L_DayCareStay:
     ActorMsgClose
     MoneyWinClose
     ActorsUnpauseAll
+L_DayCareDeposit:
+    FlagSet EFU_FLAG_DAYCARE_DEPOSIT_ONLY
+    RTCallGlobal 2201
+    FlagReset EFU_FLAG_DAYCARE_DEPOSIT_ONLY
     VMHalt
 
-// The base's init scripts (on loading the zone): the people who have joined show, the rest stay hidden
+// The base's init script (as its field starts, on entering and on coming back from a menu or battle): the Day Care Lady's warehouse door, parked in
+// the sea like the closed doors' until she has joined, leads in after (its shut door prop goes too, in
+// FieldPropSystem_InstantiateFromInfo)
+Script_NacreneInit:
+    FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_NacreneInitEnd
+    ObjInitWarpGPos EFU_DAYCARE_WARP, EFU_DAYCARE_WARP_X, 0, EFU_DAYCARE_WARP_Z
+L_NacreneInitEnd:
+    VMHalt
+
+// The Day Care Lady's warehouse door, shut until she has joined
+Script_DayCareDoor:
+    FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_NE, L_DayCareDoorEnd
+    ActorsPauseAll
+    SystemMsg Efu_Text_BoardedDoor, 2
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+L_DayCareDoorEnd:
+    VMHalt
+
+// The base's other init scripts (on loading the zone): the people who have joined show, the rest stay hidden
 Script_PokecenInit:
     FlagSet EFU_FLAG_BASE_JOY_HIDDEN
     FlagGet EFU_FLAG_JOY_JOINED, 0x8020
@@ -2311,7 +2339,7 @@ L_TargetScavNext\i:
 
 // Heading out: each door that can be shut is, on EFU_DOOR_SHUT_CHANCE percent of explorations (its boulder out)
 L_DoorRoll:
-    .irp i, 0,1,2,3
+    .irp i, 0,1,2
     FlagSet EFU_FLAG_DOOR_FIRST + \i
     Random 0x8020, 100
     WorkCmpConst 0x8020, EFU_DOOR_SHUT_CHANCE
