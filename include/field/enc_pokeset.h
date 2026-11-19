@@ -101,6 +101,9 @@ enum {
 void CreateEncountManager(EncountManager *manager, GameData *gameData, int encType, u32 mode, u16 weather);
 u32 FieldEncount_CalcEncountRate(EncountManager *manager, GameData *gameData, u32 rate);
 int FieldEncount_GenWilds(EncData *encData, EncountManager *manager, u16 zoneId, WildPkmParam *params);
+// Escape from Unova: the species a wild slot holds on this exploration, by its slot counting every table's one after
+// another (EncData's grass on)
+u16 Efu_WildSwap(GameData *gameData, u16 zoneId, u32 slot, u16 species);
 RoamingPkm *FieldEncount_RndCheckRoaming(EncountManager *manager, u32 zoneId);
 // What FieldEncount_RndCheckNPoke returns when none of N's Pokémon appears
 #define N_POKE_NONE 0xff

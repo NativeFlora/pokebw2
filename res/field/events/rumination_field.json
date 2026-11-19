@@ -4,20 +4,47 @@
     "npcs": [
         {
             "id": 0,
-            "model": "OBJ_CODE_PKMN_RANGER_M",
-            "movement": "MOVE_CODE_WALK_RANDOM",
+            "model": "OBJ_CODE_225",
+            "movement": "MOVE_CODE_FACE_DOWN",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 2,
+            "flag": "EVENT_FLAG_0x0929",
+            "script": 11033,
             "direction": "DIR_DOWN",
-            "params": [ 0, 0, 0 ],
+            "params": [
+                0,
+                0,
+                0
+            ],
             "area": {
-                "width": 1,
-                "height": 1
+                "width": 0,
+                "height": 0
             },
             "grid": {
-                "x": 17,
-                "z": 13,
+                "x": 16,
+                "z": 10,
+                "y": 0
+            }
+        },
+        {
+            "id": 1,
+            "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_M",
+            "movement": "MOVE_CODE_TURN_RANDOM",
+            "type": "ACTOR_EVENT_TYPE_TRAINER",
+            "flag": "EVENT_FLAG_0x092a",
+            "script": 3640,
+            "direction": "DIR_DOWN",
+            "params": [
+                1,
+                0,
+                0
+            ],
+            "area": {
+                "width": 3,
+                "height": 3
+            },
+            "grid": {
+                "x": 16,
+                "z": 10,
                 "y": 0
             }
         }
@@ -39,10 +66,5 @@
         }
     ],
     "triggers": [],
-    "init_scripts": [
-        {
-            "type": 2,
-            "script": 1
-        }
-    ]
+    "init_scripts": []
 }

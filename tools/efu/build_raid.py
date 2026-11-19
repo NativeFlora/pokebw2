@@ -12,7 +12,11 @@ Idempotent, like build_base.py: it reads the originals from git (BASE_COMMIT) an
   (event_trainer_eye.c), which sees EFU_SCAV_SIGHT, does the rest. Their doors are rewired into the zone: the garden's
   path south into Pinwheel Forest and its road east to Route 2's south end, the forest out to Route 19, Route 2's and
   Route 20's gates home;
-- the caves' and the target's events, the childcare centre's and the Day Care's;
+- the caves' and the target's events, the childcare centre's and the Day Care's: Wellspring Cave's Cut trees, the
+  inner forest's bridge obstacles and its grass patch's scav, Floccesy Ranch's scavs, and Burgh in Rumination Field
+  with his Challenge Mode team (leader_burgh.json);
+- the PC's menu, deposit only on a raid (global_10090.s);
+- include/efu_wild_swap.h, the species each wild one may be swapped for on an exploration;
 - the Grunts' Trainer classes, named Scavenger.
 """
 import json, os, random, re, subprocess
@@ -81,6 +85,10 @@ SCAVS = {
     'backers_may_mal': (True, "No more cheering! Only taking!\nHand over your stuff!{be01}", "Boo! Hiss!",
                         "I used to cheer on Trainers.\nNow I cheer when they drop things."),
     # The target's (TARGET_SCAVS)
+    'youngster_nicholas': (False, "Every Pokémon in this grass is mine.\nAnd so is whatever you're carrying!{be01}",
+                           "Take the grass, then. I'm off.", "There's nothing left in here but\nbugs and bad luck."),
+    'pkmn_ranger_dwayne': (False, "Burgh's gone, so this field is mine.\nTurn around, or hand it all over!{be01}",
+                           "Fine! It's yours. For now.", "Someone's always waiting to take\nwhat's left. Today it's you."),
     'veteran_sinan': (False, "I've outlasted everyone in these\nwoods. I'll outlast you too!{be01}", "Hah... Not bad.",
                       "The forest keeps what it takes.\nRemember that."),
     'pkmn_ranger_hillary': (True, "This forest is my larder now.\nAnd you're in it!{be01}", "I'll find easier prey.",
@@ -157,6 +165,19 @@ TARGET_SCAVS = [643, 642, 645]
 # EFU_FLAG_DOOR_FIRST in this order: the childcare centre, Wellspring Cave and the Cave of Being (the Day Care's door is
 # never shut, so the Day Care Lady can always be reached)
 DOORS = ['ZONE_ROUTE_3_2', 'ZONE_WELLSPRING_CAVE', 'ZONE_CAVE_OF_BEING']
+# The doors behind Cut trees, always there, in place of the boulder (Wellspring Cave's flag is rolled but nothing reads it)
+CUT_DOORS = ['ZONE_WELLSPRING_CAVE']
+# The original's scripts of a Cut tree and a Strength boulder (global 10000)
+CUT_TREE_SCRIPT = 10004
+STRENGTH_SCRIPT = 10000
+# The inner forest's two bridges on its road north, each two tiles wide: the tiles before them from the south, where
+# heading out may put a Cut tree on the left one and a Strength boulder on the right one (EFU_FLAG_BRIDGE_*), so the
+# forest's west path may be the only way through
+BRIDGE_CUT = [(71, 55), (72, 55)]
+BRIDGE_BOULDER = [(75, 55), (76, 55)]
+# The scavenger always in the inner forest's grass patch right of the road (EFU_FLAG_FOREST_SCAV), a generic one: its
+# Trainer and spot
+FOREST_SCAV = {'trainer': 646, 'grid': {'x': 88, 'z': 45}}
 # The tile a warp is walked into from, by the direction the player faces on arriving there (the warp's unk4, a DIR_*
 # plus 1): the player walks into it the other way
 APPROACH = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
@@ -236,6 +257,53 @@ def build_encounters(name, levels):
             else:
                 e[season][kind] = slots(value)
     write(f'res/field/encounters/{name}.json', e)
+
+
+# Each exploration swaps every wild slot's species for one of its wild group's (wild_groups.json) whose base stat total is
+# within this of its own (Efu_WildSwap in enc_pokeset.c, from the table build_wild_swap writes)
+SWAP_BST_BAND = 60
+
+
+def base_stat_total(species):
+    path = os.path.join(root, 'res/pokemon', species[len('SPECIES_'):].lower(), 'data.json')
+    return sum(json.load(open(path))['base_stats'].values())
+
+
+def build_wild_swap():
+    """include/efu_wild_swap.h: for each species wild in the zone (as built), the species it may be swapped for, its
+    own among them."""
+    groups = json.load(open(os.path.join(here, 'wild_groups.json')))['groups']
+    group_of = {sp: g for g, members in groups.items() for sp in members}
+    wild = set()
+    for name in ['route_3'] + list(PLACE_LEVELS):
+        wild |= set(re.findall(r'"(SPECIES_[A-Z0-9_]+)"', open(os.path.join(root, f'res/field/encounters/{name}.json')).read()))
+    wild.discard('SPECIES_NONE')
+    species_ids = [l.split('#')[0].split('=')[0].strip() for l in open(os.path.join(root, 'generated/species.txt'))
+                   if l.startswith('SPECIES_')]
+    species, first, candidates = [], [0], []
+    for sp in sorted(wild, key=species_ids.index):
+        bst = base_stat_total(sp)
+        options = [sp]
+        if sp in group_of:
+            options = [o for o in groups[group_of[sp]] if abs(base_stat_total(o) - bst) <= SWAP_BST_BAND]
+        species.append(sp)
+        candidates += options
+        first.append(len(candidates))
+    out = ['// Written by tools/efu/build_raid.py (build_wild_swap): the zone\'s wild species, sorted, and for each the\n',
+           f'// species an exploration may swap it for, one of its wild group\'s within {SWAP_BST_BAND} of its base stat total\n',
+           '#ifndef EFU_WILD_SWAP_H\n#define EFU_WILD_SWAP_H\n\n#include "constants/species.h"\n\n',
+           f'#define EFU_SWAP_SPECIES_COUNT {len(species)}\n\n',
+           'static const u16 EFU_SWAP_SPECIES[EFU_SWAP_SPECIES_COUNT] = {\n']
+    out += [f'    {sp},\n' for sp in species]
+    out.append('};\n\n// Where each species\' choices start in EFU_SWAP_CANDIDATES, and the end of the last\n')
+    out.append('static const u16 EFU_SWAP_FIRST[EFU_SWAP_SPECIES_COUNT + 1] = {\n')
+    out += [f'    {n},\n' for n in first]
+    out.append('};\n\n' f'static const u16 EFU_SWAP_CANDIDATES[{len(candidates)}] = {{\n')
+    out += [f'    {sp},\n' for sp in candidates]
+    out.append('};\n\n#endif // EFU_WILD_SWAP_H\n')
+    with open(os.path.join(root, 'include/efu_wild_swap.h'), 'w', newline='\n') as f:
+        f.write(''.join(out))
+    print('wild swap', len(species), 'species,', len(candidates), 'choices')
 
 
 def trainer_file(trainer_id):
@@ -342,8 +410,18 @@ def is_scav(n):
             and scav_key(n['script'] - 3000) in SCAVS and n['script'] - 3000 != CHILDCARE_TRAINER)
 
 
+def obstacle(npc_id, kind, flag, x, z, y=0):
+    """A Cut tree or a Strength boulder (OBJ_CODE_MODEL_3, the boulder with a drawn model; the other rock codes draw
+    nothing) with the original's script, hidden by flag (0 for always there)."""
+    model, script = {'cut': ('OBJ_CODE_108', CUT_TREE_SCRIPT), 'strength': ('OBJ_CODE_MODEL_3', STRENGTH_SCRIPT)}[kind]
+    return {'id': npc_id, 'model': model, 'movement': 'MOVE_CODE_NONE', 'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': flag,
+            'script': script, 'direction': 'DIR_DOWN', 'params': [0, 0, 0], 'area': {'width': 0, 'height': 0},
+            'grid': {'x': x, 'z': z, 'y': y}}
+
+
 def door_boulders(warps, zones, first_id, flag_of):
-    """A boulder in front of each door that can be shut (one for each tile of a wider way in), hidden while open."""
+    """A boulder in front of each door that can be shut (one for each tile of a wider way in), hidden while open, and
+    the Cut trees always in front of Wellspring Cave's."""
     npcs = []
     for zone in zones:
         w = next(w for w in warps if w['zone'] == zone)
@@ -351,6 +429,10 @@ def door_boulders(warps, zones, first_id, flag_of):
         g = w['grid']
         for tx in range(g['width']):
             for tz in range(g['height']):
+                if zone in CUT_DOORS:
+                    npcs.append(obstacle(first_id + len(npcs), 'cut', 0, g['x'] // 16 + tx + dx,
+                                         g['z'] // 16 + tz + dz, ((g['y'] ^ 0x8000) - 0x8000) * 4096))
+                    continue
                 npcs.append({'id': first_id + len(npcs), 'model': 'OBJ_CODE_MODEL_3', 'movement': 'MOVE_CODE_NONE',
                              'type': 'ACTOR_EVENT_TYPE_NONE', 'flag': flag_of(zone),
                              'script': efu_script('BLOCKED_DOOR'), 'direction': 'DIR_DOWN', 'params': [0, 0, 0],
@@ -466,9 +548,73 @@ def build_events(loot):
     build_route('route_19', loot, scavs, route_20_pool, warps={0: {'zone': 'ZONE_PINWHEEL_FOREST_2', 'warp': 1}},
                 triggers=[])
     build_route('floccesy_ranch', loot, scavs, route_20_pool, triggers=[])
+    build_ranch(route_20_pool)
     print('route spots', scavs.next_flag - FLAG_SPOT_FIRST, 'of', SPOT_MAX)
     route_warps = {'route_3': {w['zone']: i for i, w in enumerate(route_3)}, 'garden_south': route_3_n + 1}
     return sorted(scavs.trainers), route_warps
+
+
+# Floccesy Ranch, overrun: scavengers at these spots of the ranch itself (ZONE_FLOCCESY_RANCH_2, on its ground at height
+# 32, spread over its fields), fighting as Route 20's Trainers, each out by chance like the target's. The roll is the
+# ranch entrance's init script (Script_RanchEnter), since the ranch keeps its own, and the entrance is its only way in
+RANCH_SPOTS = [(10, 40), (36, 40), (50, 38), (38, 52), (46, 25), (36, 14)]
+RANCH_HEIGHT = 32
+FLAG_RANCH_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_RANCH_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+assert int(re.search(r'#define EFU_RANCH_SCAV_COUNT (\d+)', efu_h).group(1)) == len(RANCH_SPOTS)
+
+
+def build_ranch(pool):
+    """Floccesy Ranch's scavengers (RANCH_SPOTS), whose rolls on each entry to its entrance (Script_RanchEnter) take
+    the place of a route's."""
+    path = 'res/field/events/floccesy_ranch_2.json'
+    e = json.loads(orig(path))
+    first = max([n['id'] for n in e['npcs']] + [0]) + 1
+    for i, (x, z) in enumerate(RANCH_SPOTS):
+        tid = pool[i % len(pool)]
+        n = {'id': first + i, 'model': '', 'movement': '', 'type': '', 'flag': 0, 'script': 0, 'direction': 'DIR_DOWN',
+             'params': [0, 0, 0], 'area': {}, 'grid': {'x': x, 'z': z, 'y': RANCH_HEIGHT * 4096}}
+        e['npcs'].append(scav_npc(n, tid, first + i, FLAG_RANCH_SCAV_FIRST + i))
+    write(path, e)
+    path = 'res/field/events/floccesy_ranch.json'
+    e = json.load(open(os.path.join(root, path)))
+    e['init_scripts'] = [{'type': 2, 'script': efu_script('RANCH_ENTER')}]
+    write(path, e)
+    with open(os.path.join(here, 'ranch_scavs.txt'), 'w') as f:
+        f.write(' '.join(str(pool[i % len(pool)]) for i in range(len(RANCH_SPOTS))) + '\n')
+
+
+# Rumination Field: Burgh, its boss, until he is beaten (EFU_FLAG_BURGH_BEATEN), then sometimes a generic scavenger in his
+# place (EFU_FLAG_RUMINATION_SCAV): their spot and the scavenger's Trainer
+RUMINATION_SPOT = {'x': 16, 'z': 10}
+RUMINATION_SCAV = {'trainer': 640}
+BURGH_MODEL = 'OBJ_CODE_225'
+# Burgh's team: his Challenge Mode one (leader_burgh_2, 2 levels up as Castelia's Gym gives it) and two more Bug types
+# to make six, at its levels. He fights as LEADER_BURGH, whose own team the Gym would use
+BURGH_TEAM = [('SPECIES_SWADLOON', 24, ['MOVE_STRUGGLE_BUG', 'MOVE_RAZOR_LEAF', 'MOVE_STRING_SHOT', 'MOVE_PROTECT']),
+              ('SPECIES_WHIRLIPEDE', 25, ['MOVE_POISON_TAIL', 'MOVE_PURSUIT', 'MOVE_PROTECT', 'MOVE_SCREECH'])]
+BURGH_LEVEL_UP = 2
+
+
+def build_rumination():
+    path = 'res/field/events/rumination_field.json'
+    e = json.loads(orig(path))
+    grid = dict(RUMINATION_SPOT, y=0)
+    burgh = {'id': 0, 'model': BURGH_MODEL, 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
+             'flag': efu_flag('BURGH_BEATEN'), 'script': efu_script('BURGH'), 'direction': 'DIR_DOWN',
+             'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': grid}
+    scav = scav_npc(dict(burgh, grid=grid), RUMINATION_SCAV['trainer'], 1,
+                    int(efu_flag('RUMINATION_SCAV')[len('EVENT_FLAG_'):], 16))
+    e['npcs'] = [burgh, scav]
+    e['init_scripts'] = []
+    write(path, e)
+    t = json.loads(orig('res/trainers/data/leader_burgh_2.json'))
+    team = [dict(t['party'][0], species=sp, level=lv, moves=mv, item='ITEM_NONE') for sp, lv, mv in BURGH_TEAM]
+    team += [dict(p, level=p['level'] + BURGH_LEVEL_UP) for p in t['party']]
+    team.sort(key=lambda p: p['level'])
+    burgh_trainer = json.loads(orig('res/trainers/data/leader_burgh.json'))
+    burgh_trainer['party'] = team
+    write('res/trainers/data/leader_burgh.json', burgh_trainer)
+    return RUMINATION_SCAV['trainer']
 
 
 def build_daycare():
@@ -489,6 +635,24 @@ def build_daycare():
                              '    // Escape from Unova: no Withdraw where she only takes Pokémon in (build_raid.py)\n'
                              f'    FlagGet 0x{flag:x}, 0x8020\n    WorkCmpConst 0x8020, 1\n    VMJumpIf CMP_EQ, L_03A7\n'
                              '    ListMenuAdd 31, 65535, 31\n'))
+
+
+def build_pc():
+    """The PC (global 10090): out on a raid it only takes Pokémon in, so its menu keeps Deposit and Log Off. Only the
+    base's PC gives them back."""
+    path = 'res/field/scripts/global_10090.s'
+    text = orig(path)
+    menu = ('    ListMenuAdd 15, 21, 15\n    ListMenuAdd 16, 22, 16\n    ListMenuAdd 17, 23, 17\n'
+            '    ListMenuAdd 20, 26, 20\n    ListMenuAdd 18, 24, 18\n    ListMenuAdd 19, 25, 19\n')
+    assert text.count(menu) == 1
+    raid = int(re.search(r'#define EFU_WORK_RAID (0x[0-9a-f]+)', efu_h).group(1), 16)
+    with open(os.path.join(root, path), 'w', newline='\n') as f:
+        f.write(text.replace(menu, '    ListMenuAdd 15, 21, 15\n'
+                             '    // Escape from Unova: out on a raid, the PC only takes Pokémon in (build_raid.py)\n'
+                             f'    WorkCmpConst 0x{raid:x}, 0\n    VMJumpIf CMP_NE, L_EfuDepositOnly\n'
+                             '    ListMenuAdd 16, 22, 16\n    ListMenuAdd 17, 23, 17\n'
+                             '    ListMenuAdd 20, 26, 20\n    ListMenuAdd 18, 24, 18\n'
+                             'L_EfuDepositOnly:\n    ListMenuAdd 19, 25, 19\n'))
 
 
 def build_childcare(loot):
@@ -547,6 +711,14 @@ def build_places(loot, route_warps):
                 e['npcs'].append(dict(n, model=SCAV_MODEL[female], movement='MOVE_CODE_TURN_RANDOM',
                                       params=[SCAV_SIGHT, 0, 0], area={'width': 1, 'height': 1},
                                       flag='EVENT_FLAG_0x%04x' % (FLAG_TARGET_SCAV_FIRST + i)))
+            n = next(n for n in original['npcs'] if n['script'] == 3000 + FOREST_SCAV['trainer'])
+            e['npcs'].append(scav_npc(dict(n, grid=dict(n['grid'], **FOREST_SCAV['grid'], y=0)), FOREST_SCAV['trainer'],
+                                      n['id'], int(efu_flag('FOREST_SCAV')[len('EVENT_FLAG_'):], 16)))
+            first = max(n['id'] for n in e['npcs']) + 1
+            for kind, tiles, flag in (('cut', BRIDGE_CUT, 'BRIDGE_CUT'), ('strength', BRIDGE_BOULDER, 'BRIDGE_BOULDER')):
+                for x, z in tiles:
+                    e['npcs'].append(obstacle(first, kind, efu_flag(flag), x, z))
+                    first += 1
             e['init_scripts'] = [{'type': 2, 'script': efu_script('TARGET_ENTER')}]
         write(f'res/field/events/{name}.json', e)
 
@@ -649,8 +821,10 @@ if __name__ == '__main__':
     build_places(loot, route_warps)
     scavs.append(build_childcare(loot))
     scavs.append(CHILDCARE_GENERIC_TRAINER)
-    scavs += TARGET_SCAVS
+    scavs += TARGET_SCAVS + [FOREST_SCAV['trainer'], build_rumination()]
     build_daycare()
+    build_pc()
     loot.save()
     build_trainers(sorted(set(scavs)))
     build_trainer_scripts()
+    build_wild_swap()

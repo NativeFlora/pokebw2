@@ -211,10 +211,14 @@ L_02F4:
     SystemMsg Global10090_Text_Empty_9, 2
     ListMenuAnchorTopRight 31, 1, 0, 1, 32808
     ListMenuAdd 15, 21, 15
+    // Escape from Unova: out on a raid, the PC only takes Pokémon in (build_raid.py)
+    WorkCmpConst 0x41ac, 0
+    VMJumpIf CMP_NE, L_EfuDepositOnly
     ListMenuAdd 16, 22, 16
     ListMenuAdd 17, 23, 17
     ListMenuAdd 20, 26, 20
     ListMenuAdd 18, 24, 18
+L_EfuDepositOnly:
     ListMenuAdd 19, 25, 19
     ListMenuShow2
     SystemMsgClose

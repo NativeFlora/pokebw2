@@ -1,10 +1,12 @@
 {
     "$schema": "trainer.schema.json",
     "name": "Nicholas",
-    "class": "TRAINER_CLASS_YOUNGSTER",
+    "class": "TRAINER_CLASS_TEAM_PLASMA_GRUNT_M",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 4,
     "reward": "ITEM_NONE",
@@ -12,7 +14,7 @@
         {
             "species": "SPECIES_PHANPY",
             "form": 0,
-            "level": 60,
+            "level": 19,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -20,15 +22,39 @@
         {
             "species": "SPECIES_DODUO",
             "form": 0,
-            "level": 60,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
         },
         {
-            "species": "SPECIES_FEAROW",
+            "species": "SPECIES_SPEAROW",
             "form": 0,
-            "level": 60,
+            "level": 19,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_POLIWAG",
+            "form": 0,
+            "level": 20,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_WOOBAT",
+            "form": 0,
+            "level": 19,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_LICKITUNG",
+            "form": 0,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -37,15 +63,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "My Pokémon's strong points!\nYou'll see them if you fight!{be01}"
+            "text": "Every Pokémon in this grass is mine.\nAnd so is whatever you're carrying!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Hey! Did you see\nmy Pokémon's strong points?!"
+            "text": "Take the grass, then. I'm off."
         },
         {
             "type": 2,
-            "text": "My Pokémon's strong points?{be01}\nHmmm...{be01}\nI don't know, 'cause there are too many!"
+            "text": "There's nothing left in here but\nbugs and bad luck."
         }
     ]
 }

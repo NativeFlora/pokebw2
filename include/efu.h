@@ -67,6 +67,10 @@
 // its door)
 #define EFU_SCRIPT_PAID_EXIT (EFU_SCRIPT_FIRST + 31)
 #define EFU_PAID_EXIT_PRICE 100
+// Floccesy Ranch's init script: its scavengers come out by chance (EFU_FLAG_RANCH_SCAV_FIRST)
+#define EFU_SCRIPT_RANCH_ENTER (EFU_SCRIPT_FIRST + 32)
+// Burgh, Rumination Field's boss: his battle, the Blank HM and the end of the zone's story (EFU_FLAG_BURGH_BEATEN)
+#define EFU_SCRIPT_BURGH (EFU_SCRIPT_FIRST + 33)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -139,6 +143,26 @@
 #define EFU_FLAG_CHILDCARE_SCAV 0xa93
 // The generic scavenger who takes over the childcare centre once Billy is beaten, out by chance like the target's
 #define EFU_FLAG_CHILDCARE_GENERIC 0x91e
+// The inner forest's bridges: the hide flags of the Cut tree before the left one and the Strength boulder before the
+// right one (build_raid.py's BRIDGE_CUT, BRIDGE_BOULDER), each put there on EFU_BRIDGE_BLOCK_CHANCE percent of
+// explorations (L_DoorRoll)
+#define EFU_FLAG_BRIDGE_CUT 0x91f
+#define EFU_FLAG_BRIDGE_BOULDER 0x920
+#define EFU_BRIDGE_BLOCK_CHANCE 70
+// The hide flag of the scavenger always in the inner forest's grass patch right of the road: cleared on heading out,
+// set when they are beaten
+#define EFU_FLAG_FOREST_SCAV 0x921
+// Floccesy Ranch's scavengers' hide flags (build_raid.py's RANCH_SPOTS), set on heading out, then each one still
+// hidden comes out on an entry by chance like the target's (Script_RanchEnter); and the ranch's entered flag
+#define EFU_FLAG_RANCH_SCAV_FIRST 0x922
+#define EFU_RANCH_SCAV_COUNT 6
+#define EFU_FLAG_RANCH_ENTERED 0x928
+// Set once Burgh has been beaten: he stays gone, the guide is free, and a generic scavenger may take his place in
+// Rumination Field (EFU_FLAG_RUMINATION_SCAV, out on EFU_SIDE_SCAV_CHANCE percent of explorations after)
+#define EFU_FLAG_BURGH_BEATEN 0x929
+#define EFU_FLAG_RUMINATION_SCAV 0x92a
+// Burgh's reward, the Blank HM, which took Gram 1's place (build_bag.py)
+#define EFU_ITEM_BLANK_HM ITEM_GRAM_1
 // Billy's Trainer: the childcare centre's named scavenger, whose team is his own on every exploration
 #define EFU_TRAINER_BILLY 401
 // How many Pokémon a scavenger's team has on an exploration (Efu_ScavParty in field_encount.c)

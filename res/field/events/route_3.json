@@ -886,11 +886,11 @@
         },
         {
             "id": 149,
-            "model": "OBJ_CODE_MODEL_3",
+            "model": "OBJ_CODE_108",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0a9b",
-            "script": 11023,
+            "flag": 0,
+            "script": 10004,
             "direction": "DIR_DOWN",
             "params": [
                 0,
@@ -909,11 +909,11 @@
         },
         {
             "id": 150,
-            "model": "OBJ_CODE_MODEL_3",
+            "model": "OBJ_CODE_108",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0a9b",
-            "script": 11023,
+            "flag": 0,
+            "script": 10004,
             "direction": "DIR_DOWN",
             "params": [
                 0,
