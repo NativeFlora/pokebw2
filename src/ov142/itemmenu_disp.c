@@ -1617,6 +1617,14 @@ static BOOL ItemMenuDisp_ShowsCount(u8 pocket) {
 static const u8 sEfuPlatePos[6][2] = { { 0, 1 }, { 16, 2 }, { 0, 7 }, { 16, 8 }, { 0, 13 }, { 16, 14 } };
 static const u8 sEfuPlateScreenPos[3][2] = { { 0, 1 }, { 16, 2 }, { 0, 19 } };
 
+// The pickup box's tiles, under the plates, and the color it is filled with
+#define EFU_PICKUP_BOX_X 1
+#define EFU_PICKUP_BOX_Y 20
+#define EFU_PICKUP_BOX_WIDTH 30
+#define EFU_PICKUP_BOX_FILL 6
+
+static void ItemMenuDisp_EfuDrawPickup(ItemMenuWork *work);
+
 // Loads the party screen's BGs onto the upper screen in place of the bag's
 static void ItemMenuDisp_EfuLoadPartyBGs(ItemMenuWork *work) {
     BGSetup setup = {
@@ -1687,9 +1695,30 @@ void ItemMenuDisp_EfuCreateParty(ItemMenuWork *work) {
                                                                           16, 6, EFU_PLATE_TEXT_PALETTE, TRUE));
         BmpWin_FlushMap(work->efuPlateWindows[i].window);
     }
+    if (work->efuPickup != ITEM_NONE) {
+        ItemMenuDisp_EfuDrawPickup(work);
+    }
     GFL_BGSysQueueScrLoad(7);
     work->efuPartyCursor = -1;
     ItemMenuDisp_EfuUpdateParty(work);
+}
+
+// The box under the party that says which item is being picked up, and what the keys do with it
+static void ItemMenuDisp_EfuDrawPickup(ItemMenuWork *work) {
+    u32 hint = Efu_BagHasRoom(work->bag, work->efuPickup, 1) ? BagMenu_Text_EfuPickupHint : BagMenu_Text_EfuPickupFull;
+
+    PrintWindow_Init(&work->efuPickupWindow, BmpWin_CreateDynamic(7, EFU_PICKUP_BOX_X, EFU_PICKUP_BOX_Y,
+                                                                  EFU_PICKUP_BOX_WIDTH, 4, EFU_PLATE_TEXT_PALETTE, TRUE));
+    GFL_BitmapFill(BmpWin_GetBitmap(work->efuPickupWindow.window), EFU_PICKUP_BOX_FILL);
+    BmpWin_FlushMap(work->efuPickupWindow.window);
+    loadItemNameToStrbuf(work->wordSet, 0, work->efuPickup);
+    GFL_MsgDataLoadStrbuf(work->msgData, BagMenu_Text_EfuPickup, work->tempBuf);
+    GFL_WordSetFormatStrbuf(work->wordSet, work->expandBuf, work->tempBuf);
+    PrintWindow_Print(&work->efuPickupWindow, work->printQueue, 4, 0, work->expandBuf, work->font,
+                      EFU_PLATE_TEXT_COLOR);
+    GFL_MsgDataLoadStrbuf(work->msgData, hint, work->expandBuf);
+    PrintWindow_Print(&work->efuPickupWindow, work->printQueue, 4, 16, work->expandBuf, work->font,
+                      EFU_PLATE_TEXT_COLOR);
 }
 
 void ItemMenuDisp_EfuFreeParty(ItemMenuWork *work) {
@@ -1703,6 +1732,9 @@ void ItemMenuDisp_EfuFreeParty(ItemMenuWork *work) {
             work->efuItemIcons[i] = NULL;
         }
         BmpWin_Free(work->efuPlateWindows[i].window);
+    }
+    if (work->efuPickup != ITEM_NONE) {
+        BmpWin_Free(work->efuPickupWindow.window);
     }
     GFL_FontFree(work->efuSmallFont);
     GFL_MsgDataFree(work->efuPartyMsgData);
@@ -1822,5 +1854,8 @@ void ItemMenuDisp_EfuFlushParty(ItemMenuWork *work) {
 
     for (i = 0; i < 6; i++) {
         PrintWindow_Flush(&work->efuPlateWindows[i], work->printQueue);
+    }
+    if (work->efuPickup != ITEM_NONE) {
+        PrintWindow_Flush(&work->efuPickupWindow, work->printQueue);
     }
 }

@@ -84,8 +84,12 @@ enum {
 // pockets that hold an item, and no Free Space. The first of those, or the Items pocket when none holds one, is named
 // Items (efu_bag.h), in the work's efuItemPocket. Whether a pocket is one the bag shows
 static BOOL Efu_IsShownPocket(ItemMenuWork *work, s32 pocket) {
-    if (pocket == work->efuItemPocket || pocket == BAG_POCKET_TMS_HMS || pocket == BAG_POCKET_KEY_ITEMS) {
+    if (pocket == work->efuItemPocket) {
         return TRUE;
+    }
+    // Picking up an item, the bag shows only the pockets of holdable items
+    if (pocket == BAG_POCKET_TMS_HMS || pocket == BAG_POCKET_KEY_ITEMS) {
+        return work->efuPickup == ITEM_NONE;
     }
     if (pocket == BAG_POCKET_ITEMS || pocket == BAG_POCKET_MEDICINE || pocket == BAG_POCKET_BERRIES) {
         return BagSave_GetPocketItemCountCore(work->bag, pocket, TRUE) > 0;
@@ -298,6 +302,7 @@ static void ItemMenu_SaveFreeSpaceFilter(BagCursor *cursor, u32 mode, u32 result
 static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot);
 static void ItemMenu_EfuStartPickParty(ItemMenuWork *work, u16 item);
 static void ItemMenu_StateEfuPickParty(ItemMenuWork *work);
+static void ItemMenu_EfuPickupToBag(ItemMenuWork *work, u16 item);
 
 const GameProcFunctions BAG_PROC_FUNCTIONS = { ItemMenuProc_Init, ItemMenuProc_Main, ItemMenuProc_Exit };
 
@@ -1019,6 +1024,11 @@ static void ItemMenu_StateSelectItem(ItemMenuWork *work) {
     if (slot != NULL) {
         work->item = slot->item;
     }
+    // Escape from Unova: picking up an item, A on one of the bag's swaps them when the bag is full
+    if (work->efuPickup != ITEM_NONE) {
+        ItemMenu_EfuPickupToBag(work, work->item);
+        return;
+    }
     if (work->mode == BAG_MODE_GIVE_ITEM) {
         if (GetItemParam(work->item, ITEM_PARAM_IMPORTANT, work->heapId) == 0 &&
             PML_ItemIsNotSpecialMonsball(work->item) == TRUE) {
@@ -1112,7 +1122,7 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
         return;
     }
     if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_Y) {
-        if (ItemMenu_CanRegister(work) == TRUE) {
+        if (work->efuPickup == ITEM_NONE && ItemMenu_CanRegister(work) == TRUE) {
             if (ItemMenu_ToggleItemRegistration(work, work->cursorRow) == TRUE) {
                 ItemMenu_UpdateList(work);
             } else {
@@ -1158,13 +1168,18 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
             ItemMenu_SetState(work, ItemMenu_StateFlashCursor);
             return;
         }
-        // Escape from Unova: A in the empty Items pocket picks a Pokémon of the party, to take its held item
+        // Escape from Unova: A in the empty Items pocket picks up the item into the bag, or else picks a Pokémon of the
+        // party, to take its held item
+        if (work->efuPickup != ITEM_NONE) {
+            ItemMenu_EfuPickupToBag(work, ITEM_NONE);
+            return;
+        }
         if (work->pocket == work->efuItemPocket && work->efuParty) {
             ItemMenu_EfuStartPickParty(work, ITEM_NONE);
             return;
         }
     } else if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_SELECT) {
-        if (work->pocket == BAG_POCKET_FREE_SPACE) {
+        if (work->pocket == BAG_POCKET_FREE_SPACE || work->efuPickup != ITEM_NONE) {
             return;
         }
         if (ItemMenu_GetItemCount(work) <= 1) {
@@ -1176,6 +1191,11 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
         ItemMenuDisp_SetMoveButtons(work, FALSE);
         work->movingItem = TRUE;
         ItemMenu_StartMoveItem(work);
+        return;
+    } else if (work->efuPickup != ITEM_NONE && (GCTX_HIDGetTypedKeys() & PAD_KEY_UP) &&
+               ItemMenu_GetCursorIndex(work) == 0) {
+        // Escape from Unova: picking up an item, Up from the list's top goes to the party, above it
+        ItemMenu_EfuStartPickParty(work, ITEM_NONE);
         return;
     } else if (ItemMenu_MoveCursorByKeys(work)) {
         ItemMenuDisp_UpdateScrollBar(work);
@@ -2301,11 +2321,15 @@ static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *dat
     work->isCycling = bag->isCycling;
     work->dowsingActive = bag->dowsingActive;
     work->freeSpaceFilter = bag->freeSpaceFilter;
+    // Escape from Unova: the field bag opened by a script to pick up an item (L_Pickup in efu.s.in)
+    if (work->mode == BAG_MODE_NORMAL) {
+        work->efuPickup = *EventWork_GetWkPtr(GameData_GetEventWork(work->gameData), EFU_WORK_PICKUP_ITEM);
+    }
     sortItemBlocks(work->bag);
     BagItemList_Init(&work->itemList, bag->bag, work->freeSpaceFilter, work->heapId);
     work->pocket = BagCursor_GetPocket(work->cursor);
     work->efuItemPocket = Efu_BagItemPocket(work->bag);
-    if (!Efu_IsShownPocket(work, work->pocket)) {
+    if (!Efu_IsShownPocket(work, work->pocket) || work->efuPickup != ITEM_NONE) {
         work->pocket = work->efuItemPocket;
     }
     for (pocket = 0; pocket < BAG_POCKET_NONE; pocket++) {
@@ -2332,6 +2356,10 @@ static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *dat
             work->scroll = scroll - 1;
         }
         BagCursor_SetPocketPosition(work->cursor, pocket, row, scroll);
+    }
+    if (work->efuPickup != ITEM_NONE) {
+        work->cursorRow = 0;
+        work->scroll = -1;
     }
     work->msgData = GFL_MsgSysLoadData(FALSE, ARCID_SYSTEM_MESSAGE, TEXT_BANK_BAG_MENU, work->heapId);
     work->strbuf = GFL_StrBufCreate(200, work->heapId);
@@ -3009,6 +3037,20 @@ static void ItemMenu_EfuRefresh(ItemMenuWork *work) {
     ItemMenuDisp_EfuUpdateParty(work);
 }
 
+// Escape from Unova: gives a Pokémon an item, or none, with the forms that held items give, as the party screen changes
+// them (plist_item.c)
+static void Efu_SetHeldItem(PartyPkm *pkm, u16 item) {
+    PokeParty_SetParam(pkm, PKM_PARAM_ITEM, item);
+    if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_ARCEUS &&
+        PokeParty_GetParam(pkm, PKM_PARAM_FORM, NULL) != _getTypeForPlate(item)) {
+        PokeParty_ChangeForme(pkm, _getTypeForPlate(item));
+    }
+    if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_GENESECT &&
+        PokeParty_GetParam(pkm, PKM_PARAM_FORM, NULL) != PML_ItemGetGenesectDriveForme(item)) {
+        PokeParty_ChangeForme(pkm, PML_ItemGetGenesectDriveForme(item));
+    }
+}
+
 // Escape from Unova: what picking a Pokémon of the party does. With an item of the bag to give, gives it to the Pokémon,
 // putting the Pokémon's item in the bag in its place. Without one, takes the Pokémon's item. Eggs and mail stay
 static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot) {
@@ -3025,35 +3067,82 @@ static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot) {
         if (heldItem != ITEM_NONE) {
             BagSave_AddItem(work->bag, heldItem, 1, work->heapId);
         }
-        PokeParty_SetParam(pkm, PKM_PARAM_ITEM, item);
+        Efu_SetHeldItem(pkm, item);
     } else if (heldItem != ITEM_NONE && Efu_BagHasRoom(work->bag, heldItem, 1)) {
         BagSave_AddItem(work->bag, heldItem, 1, work->heapId);
-        PokeParty_SetParam(pkm, PKM_PARAM_ITEM, ITEM_NONE);
-        item = ITEM_NONE;
+        Efu_SetHeldItem(pkm, ITEM_NONE);
     } else {
         GFL_SndSEPlay(SEQ_SE_BEEP);
         return;
-    }
-    // The forms that held items give, as the party screen changes them (plist_item.c)
-    if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_ARCEUS &&
-        PokeParty_GetParam(pkm, PKM_PARAM_FORM, NULL) != _getTypeForPlate(item)) {
-        PokeParty_ChangeForme(pkm, _getTypeForPlate(item));
-    }
-    if (PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL) == SPECIES_GENESECT &&
-        PokeParty_GetParam(pkm, PKM_PARAM_FORM, NULL) != PML_ItemGetGenesectDriveForme(item)) {
-        PokeParty_ChangeForme(pkm, PML_ItemGetGenesectDriveForme(item));
     }
     GFL_SndSEPlay(SEQ_SE_DECIDE1);
     ItemMenu_EfuRefresh(work);
 }
 
+// Escape from Unova: the item picked up is gone from the ground, and the bag closes at once. The script learns what
+// became of it from EFU_WORK_PICKUP_ITEM: 0 when nothing was left for it, or EFU_PICKUP_SWAPPED with the item left on
+// the ground in its place. Leaving the item leaves the work value as it was, the item itself
+static void ItemMenu_EfuPickupDone(ItemMenuWork *work, u16 left) {
+    *EventWork_GetWkPtr(GameData_GetEventWork(work->gameData), EFU_WORK_PICKUP_ITEM) =
+        left != ITEM_NONE ? EFU_PICKUP_SWAPPED | left : 0;
+    GFL_SndSEPlay(SEQ_SE_DECIDE1);
+    work->result = BAG_RESULT_CLOSE;
+    work->item = ITEM_NONE;
+    ItemMenu_SetState(work, NULL);
+}
+
+// Escape from Unova: picks the item up into the bag, or when the bag is full, swaps it for one of item, which is left
+// on the ground
+static void ItemMenu_EfuPickupToBag(ItemMenuWork *work, u16 item) {
+    u16 pickup = work->efuPickup;
+
+    if (Efu_BagHasRoom(work->bag, pickup, 1)) {
+        BagSave_AddItem(work->bag, pickup, 1, work->heapId);
+        ItemMenu_EfuPickupDone(work, ITEM_NONE);
+    } else if (item != ITEM_NONE) {
+        BagSave_SubItem(work->bag, item, 1, work->heapId);
+        BagSave_AddItem(work->bag, pickup, 1, work->heapId);
+        ItemMenu_EfuPickupDone(work, item);
+    } else {
+        GFL_SndSEPlay(SEQ_SE_BEEP);
+        ItemMenu_ReturnToList(work);
+    }
+}
+
+// Escape from Unova: gives the item picked up to a Pokémon of the party. The item it held goes in the bag when there is
+// room, or else is left on the ground. Eggs and mail stay, and only items a Pokémon can hold are given
+static void ItemMenu_EfuPickupToParty(ItemMenuWork *work, s32 slot) {
+    PartyPkm *pkm = PokeParty_GetPkm(GameData_GetParty(work->gameData), slot);
+    u16 heldItem = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
+    u16 left = ITEM_NONE;
+
+    if (PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL) || PML_ItemIsMail(heldItem) ||
+        Efu_BagRoom(work->bag, work->efuPickup) == EFU_BAG_ROOM_ANY) {
+        GFL_SndSEPlay(SEQ_SE_BEEP);
+        return;
+    }
+    if (heldItem != ITEM_NONE) {
+        if (Efu_BagHasRoom(work->bag, heldItem, 1)) {
+            BagSave_AddItem(work->bag, heldItem, 1, work->heapId);
+        } else {
+            left = heldItem;
+        }
+    }
+    Efu_SetHeldItem(pkm, work->efuPickup);
+    ItemMenuDisp_EfuUpdateParty(work);
+    ItemMenu_EfuPickupDone(work, left);
+}
+
 // Escape from Unova: picks a Pokémon of the party with the keys, on the upper screen, for ItemMenu_EfuPartyAction, to
-// give it an item of the bag, or to take its item with ITEM_NONE
+// give it an item of the bag, or to take its item with ITEM_NONE. Picking up an item, it starts on the row nearest the
+// list, for ItemMenu_EfuPickupToParty
 static void ItemMenu_EfuStartPickParty(ItemMenuWork *work, u16 item) {
+    s32 count = PokeParty_GetPkmCount(GameData_GetParty(work->gameData));
+
     work->efuGiveItem = item;
     ItemMenuDisp_SetButtonsActive(work, TRUE);
     ClActor_SetAutoAnim(work->scrollBar, FALSE);
-    work->efuPartyCursor = 0;
+    work->efuPartyCursor = work->efuPickup != ITEM_NONE ? (count - 1) & ~1 : 0;
     ItemMenuDisp_EfuUpdateParty(work);
     ItemMenu_SetState(work, ItemMenu_StateEfuPickParty);
 }
@@ -3071,15 +3160,34 @@ static void ItemMenu_StateEfuPickParty(ItemMenuWork *work) {
     s32 cursor = work->efuPartyCursor;
     u32 keys = GCTX_HIDGetTypedKeys();
 
-    if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_A) {
-        ItemMenu_EfuPartyAction(work, cursor);
-        ItemMenu_EfuEndPickParty(work);
-        return;
-    }
-    if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_B) {
-        GFL_SndSEPlay(SEQ_SE_CANCEL1);
-        ItemMenu_EfuEndPickParty(work);
-        return;
+    if (work->efuPickup != ITEM_NONE) {
+        // Picking up an item: A gives it, B leaves it, and Down from the last row, or Start, goes back to the list
+        if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_A) {
+            ItemMenu_EfuPickupToParty(work, cursor);
+            return;
+        }
+        if (GCTX_HIDGetPressedKeys() & (PAD_BUTTON_B | PAD_BUTTON_X)) {
+            GFL_SndSEPlay(SEQ_SE_CANCEL1);
+            work->result = BAG_RESULT_BACK;
+            ItemMenu_SetState(work, NULL);
+            return;
+        }
+        if ((GCTX_HIDGetPressedKeys() & PAD_BUTTON_START) || ((keys & PAD_KEY_DOWN) && cursor + 2 >= count)) {
+            GFL_SndSEPlay(SEQ_SE_SELECT1);
+            ItemMenu_EfuEndPickParty(work);
+            return;
+        }
+    } else {
+        if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_A) {
+            ItemMenu_EfuPartyAction(work, cursor);
+            ItemMenu_EfuEndPickParty(work);
+            return;
+        }
+        if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_B) {
+            GFL_SndSEPlay(SEQ_SE_CANCEL1);
+            ItemMenu_EfuEndPickParty(work);
+            return;
+        }
     }
     if (keys & (PAD_KEY_LEFT | PAD_KEY_RIGHT)) {
         cursor ^= 1;

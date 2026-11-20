@@ -17,6 +17,8 @@
 // buying (scrcmd_shop.c). Giving an item to a Pokémon that holds one swaps them, which leaves the count as it was
 #define EFU_BAG_HOLDABLE_MAX 1
 #define EFU_BAG_UPGRADED_MAX 3
+// Efu_BagRoom for an item that doesn't count
+#define EFU_BAG_ROOM_ANY 999
 
 // How many holdable items the bag carries now. The flag is read from the save's event work, which the game data's
 // is, since the bag's users don't all have the game data
@@ -54,7 +56,7 @@ static inline u32 Efu_BagRoom(BagSave *bag, u16 item) {
     u32 max;
 
     if (pocket != BAG_POCKET_ITEMS && pocket != BAG_POCKET_MEDICINE && pocket != BAG_POCKET_BERRIES) {
-        return 999;
+        return EFU_BAG_ROOM_ANY;
     }
     count = Efu_BagHoldableCount(bag);
     max = Efu_BagHoldableMax();

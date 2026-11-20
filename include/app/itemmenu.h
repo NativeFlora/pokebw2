@@ -249,6 +249,10 @@ struct ItemMenuWork {
     s32 efuPartyCursor;
     // The item of the bag given to the Pokémon picked, or ITEM_NONE to take its held item
     u16 efuGiveItem;
+    // The item being picked up from the ground, when a script opened the bag for it (EFU_WORK_PICKUP_ITEM), or
+    // ITEM_NONE, and the box on the upper screen that says so
+    u16 efuPickup;
+    PrintWindow efuPickupWindow;
     ClActor *efuPartyIcons[6];
     // Each plate's held item icon, its resources and the item it shows
     ClActor *efuItemIcons[6];

@@ -93,6 +93,7 @@ Taken so far:
 | `EVENT_WORK_0x41aa` | Retired in version 4: the play time the exploration started at, for the scavs' old 10-minute clock. Not to be reused. |
 | `EVENT_WORK_0x4169` (`EFU_WORK_SCAV_PENDING`) | 1 when a scav is to come out on the route at the next step (`Script_RouteEnter`); 0 after, and on heading out. Version 4. |
 | `EVENT_WORK_0x415e` (`EFU_WORK_DEV_TEST`) | 1 on a game started from the title menu's Dev Test: its first Pokémon is a level 100 Volcarona. |
+| `EVENT_WORK_0x415c` (`EFU_WORK_PICKUP_ITEM`) | The item being picked up while the bag is open for it (`L_Pickup`), then what became of it; 0 after. |
 | `EVENT_WORK_0x415d` (`EFU_WORK_IDLE_FRAMES`) | Frames the player has stood still on a raid, up to `EFU_SCAV_IDLE_FRAMES` (16), when the scavengers take a look as if the player had stepped; 0 after, and at each step. |
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
 | `EVENT_FLAG_0x0a80` to `0x0a8f`, `0x0a49` to `0x0a4e` | Retired: the routes' scavs' hide flags before they came out at spots (versions 3 and 4). Not to be reused. |
@@ -135,7 +136,7 @@ the ball is taken), and heading out rolls them again too.
 Free event flags (nothing refers to them) include 0x092c to 0x095f; take them upward from 0x092c. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415c. Take the next from the end of the list back, and move it into the table above.
+0x4156 to 0x415b. Take the next from the end of the list back, and move it into the table above.
 
 ## Raids and saving
 
@@ -258,12 +259,9 @@ The bag carries one item that a Pokémon can hold, or three once the tinkerer ha
 stack. Key Items and TMs and HMs are free. To carry more, give items to the team. Main's bag code can't change, so
 `Efu_BagHasRoom` (`include/efu_bag.h`) is asked where items come in:
 
-- `ItemCheckSpace` (script command), which the item ball script (7400), hidden items and most gifts ask first, so a
-  loot ball asks first too (`L_LootSwapOut`): with the bag full it leaves its first holdable item on the ball's tile
-  for what's in the ball, unseen and without asking, and what the ball holds is rolled only when it is taken, so it can't be peeked
-  at and rolled again. A loot ball gives its item with one message over the item fanfare, not through the original's
-  item ball script (global 7400) with its two messages and pickup pose. `ItemAdd`
+- `ItemCheckSpace` (script command), which the item ball script (7400), hidden items and most gifts ask first. `ItemAdd`
   isn't gated: ov036's size is luck, and every way into the bag in the zone and the base asks `ItemCheckSpace` first.
+- Picking up a loot ball or an item on the ground, which opens the bag for it (below).
 - Taking a held item, or a held mail, in the party menu, which says the bag is full.
 - Taking a held item in the PC, in either mode, which keeps it on the Pokémon.
 - Buying in a shop (`ShopUI_TryBuyItem`), as many as there is room for.
@@ -292,10 +290,20 @@ Tossing an item from the bag opened in the field puts it on the ground: the bag 
 `EFU_WORK_TOSSED_ITEM` and reserves `Script_Toss`, which runs once the field is back and puts it in an item ball on
 the first free tile of the eight around the player (below, left, right, above, then the corners), or says it's gone
 when none is free. The balls are actors that `EfuSpecial` makes (IDs from `EFU_GROUND_ID_FIRST`, 16 at most), with
-the item in user parameter 0 and `Script_GroundItem` as their script: it gives the item if the bag has room, or else
-swaps the bag's item for it without asking, leaving the bag's item in its place. A beaten scavenger's drop lands the
+the item in user parameter 0 and `Script_GroundItem` as their script, which picks it up in the bag (below). A beaten scavenger's drop lands the
 same way on the tile where they stood, and the player picks it up like any other. The balls are the zone's actors, so they last through menus and battles but are gone
 once the player leaves the zone.
+
+Picking up a loot ball or an item on the ground opens the bag over it (`L_Pickup`, with a quick fade), with
+`EFU_WORK_PICKUP_ITEM` holding the item. The bag shows only the pockets of holdable items, and a box under the party
+(`ItemMenuDisp_EfuDrawPickup`) names the item and the keys. A on an item of the bag, or in the empty Items pocket,
+picks it up when the bag has room, or swaps it for that item when it is full (`ItemMenu_EfuPickupToBag`). Up from the
+list's top (or Start) goes to the party: A on a Pokémon gives it the item, its own item going into the bag when there
+is room or else left on the ground (`ItemMenu_EfuPickupToParty`); Down from the last row (or Start) goes back. B (or
+X) leaves the item where it lies. Eggs and mail are left alone. The bag closes at once on A, and the work value tells
+the script what happened: 0 for taken, `EFU_PICKUP_SWAPPED` plus the item left on the ground in its place, or the
+item itself for left. What is left lies on the ball's tile as an item on the ground. A loot ball's item is rolled as it
+is picked up, and its ball is gone either way, so leaving it doesn't roll it again.
 
 
 ## The locker

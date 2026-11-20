@@ -159,4 +159,6 @@ BagMenu_Text_NumberItemTypesFound_2 = Number of item types found: {0202:1}!
 BagMenu_Text_SortedItemsByNumber = Sorted items by number!
 BagMenu_Text_CannotFind = Cannot find.
 BagMenu_Text_PutAway = Put Away
-\pad{54}
+BagMenu_Text_EfuPickup = Picking up the {0109:0}.
+BagMenu_Text_EfuPickupHint = A: Pick up    B: Leave it    Up: Party
+BagMenu_Text_EfuPickupFull = Bag full!  A: Swap    B: Leave it    Up: Party

@@ -347,68 +347,69 @@ L_ConfirmStarter:
     VMReturn
     .balign 4, 0
 
-// Picking up loot: what the ball holds is rolled from its place's tiers (gen_efu.py's LOOT_PLACES and LOOT_TIERS),
-// then given at once with one message, and the ball is hidden by its flag (the original's item ball script, global
-// 7400, took two messages and the player's pickup pose)
+// Picking up loot: what the ball holds is rolled from its place's tiers (gen_efu.py's LOOT_PLACES and LOOT_TIERS), then
+// picked up in the bag (L_Pickup). The ball is hidden by its flag either way: an item left, or swapped out, lies on its
+// tile as an item on the ground, so leaving it doesn't roll it again (the original's item ball script, global 7400,
+// took two messages and the player's pickup pose)
 Script_LootRoute:
     ActorsPauseAll
-    VMCall L_LootSwapOut
     VMCall L_LootPickRoute
     VMJump L_LootGive
 
 Script_LootCave:
     ActorsPauseAll
-    VMCall L_LootSwapOut
     VMCall L_LootPickCave
     VMJump L_LootGive
 
 Script_LootTarget:
     ActorsPauseAll
-    VMCall L_LootSwapOut
     VMCall L_LootPickTarget
 L_LootGive:
+    VMCall L_Pickup
     ActorGetSpawnFlag 0x8011, 0x8010
     FlagSet 0x8010
-    ActorDelete 0x8011
-    ItemAdd 0x800c, 1, 0x8010
-    WordSetItemNameEx 0, 0x800c, 1, 0
-    WorkCmpConst 0x8012, 0
-    VMJumpIf CMP_NE, L_ItemSwapped
-    VMJump L_ItemTaken
+    VMJump L_PickupDrop
 
-// The small bag (include/efu_bag.h): with the bag full, a loot ball swaps its first holdable item for what's in the
-// ball, unseen, without asking: that item is left on the ball's tile, where it can be picked up again. What a ball
-// holds is rolled only when it is taken, so it can't be peeked at and rolled again (every loot item can be held, so a
-// Poke Ball stands for them all). 0x8012 is the item left, or 0
-L_LootSwapOut:
-    WorkSetConst 0x8012, 0
-    ItemCheckSpace @POKE_BALL@, 1, 0x800c
-    WorkCmpConst 0x800c, 0
-    VMJumpIf CMP_NE, L_LootSwapOutDone
-    EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8012
+// An item on the ground (EfuSpecial), its item in the actor's user parameter 0, picked up in the bag (L_Pickup): left,
+// it stays
+Script_GroundItem:
+    ActorsPauseAll
+    ActorGetUserParam 0x8011, 0, 0x800c
+    VMCall L_Pickup
+    WorkCmpConst 0x8013, 0
+    VMJumpIf CMP_EQ, L_PickupEnd
+// The ball is gone, and what was left for its item lies on its tile
+L_PickupDrop:
     ActorGetGPos 0x8011, 0x8014, 0x8015
-    ItemSub 0x8012, 1, 0x8016
+    ActorDelete 0x8011
+    WorkCmpConst 0x8012, 0
+    VMJumpIf CMP_EQ, L_PickupEnd
     EfuSpecial EFU_SPECIAL_DROP, 0x8012, 0x8014, 0x8015, 0x8016
-L_LootSwapOutDone:
-    VMReturn
-
-// The messages of an item picked up, its name in word 0 and what was left for it in word 1, played over the item
-// fanfare, which the player can't cut short
-L_ItemTaken:
-    MEPlay SEQ_ME_ITEM
-    SystemMsg Efu_Text_GroundTake, 2
-    VMJump L_ItemDone
-
-L_ItemSwapped:
-    WordSetItemNameEx 1, 0x8012, 1, 0
-    MEPlay SEQ_ME_ITEM
-    SystemMsg Efu_Text_GroundSwapped, 2
-L_ItemDone:
-    MEWait
-    LastKeyWait
-    SystemMsgClose
+L_PickupEnd:
     ActorsUnpauseAll
     VMHalt
+
+// Picking up the item in 0x800c: the bag opens with the party, saying so (ItemMenu_EfuPickupToBag and
+// ItemMenu_EfuPickupToParty in itemmenu.c). It sets 0x8013 to 1 if the item was taken, 0 if it was left, and 0x8012 to
+// what is left on the ground: the item itself when it was left, what it was swapped for, or 0
+L_Pickup:
+    WorkSet EFU_WORK_PICKUP_ITEM, 0x800c
+    FadeOutBlackQ
+    FadeWait
+    FieldClose
+    CallBag 2, 0x8020, 0x8021
+    FieldOpen
+    FadeInBlackQ
+    FadeWait
+    WorkGet 0x8012, EFU_WORK_PICKUP_ITEM
+    WorkSetConst EFU_WORK_PICKUP_ITEM, 0
+    WorkSetConst 0x8013, 0
+    WorkCmpWork 0x8012, 0x800c
+    VMJumpIf CMP_EQ, L_PickupLeft
+    WorkSetConst 0x8013, 1
+    WorkAnd 0x8012, EFU_PICKUP_SWAPPED - 1
+L_PickupLeft:
+    VMReturn
 
 // After a win against a scavenger (global_3000.s calls it, with the Trainer in 0x803f): they run off, leaving an item
 // from the target's table on the ground where they stood, for the player to pick up
@@ -469,29 +470,6 @@ L_DayCareQuestCheck:
     FlagSet EFU_FLAG_DAYCARE_QUEST_DONE
 L_DayCareQuestOpen:
     VMReturn
-
-// An item on the ground (EfuSpecial), its item in the actor's user parameter 0: taken, and when the bag's item is
-// already carried, swapped for it without asking, leaving the bag's item in its place
-Script_GroundItem:
-    ActorsPauseAll
-    ActorGetUserParam 0x8011, 0, 0x800c
-    WordSetItemNameEx 0, 0x800c, 1, 0
-    WorkSetConst 0x8012, 0
-    ItemCheckSpace 0x800c, 1, 0x8010
-    WorkCmpConst 0x8010, 0
-    VMJumpIf CMP_EQ, L_GroundSwap
-    ActorDelete 0x8011
-    ItemAdd 0x800c, 1, 0x8010
-    VMJump L_ItemTaken
-
-L_GroundSwap:
-    EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8012
-    ActorGetGPos 0x8011, 0x8014, 0x8015
-    ActorDelete 0x8011
-    ItemSub 0x8012, 1, 0x8016
-    ItemAdd 0x800c, 1, 0x8016
-    EfuSpecial EFU_SPECIAL_DROP, 0x8012, 0x8014, 0x8015, 0x8016
-    VMJump L_ItemSwapped
 
 // Reserved by the bag after a toss (itemmenu.c): the item lands beside the player, or is lost with nowhere to put it
 Script_Toss:

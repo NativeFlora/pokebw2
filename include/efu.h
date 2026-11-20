@@ -114,6 +114,11 @@
 #define EFU_SCAV_IDLE_FRAMES 16
 // The frames counted toward it (EventTrainerEye_EfuIdle)
 #define EFU_WORK_IDLE_FRAMES 0x415d
+// The item being picked up, while the bag is open for it (L_Pickup, ItemMenu_EfuPickupDone): the item itself while it
+// is left on the ground, 0 once it is taken, or EFU_PICKUP_SWAPPED with the item left on the ground in its place
+#define EFU_WORK_PICKUP_ITEM 0x415c
+// (item IDs are under it, and scripts' constants must stay under 0x4000, where variables start)
+#define EFU_PICKUP_SWAPPED 0x1000
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
 #define EFU_SCAV_PARAM_CHASE 1
 #define EFU_SCAV_PARAM_MOVE_CODE 2
