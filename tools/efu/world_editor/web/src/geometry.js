@@ -268,3 +268,141 @@ export function groundHeight(t, rect, tables) {
     hs.sort((a, b) => a - b);
     return hs[Math.floor(hs.length / 2)];
 }
+
+// ---- Layered edits ----------------------------------------------------------------------------------------------
+// Layers: ground (the geometry and the terrain's heights), props, collision (the tile flags), class (the tile class).
+// Events are the editor's own operations. apply_world_edits.py does the same.
+
+export const LAYERS = ['ground', 'props', 'collision', 'class'];
+const FLAGS_MASK = 0xffff0000;
+
+function nearestWalkable(t, rect) {
+    const [x0, z0, x1, z1] = rect;
+    const walkable = [];
+    t.cells.forEach((c, i) => {
+        const x = i % t.width, z = Math.floor(i / t.width);
+        if (!(x0 <= x && x < x1 && z0 <= z && z < z1) && !(c[3] & BLOCKED) && c[0] === 0) walkable.push([x, z, c]);
+    });
+    return (x, z) => {
+        let best = null, bestD = 1e9;
+        for (const w of walkable) {
+            const d = Math.abs(w[0] - x) + Math.abs(w[1] - z);
+            if (d < bestD) { bestD = d; best = w[2]; }
+        }
+        return best;
+    };
+}
+
+export function eraseLayers(st, op) {
+    const layers = op.layers || LAYERS;
+    const has = (l) => layers.includes(l);
+    const [x0, z0, x1, z1] = unitsRect(op.rect);
+    if (has('ground')) {
+        for (const prim of st.geo.prims) prim.tris = fan(prim.tris.flatMap((t) => outside(t, x0, z0, x1, z1)));
+        const m = op.ground ? st.geo.materials.findIndex((mm) => mm.name === op.ground) : -1;
+        if (m >= 0) {
+            const y = op.groundY || 0;
+            const c = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => [x, y, z, x / 32, z / 32, 254, 254, 254]);
+            let prim = st.geo.prims.find((p) => p.material === m);
+            if (!prim) st.geo.prims.push(prim = { material: m, tris: [] });
+            prim.tris.push([c[0], c[2], c[1]], [c[0], c[3], c[2]]);
+        }
+    }
+    if (has('props')) {
+        st.geo.props = st.geo.props.filter((p) => !(x0 <= p.translation[0] && p.translation[0] < x1 && z0 <= p.translation[2] && p.translation[2] < z1));
+    }
+    const t = st.terrain;
+    if (!t || !(has('ground') || has('collision') || has('class'))) return;
+    const near = nearestWalkable(t, op.rect);
+    for (let x = op.rect[0]; x < op.rect[2]; x++) {
+        for (let z = op.rect[1]; z < op.rect[3]; z++) {
+            const cell = t.cells[z * t.width + x];
+            if (!cell) continue;
+            const n = near(x, z);
+            if (has('ground') && n) { cell[0] = n[0]; cell[1] = n[1]; cell[2] = n[2]; cell[4] = n[4]; }
+            if (has('collision') && has('class') && n) cell[3] = n[3];
+            else if (has('collision')) cell[3] = (cell[3] & ~BLOCKED) >>> 0;
+            else if (has('class') && n) cell[3] = ((cell[3] & FLAGS_MASK) | (n[3] & 0xffff)) >>> 0;
+        }
+    }
+}
+
+// Copies a rectangle of a source chunk's state onto this one at each of `tos` (tile positions), on the given layers.
+// The source is read before any of it is written, so a chunk can copy from itself
+export function copyLayers(st, src, op) {
+    const layers = op.layers || LAYERS;
+    const has = (l) => layers.includes(l);
+    const rect = op.rect;
+    const [sx0, sz0, sx1, sz1] = unitsRect(rect);
+    const srcGeo = src === st ? cloneGeometry(src.geo) : src.geo;
+    const srcTerrain = src === st ? cloneTerrain(src.terrain) : src.terrain;
+    const pieces = [];
+    if (has('ground')) {
+        for (const sprim of srcGeo.prims) {
+            const polys = sprim.tris.map((t) => inside(t, sx0, sz0, sx1, sz1)).filter(Boolean);
+            if (polys.length) pieces.push([srcGeo.materials[sprim.material], polys]);
+        }
+    }
+    for (const to of op.tos) {
+        const dx = (to[0] - rect[0]) * TILE, dz = (to[1] - rect[1]) * TILE;
+        const [x0, z0, x1, z1] = [sx0 + dx, sz0 + dz, sx1 + dx, sz1 + dz];
+        if (has('ground')) {
+            for (const prim of st.geo.prims) prim.tris = fan(prim.tris.flatMap((t) => outside(t, x0, z0, x1, z1)));
+            for (const [mat, polys] of pieces) {
+                let m = st.geo.materials.findIndex((mm) => mm.name === mat.name);
+                if (m < 0) { st.geo.materials.push({ ...mat }); m = st.geo.materials.length - 1; }
+                let prim = st.geo.prims.find((p) => p.material === m);
+                if (!prim) st.geo.prims.push(prim = { material: m, tris: [] });
+                prim.tris.push(...fan(polys.map((p) => p.map((v) => [v[0] + dx, v[1], v[2] + dz, ...v.slice(3)]))));
+            }
+        }
+        if (has('props')) {
+            st.geo.props = st.geo.props.filter((p) => !(x0 <= p.translation[0] && p.translation[0] < x1 && z0 <= p.translation[2] && p.translation[2] < z1));
+            for (const p of srcGeo.props) {
+                const [x, y, z] = p.translation;
+                if (sx0 <= x && x < sx1 && sz0 <= z && z < sz1) st.geo.props.push({ ...p, uid: undefined, translation: [x + dx, y, z + dz] });
+            }
+        }
+        const t = st.terrain;
+        if (!t || !srcTerrain) continue;
+        for (let x = rect[0]; x < rect[2]; x++) {
+            for (let z = rect[1]; z < rect[3]; z++) {
+                const tx = to[0] + x - rect[0], tz = to[1] + z - rect[1];
+                if (tx < 0 || tz < 0 || tx >= t.width || tz >= t.height) continue;
+                const s = srcTerrain.cells[z * srcTerrain.width + x];
+                const d = t.cells[tz * t.width + tx];
+                if (has('ground')) {
+                    d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[4] = s[4];
+                    if (s[0] !== 0 && srcTerrain.splits[s[2]]) {
+                        t.splits.push(srcTerrain.splits[s[2]].slice());
+                        d[2] = t.splits.length - 1;
+                    }
+                }
+                if (has('collision')) d[3] = ((d[3] & 0xffff) | (s[3] & FLAGS_MASK)) >>> 0;
+                if (has('class')) d[3] = ((d[3] & FLAGS_MASK) | (s[3] & 0xffff)) >>> 0;
+            }
+        }
+    }
+}
+
+export function propKey(p) {
+    return JSON.stringify([p.resId, p.translation.map((v) => Math.round(v * 1000) / 1000), p.rotation.map((v) => Math.round(v * 10000) / 10000)]);
+}
+
+export function propOp(st, op) {
+    const i = op.match ? st.geo.props.findIndex((p) => propKey(p) === propKey(op.match)) : -1;
+    const value = op.value ? { resId: op.value.resId, translation: op.value.translation.slice(), rotation: op.value.rotation.slice(), scale: (op.value.scale || [1, 1, 1]).slice(), uid: op._uid } : null;
+    if (op.action === 'add') st.geo.props.push(value);
+    else if (op.action === 'set' && i >= 0) st.geo.props[i] = { ...value, uid: st.geo.props[i].uid };
+    else if (op.action === 'delete' && i >= 0) st.geo.props.splice(i, 1);
+}
+
+export function tilesOp(st, op) {
+    const t = st.terrain;
+    if (!t) return;
+    for (const [xz, v] of Object.entries(op.set)) {
+        const [x, z] = xz.split(',').map(Number);
+        const c = t.cells[z * t.width + x];
+        if (c && v.tile_type !== undefined) c[3] = v.tile_type >>> 0;
+    }
+}

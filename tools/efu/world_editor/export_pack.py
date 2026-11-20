@@ -110,6 +110,11 @@ def tile_classes():
     return {int(v, 16): n[len('TILE_CLASS_'):] for n, v in re.findall(r'(TILE_CLASS_\w+) = (0x[0-9a-f]+)', s)}
 
 
+EFU_H = (ROOT / 'include' / 'efu.h').read_text()
+LOCK_COUNT = int(re.search(r'#define EFU_LOCK_COUNT (\d+)', EFU_H).group(1))
+LOCK_SCRIPT = 11000 + int(re.search(r'#define EFU_SCRIPT_LOCK_FIRST \(EFU_SCRIPT_FIRST \+ (\d+)\)', EFU_H).group(1))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('out', nargs='?', default=str(ROOT / 'build' / 'world_editor'))
@@ -139,7 +144,15 @@ def main():
         if not path.exists() or z in zones:
             continue
         ev = RES / 'events' / (stem(z, 'ZONE_') + '.json')
-        zones[z] = {'header': read_json(path), 'events': read_json(ev) if ev.exists() else None}
+        events = read_json(ev) if ev.exists() else None
+        if events:
+            # Locks are lock edits in the editor (apply_world_edits.py puts them on the warps and their signs)
+            for w in events.get('warps', []):
+                if isinstance(w.get('grid'), dict) and w['grid'].get('unk0a'):
+                    w['grid']['unk0a'] = 0
+            events['bg_events'] = [b for b in events.get('bg_events', [])
+                                   if not LOCK_SCRIPT <= b.get('script', 0) < LOCK_SCRIPT + LOCK_COUNT]
+        zones[z] = {'header': read_json(path), 'events': events}
 
     # The matrices: the hack's, then those its zones' warps lead to, then those zones' warps, and so on
     wanted = [m for m in matrix_names if m.startswith('MAP_MATRIX_EFU_')] + args.matrix
@@ -200,7 +213,9 @@ def main():
                      'props': sorted({int(m.group(2)) for n in doc['nodes']
                                       for m in [re.match(r'bw2_prop_(\d+)_id_(\d+)', n.get('name', ''))] if m})}
 
-    # Which prop bundles to export: each matrix's zones' areas'
+    # Which prop bundles to export: each matrix's zones' areas', all of their props for the hack's own matrices (the
+    # editor's palette) and those the models place for the rest
+    full_bundles = set()
     for name, m in matrices.items():
         mz = {z for row in (m['zones'] or []) for z in row} | {z for z, v in zones.items()
                                                                  if v['header'].get('matrix') == name}
@@ -211,6 +226,8 @@ def main():
                 prefix = 'FIELD_PROPS_%s_' % kind.upper()
                 if area['prop_bundle'].startswith(prefix):
                     prop_bundles.setdefault((kind, stem(area['prop_bundle'], prefix)), area['prop_bundle'])
+                    if name.startswith('MAP_MATRIX_EFU_') and not m.get('source_only'):
+                        full_bundles.add(area['prop_bundle'])
     used_props = {r for m in models.values() for r in m['props']}
     props = {}
     for (kind, bundle), constant in sorted(prop_bundles.items()):
@@ -222,7 +239,7 @@ def main():
             if not (d / 'model.glb').exists():
                 continue
             res_id = read_json(d / 'data.json')['res_id']
-            if res_id not in used_props:
+            if res_id not in used_props and constant not in full_bundles:
                 continue
             glb = (d / 'model.glb').read_bytes()
             doc = glb_doc(glb)
@@ -283,6 +300,7 @@ def main():
             'actor_event_types': list(load_constants('actor_event_types')),
             'tile_classes': {str(k): v for k, v in tile_classes().items()},
             'scripts': {str(k): v for k, v in efu_script_names().items()},
+            'items': [i for i in load_constants('items') if i != 'ITEM_NONE'],
         },
         'edits': read_json(EDITS) if EDITS.exists() else None,
         # Each edited chunk's model's base, which stamps copy from (apply_world_edits.py)

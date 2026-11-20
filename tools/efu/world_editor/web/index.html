@@ -26,6 +26,7 @@ button:hover { border-color: var(--accent); }
 button.on { background: #24456b; border-color: var(--accent); }
 button.danger:hover { border-color: var(--bad); }
 .tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+#toolOptions .btns button { padding: 3px 7px; font-size: 12px; }
 .tools button { padding: 6px 4px; font-size: 12px; }
 .tools button kbd { color: var(--dim); font-size: 10px; margin-left: 3px; }
 .row { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
@@ -46,6 +47,21 @@ footer .btns { display: grid; grid-template-columns: 1fr 1fr; }
 #toast { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #23324a; border: 1px solid var(--accent); padding: 6px 12px; border-radius: 6px; display: none; z-index: 5; }
 #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 15px; }
 footer { border-top: 1px solid var(--line); padding: 8px 12px; }
+.layers { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.layers label { display: inline-flex; gap: 4px; align-items: center; color: var(--text); }
+.layers label.all { flex-basis: 100%; color: var(--accent); font-weight: 600; }
+#palette { display: none; }
+#palette input[type=text] { margin-bottom: 4px; }
+#palette h3, .feature h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 10px 0 4px; font-weight: 600; }
+.pal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.palItem { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 3px; cursor: pointer; text-align: center; font-size: 10px; color: var(--dim); overflow: hidden; }
+.palItem:hover { border-color: var(--accent); }
+.palItem.on { border-color: var(--accent); background: #24456b; color: var(--text); }
+.palItem img { width: 100%; aspect-ratio: 1; object-fit: contain; image-rendering: pixelated; display: block; }
+.palItem i.swatch { display: block; width: 100%; aspect-ratio: 1; border-radius: 3px; opacity: .6; }
+.palItem span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feature { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 2px; }
+details summary { cursor: pointer; color: var(--dim); margin: 6px 0 2px; }
 #legend span { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; font-size: 11px; color: var(--dim); }
 #legend i { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }
 </style>
@@ -62,6 +78,11 @@ footer { border-top: 1px solid var(--line); padding: 8px 12px; }
         <h2>Tools</h2>
         <div class="tools" id="tools"></div>
         <div id="toolOptions" class="hint"></div>
+        <div id="palette"></div>
+      </section>
+      <section>
+        <h2>Layers the tools change</h2>
+        <div id="layers" class="layers"></div>
       </section>
       <section>
         <h2>View</h2>
@@ -83,7 +104,7 @@ footer { border-top: 1px solid var(--line); padding: 8px 12px; }
       </section>
       <section>
         <h2>Inspector</h2>
-        <div id="inspector" class="box"><div class="hint">Click a tile, an event or (Matrix tool) a chunk.</div></div>
+        <div id="inspector" class="box"><div class="hint">Click a tile, an event, a prop or (Chunk tool) a chunk.</div></div>
       </section>
       <section>
         <h2>Changes</h2>

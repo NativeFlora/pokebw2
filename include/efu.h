@@ -71,6 +71,12 @@
 #define EFU_SCRIPT_RANCH_ENTER (EFU_SCRIPT_FIRST + 32)
 // Burgh, Rumination Field's boss: his battle, the Blank HM and the end of the zone's story (EFU_FLAG_BURGH_BEATEN)
 #define EFU_SCRIPT_BURGH (EFU_SCRIPT_FIRST + 33)
+// The world editor's locked doors (tools/efu/world_editor, apply_world_edits.py): a warp whose grid's unk0a is n leads
+// nowhere until EFU_FLAG_LOCK_FIRST + n - 1 is set (GetWarpForWalkIn in fieldmap_event.c), and a sign on its tile
+// runs EFU_SCRIPT_LOCK_FIRST + n - 1, which opens it with its key, if it has one (gen_efu.py writes them from
+// tools/efu/world_locks.json)
+#define EFU_SCRIPT_LOCK_FIRST (EFU_SCRIPT_FIRST + 34)
+#define EFU_LOCK_COUNT 32
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -229,6 +235,8 @@
 // in fieldmap_event.c): a sign on each says the door is locked (Script_DayCareDoor)
 #define EFU_DAYCARE_WARP 2
 #define EFU_DAYCARE_UPPER_WARP 8
+// Each world editor lock's flag, set once it is opened (EFU_SCRIPT_LOCK_FIRST), EFU_LOCK_COUNT of them
+#define EFU_FLAG_LOCK_FIRST 0x92b
 // The guide, met out in the zone (their NPC's hide flag there), and their NPC's hide flag at the east gate, which its
 // init script sets from that (Script_GateInit)
 #define EFU_FLAG_GUIDE_MET 0xa9e

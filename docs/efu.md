@@ -57,7 +57,8 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | Wild Pokémon that count as equivalent, by egg group | `tools/efu/wild_groups.py` → `tools/efu/wild_groups.json` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` and `EventTrainerEye_EfuIdle` in `src/ov036/event_trainer_eye.c`, called each step, or each frame the player stands still, from `src/ov036/fieldmap_event.c` |
 | The scavs' teams | `Efu_ScavParty` in `src/ov036/field_encount.c` |
-| The world editor (collision, tile classes, events, chunks, clearing and stamping ground), its saved edits and their applying | `tools/efu/world_editor/` (its `README.md`), `tools/efu/world_edits.json`, `tools/efu/apply_world_edits.py` |
+| The world editor (a paint program's tools on the ground, props, collision, tile classes and events; doors and their locks), its saved edits and their applying | `tools/efu/world_editor/` (its `README.md`), `tools/efu/world_edits.json`, `tools/efu/apply_world_edits.py` |
+| The world editor's locked doors: the warp's lock number, its flag and its sign's script | `world_locks.json` and `apply_locks` in `tools/efu/apply_world_edits.py`, `Efu_IsShutDoor` in `src/ov036/fieldmap_event.c`, the lock scripts in `tools/efu/gen_efu.py` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs); 0x2db and 0x15f took over unused commands' rows, so the tables keep their size |
 
 Edit the templates, then from `tools/efu` run `python3 build_base.py`, `python3 build_zone.py`, `python3 build_raid.py`,
@@ -108,6 +109,7 @@ Taken so far:
 | `EVENT_FLAG_0x0928` (`EFU_FLAG_RANCH_ENTERED`) | Set on the first entry to Floccesy Ranch on an exploration, cleared on heading out. |
 | `EVENT_FLAG_0x0929` (`EFU_FLAG_BURGH_BEATEN`) | Burgh has been beaten: he stays gone, the guide is free, and the first zone's story is done. |
 | `EVENT_FLAG_0x092a` (`EFU_FLAG_RUMINATION_SCAV`) | The hide flag of the generic scavenger who may hold Rumination Field once Burgh is beaten (on `EFU_SIDE_SCAV_CHANCE`, 75%, of explorations); set on heading out and when they are beaten. |
+| `EVENT_FLAG_0x092b` to `0x094a` (`EFU_FLAG_LOCK_FIRST`, `EFU_LOCK_COUNT`) | The world editor's locks, by their number in `tools/efu/world_locks.json`: set once a locked door is opened with its key, cleared on heading out for a lock that locks again each raid. A lock's number is never reused. |
 | `EVENT_FLAG_0x091e` (`EFU_FLAG_CHILDCARE_GENERIC`) | The hide flag of the generic scavenger who takes Billy's place once the quest is done: out by chance as the target's (75% on the first entry, 25% after); set on heading out and when they are beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
 | `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
@@ -133,7 +135,7 @@ Taken so far:
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x092b to 0x095f; take them upward from 0x092b. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x094b to 0x095f; take them upward from 0x094b. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
 0x4156 to 0x415c. Take the next from the end of the list back, and move it into the table above.

@@ -56,6 +56,38 @@
     ScriptEntry Script_PaidExit
     ScriptEntry Script_RanchEnter
     ScriptEntry Script_Burgh
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -164,6 +196,7 @@ Script_RaidDepart:
     FlagReset EFU_FLAG_RUMINATION_SCAV
 L_RuminationScavEnd:
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
+    // The world editor's locks that lock again on each raid (gen_efu.py)
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
     .irp i, 0,1,2
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
@@ -4346,3 +4379,8 @@ L_LockerCompact_17:
     WorkSetConst 0x4177, 0
 L_LockerCompact_18:
     VMReturn
+
+// The world editor's locked doors (EFU_SCRIPT_LOCK_FIRST): each lock's sign, written by gen_efu.py from
+// tools/efu/world_locks.json
+Script_LockNone:
+    VMHalt

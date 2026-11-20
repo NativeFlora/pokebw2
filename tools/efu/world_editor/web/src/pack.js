@@ -61,6 +61,11 @@ export async function loadProps(bundle) {
     return store.props[bundle];
 }
 
+export function propName(bundle, resId) {
+    const b = store.props[bundle];
+    return b && b[resId] ? b[resId].name : null;
+}
+
 export function sprite(code) {
     return store.sprites[String(code)];
 }

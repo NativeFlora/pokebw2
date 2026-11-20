@@ -1,6 +1,7 @@
 // Escape from Unova's world editor: a map matrix seen from above, its chunks' models and props, their collision and
 // tile classes, the zones' events, and the edits made to them, which are saved as world_edits.json for
-// apply_world_edits.py. Edits are a list of operations; everything shown is the pack's maps with them applied.
+// apply_world_edits.py. Edits are a list of operations (engine.js); everything shown is the pack with them applied.
+// The tools work like a paint program's, on the layers ticked in the Layers list.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -8,92 +9,103 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import * as pack from './pack.js';
 import * as G from './geometry.js';
+import * as E from './engine.js';
 
 THREE.ColorManagement.enabled = false;
 
+const { KINDS, clean, canon, newUid, world, matrix, zoneEvents, splitRect } = E;
 const CHUNK = 512;
-const KINDS = ['npcs', 'warps', 'triggers', 'bg_events'];
 const KIND_LABEL = { npcs: 'NPC', warps: 'Warp', triggers: 'Trigger', bg_events: 'Sign / BG event' };
 const KIND_COLOR = { npcs: '#ffd166', warps: '#c77dff', triggers: '#ffef5a', bg_events: '#4cc9f0' };
 const FLAGS = [[0x1, 'Collision'], [0x2, 'Water'], [0x4, 'Encounters'], [0x8, '0x08'], [0x20, '0x20'], [0x40, 'Reflect'], [0x80, '0x80'], [0x100, '0x100']];
 const TOOLS = [
-    ['select', 'Select', 'V'], ['block', 'Collision', 'B'], ['class', 'Tile class', 'C'],
-    ['cut', 'Clear', 'X'], ['stamp', 'Stamp', 'S'], ['matrix', 'Chunk', 'M'],
-    ['npcs', '+ NPC', 'N'], ['warps', '+ Warp', 'W'], ['triggers', '+ Trigger', 'T'],
-    ['bg_events', '+ Sign', 'G'],
+    ['select', 'Select', 'V'], ['marquee', 'Rectangle', 'R'], ['brush', 'Brush', 'B'],
+    ['eraser', 'Eraser', 'E'], ['insert', 'Insert', 'P'], ['chunk', 'Chunk', 'K'],
 ];
-const STORAGE = 'efu-world-editor-ops';
+const LAYERS = [['ground', 'Ground'], ['props', 'Props'], ['collision', 'Collision'], ['class', 'Tile class'], ['events', 'Events']];
+const OBJECTS = [
+    { label: 'Strength boulder', kind: 'npcs', value: { model: 'OBJ_CODE_MODEL_3', script: 10000 } },
+    { label: 'Cut tree', kind: 'npcs', value: { model: 'OBJ_CODE_108', script: 10004 } },
+    { label: 'Item ball', kind: 'npcs', value: { model: 'OBJ_CODE_110', script: 11008 }, hint: 'Rolls loot when taken. Give it a free event flag to stay taken.' },
+    { label: 'Person', kind: 'npcs', value: { model: 'OBJ_CODE_76' } },
+    { label: 'Door / warp', kind: 'warps' },
+    { label: 'Sign', kind: 'bg_events' },
+    { label: 'Trigger', kind: 'triggers' },
+];
+const ARRIVE = [[0, 'Walking out (none)'], [1, 'Up'], [2, 'Down'], [3, 'Left'], [4, 'Right']];
+const STORAGE = 'efu-world-editor-ops-2';
 
 const $ = (id) => document.getElementById(id);
 const S = {
     idx: null, matrixName: null, ops: [], baseOps: [], undo: [], redo: [], tool: 'select',
-    selection: null, hover: null, clipboard: null, classBrush: 4, ground: 'grass01ax',
-    view: { x: 0, z: 0, scale: 0.5 }, drag: null, version: 0,
+    layers: new Set(['ground', 'props', 'collision', 'class', 'events']),
+    selection: null, hover: null, clipboard: null, pasting: false, drag: null,
+    brush: { mode: 'block', size: 1, cls: 4 }, eraser: { size: 1, ground: 'grass01ax' },
+    insert: null, rot: 0, view: { x: 0, z: 0, scale: 0.5 },
 };
 
-// ---- Edits ---------------------------------------------------------------------------------------------------
-
-function clean(obj) {
-    return JSON.parse(JSON.stringify(obj, (k, v) => (k === '_uid' ? undefined : v)));
+function editLayers() {
+    return G.LAYERS.filter((l) => S.layers.has(l));
 }
 
-function canon(v) {
-    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
-    if (v && typeof v === 'object') return '{' + Object.keys(v).filter((k) => k !== '_uid').sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
-    return JSON.stringify(v);
-}
+// ---- Edits ---------------------------------------------------------------------------------------------------------
 
 function sameCell(a, b) {
     return a.matrix === b.matrix && a.x === b.x && a.z === b.z;
 }
 
-// Folds edits of the same thing together, so that applying the list twice changes nothing more
+// Folds edits of the same thing together, so that the file says each change once
 function compact(ops) {
     const out = [];
     for (const op of ops.map(clean)) {
         if (op.op === 'tiles') {
             const last = out[out.length - 1];
-            if (last && last.op === 'tiles' && sameCell(last, op)) {
-                out[out.length - 1] = { ...last, set: { ...last.set, ...op.set } };
-                continue;
-            }
+            if (last && last.op === 'tiles' && sameCell(last, op)) { out[out.length - 1] = { ...last, set: { ...last.set, ...op.set } }; continue; }
         }
-        if (op.op === 'event' && op.action !== 'add') {
-            const key = canon(op.match);
+        if ((op.op === 'event' || op.op === 'prop') && op.action !== 'add') {
+            const same = (o) => (op.op === 'event' ? o.zone === op.zone && o.kind === op.kind : sameCell(o, op));
+            const k = canon(op.match);
             let j = -1;
             for (let i = out.length - 1; i >= 0; i--) {
                 const o = out[i];
-                if (o.op === 'event' && o.zone === op.zone && o.kind === op.kind && o.action !== 'delete' && canon(o.value) === key) { j = i; break; }
+                if (o.op === 'erase' || o.op === 'copy') { if (op.op === 'prop' && o.matrix === op.matrix) break; continue; }
+                if (o.op === op.op && same(o) && o.action !== 'delete' && canon(o.value) === k) { j = i; break; }
             }
             if (j >= 0) {
                 const prev = out[j];
                 if (op.action === 'set') {
                     if (prev.action === 'set' && canon(prev.match) === canon(op.value)) out.splice(j, 1);
                     else out[j] = { ...prev, value: op.value };
-                } else if (prev.action === 'add') {
-                    out.splice(j, 1);
-                } else {
-                    out[j] = { op: 'event', zone: op.zone, kind: op.kind, action: 'delete', match: prev.match };
-                }
+                } else if (prev.action === 'add') out.splice(j, 1);
+                else out[j] = { ...prev, action: 'delete', value: undefined };
+                if (out[j] && out[j].value === undefined) delete out[j].value;
                 continue;
             }
             if (op.action === 'set' && canon(op.match) === canon(op.value)) continue;
+        }
+        if (op.op === 'lock') {
+            // A door's last lock edit says it all, and no lock edit at all is an open door
+            const j = out.findIndex((o) => o.op === 'lock' && o.zone === op.zone && o.x === op.x && o.z === op.z);
+            if (j >= 0) out.splice(j, 1);
+            if (op.locked === false) continue;
         }
         out.push(op);
     }
     return out;
 }
 
-function commit(mutate) {
+// Records new operations, applied to the world, as one step to undo
+async function commit(newOps) {
+    if (!newOps.length) return;
+    await E.preload(newOps);
     S.undo.push(S.ops.slice());
     if (S.undo.length > 300) S.undo.shift();
     S.redo = [];
-    mutate();
+    for (const op of newOps) { S.ops.push(op); E.applyOp(op); }
     changed();
 }
 
 function changed() {
-    S.version++;
     try { localStorage.setItem(STORAGE, JSON.stringify({ base: canon(S.baseOps), ops: S.ops.map(clean) })); } catch (e) { /* storage is a convenience */ }
     refreshAll();
 }
@@ -102,6 +114,7 @@ function undo() {
     if (!S.undo.length) return;
     S.redo.push(S.ops);
     S.ops = S.undo.pop();
+    E.replay(S.ops);
     changed();
 }
 
@@ -109,60 +122,19 @@ function redo() {
     if (!S.redo.length) return;
     S.undo.push(S.ops);
     S.ops = S.redo.pop();
+    E.replay(S.ops);
     changed();
 }
 
-let uidCounter = 0;
-function newUid() {
-    return 'n' + (++uidCounter) + '_' + Date.now().toString(36);
-}
+// ---- Zones -------------------------------------------------------------------------------------------------------
 
-// ---- Derived state: matrices, events and chunks with the edits applied ---------------------------------------
-
-const derived = { version: -1, matrices: {}, events: {} };
-
-function syncDerived() {
-    if (derived.version === S.version) return;
-    derived.version = S.version;
-    derived.matrices = {};
-    derived.events = {};
-}
-
-function matrix(name) {
-    syncDerived();
-    if (!derived.matrices[name]) {
-        const m = S.idx.matrices[name];
-        const maps = m.maps.map((r) => r.slice());
-        const zones = m.zones ? m.zones.map((r) => r.slice()) : null;
-        for (const op of S.ops) {
-            if (op.op !== 'matrix' || op.matrix !== name) continue;
-            if (op.model) maps[op.z][op.x] = op.model;
-            if (op.zone && zones) zones[op.z][op.x] = op.zone;
-        }
-        derived.matrices[name] = { maps, zones, sourceOnly: !!m.source_only };
-    }
-    return derived.matrices[name];
-}
-
-function zoneEvents(zone) {
-    syncDerived();
-    if (!derived.events[zone]) {
-        const z = S.idx.zones[zone];
-        const ev = {};
-        for (const k of KINDS) {
-            ev[k] = ((z && z.events && z.events[k]) || []).map((o, i) => ({ ...JSON.parse(JSON.stringify(o)), _uid: k + ':' + i }));
-        }
-        for (const op of S.ops) {
-            if (op.op !== 'event' || op.zone !== zone) continue;
-            const list = ev[op.kind];
-            const i = list.findIndex((o) => o._uid === op._uid);
-            if (op.action === 'add') list.push({ ...JSON.parse(JSON.stringify(op.value)), _uid: op._uid });
-            else if (op.action === 'set' && i >= 0) list[i] = { ...JSON.parse(JSON.stringify(op.value)), _uid: op._uid };
-            else if (op.action === 'delete' && i >= 0) list.splice(i, 1);
-        }
-        derived.events[zone] = ev;
-    }
-    return derived.events[zone];
+function zonesOfMatrix(name) {
+    const m = matrix(name);
+    const set = new Set();
+    if (m.sourceOnly) return [];
+    if (m.zones) for (const r of m.zones) for (const z of r) if (z) set.add(z);
+    for (const [z, v] of Object.entries(S.idx.zones)) if (v.header.matrix === name) set.add(z);
+    return [...set].filter((z) => S.idx.zones[z]);
 }
 
 function cellZone(name, cx, cz) {
@@ -171,50 +143,17 @@ function cellZone(name, cx, cz) {
     return zonesOfMatrix(name)[0] || null;
 }
 
-function zonesOfMatrix(name) {
-    const m = matrix(name);
-    const set = new Set();
-    if (m.zones && !m.sourceOnly) for (const r of m.zones) for (const z of r) if (z) set.add(z);
-    if (!m.sourceOnly) for (const [z, v] of Object.entries(S.idx.zones)) if (v.header.matrix === name) set.add(z);
-    return [...set].filter((z) => S.idx.zones[z]);
-}
-
 function areaOf(zone) {
     const z = S.idx.zones[zone];
     return z ? S.idx.areas[z.header.area] : null;
 }
 
-// The operations on one chunk's model and terrain since its model last changed
-function cellOps(name, cx, cz) {
-    let ops = [];
-    for (const op of S.ops) {
-        if (op.matrix !== name || op.x !== cx || op.z !== cz) continue;
-        if (op.op === 'matrix' && op.model) ops = [];
-        else if (op.op === 'cut' || op.op === 'stamp' || op.op === 'tiles') ops.push(op);
-    }
-    return ops;
+function bundleAt(cx, cz) {
+    const a = areaOf(cellZone(S.matrixName, cx, cz));
+    return a && a.prop_bundle;
 }
 
-// ---- Models ---------------------------------------------------------------------------------------------------
-
-const modelCache = {};   // name -> Promise<{geo, terrain, data}>
-
-function baseModel(name) {
-    if (!modelCache[name]) {
-        modelCache[name] = pack.loadModel(name).then(async (data) => {
-            if (!data) return null;
-            const { doc, bin } = G.parseGlb(pack.b64ToBuffer(data.glb));
-            const geo = G.chunkGeometry(doc, bin);
-            await pack.loadTextures(geo.materials.filter((m) => m.uri).map((m) => textureKey(m.uri)));
-            return { geo, terrain: data.terrain[0] || null, layers: data.terrain, data: data.data };
-        });
-    }
-    return modelCache[name];
-}
-
-function textureKey(uri) {
-    return pack.normalize('map/models/_/' + uri);
-}
+// ---- Rendering resources ----------------------------------------------------------------------------------------
 
 const textureCache = {};
 function threeTexture(key, sampler) {
@@ -242,7 +181,7 @@ const materialCache = {};
 function threeMaterial(m) {
     const id = m.name + '|' + m.uri + '|' + m.alphaMode;
     if (!materialCache[id]) {
-        const map = m.uri ? threeTexture(textureKey(m.uri), m.sampler) : null;
+        const map = m.uri ? threeTexture(E.textureKey(m.uri), m.sampler) : null;
         materialCache[id] = new THREE.MeshBasicMaterial({
             map, vertexColors: true, side: THREE.DoubleSide,
             alphaTest: m.alphaMode === 'OPAQUE' ? 0 : 0.5, transparent: m.alphaMode === 'BLEND',
@@ -261,9 +200,9 @@ function geometryGroup(geo) {
         let i = 0;
         for (const t of prim.tris) {
             for (const v of t) {
-                pos.set([v[0], v[1], v[2]], i * 3);
-                uv.set([v[3], v[4]], i * 2);
-                col.set([v[5] / 255, v[6] / 255, v[7] / 255], i * 3);
+                pos[i * 3] = v[0]; pos[i * 3 + 1] = v[1]; pos[i * 3 + 2] = v[2];
+                uv[i * 2] = v[3]; uv[i * 2 + 1] = v[4];
+                col[i * 3] = v[5] / 255; col[i * 3 + 1] = v[6] / 255; col[i * 3 + 2] = v[7] / 255;
                 i++;
             }
         }
@@ -279,8 +218,9 @@ function geometryGroup(geo) {
     return group;
 }
 
-// Props: each bundle's models parsed once by three's loader, placed where the chunk's nodes say
+// Props: each bundle's models parsed once by three's loader
 const propCache = {};
+const propBoxes = {};
 const gltf = new GLTFLoader();
 gltf.manager.setURLModifier((url) => pack.texture(pack.normalize(url)) || url);
 
@@ -304,6 +244,9 @@ function propModel(bundle, resId) {
                             }
                         }
                     });
+                    g.scene.updateMatrixWorld(true);
+                    const box = new THREE.Box3().setFromObject(g.scene);
+                    propBoxes[id] = box.isEmpty() ? new THREE.Box3(new THREE.Vector3(-8, 0, -8), new THREE.Vector3(8, 16, 8)) : box;
                     resolve(g.scene);
                 }, () => resolve(null));
             });
@@ -312,78 +255,74 @@ function propModel(bundle, resId) {
     return propCache[id];
 }
 
-// ---- Chunks of the shown matrix ---------------------------------------------------------------------------------
-
-const cells = {};   // "cx,cz" -> {model, geoKey, terrainKey, geo, terrain, group, overlay, building}
-
-async function buildCell(cx, cz) {
-    const key = cx + ',' + cz;
-    const m = matrix(S.matrixName);
-    const model = m.maps[cz][cx];
-    const ops = cellOps(S.matrixName, cx, cz);
-    const geoOps = ops.filter((o) => o.op !== 'tiles');
-    const geoKey = model + JSON.stringify(geoOps.map(clean));
-    const terrainKey = model + JSON.stringify(ops.map(clean));
-    let cell = cells[key];
-    if (cell && cell.geoKey === geoKey && cell.terrainKey === terrainKey) return cell;
-    const token = Symbol('build');
-    cell = cells[key] = cells[key] || { cx, cz };
-    cell.token = token;
-    const base = await baseModel(model);
-    if (cell.token !== token) return cell;
-    cell.model = model;
-    cell.missing = !base;
-    // Stamp sources
-    const sources = {};
-    for (const op of ops) if (op.op === 'stamp' && !sources[op.from]) sources[op.from] = await baseModel(op.from);
-    for (const src of Object.values(sources)) if (src) await pack.loadTextures(src.geo.materials.filter((mm) => mm.uri).map((mm) => textureKey(mm.uri)));
-    if (cell.token !== token) return cell;
-    const geoChanged = cell.geoKey !== geoKey;
-    let geo = base ? G.cloneGeometry(base.geo) : { materials: [], prims: [], props: [] };
-    let terrain = base ? G.cloneTerrain(base.terrain) : null;
-    for (const op of ops) {
-        if (op.op === 'cut') {
-            if (geoChanged) G.cutGeometry(geo, op.rect, op.ground, op.groundY);
-            G.cutTerrain(terrain, op.rect);
-        } else if (op.op === 'stamp') {
-            const src = sources[op.from];
-            if (!src) continue;
-            if (geoChanged) G.stampGeometry(geo, src.geo, op.rect, op.to, op.props);
-            G.stampTerrain(terrain, src.terrain, op.rect, op.to);
-        } else if (op.op === 'tiles' && terrain) {
-            for (const [xz, v] of Object.entries(op.set)) {
-                const [x, z] = xz.split(',').map(Number);
-                const c = terrain.cells[z * terrain.width + x];
-                if (c && v.tile_type !== undefined) c[3] = v.tile_type;
-            }
-        }
-    }
-    cell.terrain = terrain;
-    cell.terrainKey = terrainKey;
-    cell.overlay = null;
-    if (geoChanged) {
-        cell.geo = geo;
-        cell.geoKey = geoKey;
-        if (cell.group) scene.remove(cell.group);
-        cell.group = geometryGroup(geo);
-        cell.group.position.set(cx * CHUNK + CHUNK / 2, 0, cz * CHUNK + CHUNK / 2);
-        cell.propGroup = new THREE.Group();
-        cell.group.add(cell.propGroup);
-        cell.propGroup.visible = $('showProps').checked;
-        scene.add(cell.group);
-        placeProps(cell);
-    }
-    requestRender();
-    return cell;
+function yaw(rotation) {
+    return 2 * Math.atan2(rotation[1], rotation[3]);
 }
 
-async function placeProps(cell) {
-    const zone = cellZone(S.matrixName, cell.cx, cell.cz);
-    const area = areaOf(zone);
-    const bundle = area && area.prop_bundle;
+function yawQuat(a) {
+    const r = (v) => Math.round(v * 1e6) / 1e6;
+    return [0, r(Math.sin(a / 2)), 0, r(Math.cos(a / 2))];
+}
+
+// The tiles a prop stands on, in its chunk's own tiles [x0, z0, x1, z1), from its model's box turned as it is
+function propFootprint(bundle, p) {
+    const box = propBoxes[bundle + ':' + p.resId];
+    let x0 = -8, x1 = 8, z0 = -8, z1 = 8;
+    if (box) { x0 = box.min.x; x1 = box.max.x; z0 = box.min.z; z1 = box.max.z; }
+    const a = yaw(p.rotation);
+    const c = Math.cos(a), s = Math.sin(a);
+    const xs = [], zs = [];
+    for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) { xs.push(x * c + z * s); zs.push(-x * s + z * c); }
+    const tx = (v) => (v + p.translation[0] + 256) / 16, tz = (v) => (v + p.translation[2] + 256) / 16;
+    const fx0 = Math.floor(tx(Math.min(...xs)) + 0.25), fx1 = Math.ceil(tx(Math.max(...xs)) - 0.25);
+    const fz0 = Math.floor(tz(Math.min(...zs)) + 0.25), fz1 = Math.ceil(tz(Math.max(...zs)) - 0.25);
+    return [fx0, fz0, Math.max(fx0 + 1, fx1), Math.max(fz0 + 1, fz1)];
+}
+
+// ---- Chunks of the shown matrix ---------------------------------------------------------------------------------
+
+const cells = {};   // "cx,cz" -> {cx, cz, src, geoVer, propVer, terVer, group, propGroup, overlay}
+
+function syncCells() {
+    if (!S.matrixName) return;
+    const m = matrix(S.matrixName);
+    const seen = new Set();
+    for (let cz = 0; cz < m.maps.length; cz++) {
+        for (let cx = 0; cx < m.maps[cz].length; cx++) {
+            const k = cx + ',' + cz;
+            const v = m.maps[cz][cx] ? E.view(S.matrixName, cx, cz) : null;
+            if (!v) continue;
+            seen.add(k);
+            let cell = cells[k];
+            if (!cell) cell = cells[k] = { cx, cz };
+            if (cell.src !== v || cell.geoVer !== v.geoVer) {
+                if (cell.group) scene.remove(cell.group);
+                cell.group = geometryGroup(v.geo);
+                cell.group.position.set(cx * CHUNK + CHUNK / 2, 0, cz * CHUNK + CHUNK / 2);
+                scene.add(cell.group);
+                cell.propVer = -1;
+            }
+            if (cell.src !== v || cell.propVer !== v.propVer) {
+                if (cell.propGroup) cell.group.remove(cell.propGroup);
+                cell.propGroup = new THREE.Group();
+                cell.propGroup.visible = $('showProps').checked;
+                cell.group.add(cell.propGroup);
+                placeProps(cell, v.geo.props);
+            }
+            if (cell.src !== v || cell.terVer !== v.terVer) cell.overlay = null;
+            cell.src = v; cell.geoVer = v.geoVer; cell.propVer = v.propVer; cell.terVer = v.terVer;
+            cell.model = m.maps[cz][cx];
+            cell.geo = v.geo; cell.terrain = v.terrain;
+        }
+    }
+    for (const [k, c] of Object.entries(cells)) if (!seen.has(k)) { if (c.group) scene.remove(c.group); delete cells[k]; }
+}
+
+async function placeProps(cell, props) {
+    const bundle = bundleAt(cell.cx, cell.cz);
     if (!bundle) return;
     const group = cell.propGroup;
-    for (const p of cell.geo.props) {
+    for (const p of props) {
         const scn = await propModel(bundle, p.resId);
         if (!scn || cell.propGroup !== group) continue;
         const o = SkeletonUtils.clone(scn);
@@ -400,19 +339,7 @@ function clearCells() {
     for (const k of Object.keys(cells)) delete cells[k];
 }
 
-function refreshCells() {
-    if (!S.matrixName) return;
-    const m = matrix(S.matrixName);
-    const jobs = [];
-    for (let cz = 0; cz < m.maps.length; cz++) {
-        for (let cx = 0; cx < m.maps[cz].length; cx++) {
-            if (m.maps[cz][cx]) jobs.push(buildCell(cx, cz));
-        }
-    }
-    return Promise.all(jobs);
-}
-
-// ---- Rendering -----------------------------------------------------------------------------------------------------
+// ---- Rendering ------------------------------------------------------------------------------------------------------
 
 const glCanvas = $('gl');
 const ov = $('ov');
@@ -426,6 +353,7 @@ const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, -10000, 10000);
 const persp = new THREE.PerspectiveCamera(45, 1, 4, 40000);
 let orbit = null;
 let renderQueued = false;
+let ghost = null;
 
 function is3d() {
     return $('show3d').checked;
@@ -454,6 +382,7 @@ function size() {
 }
 
 function render() {
+    syncCells();
     const { w, h } = size();
     if (is3d()) {
         persp.aspect = w / h;
@@ -471,7 +400,6 @@ function render() {
     drawOverlay();
 }
 
-// World units to screen pixels (CSS), in the top-down view; in 3D, through the perspective camera
 function toScreen(x, z, y = 0) {
     const { w, h } = size();
     if (is3d()) {
@@ -514,8 +442,7 @@ function cellOverlay(cell, mode) {
     const g = c.getContext('2d');
     for (let z = 0; z < t.height; z++) {
         for (let x = 0; x < t.width; x++) {
-            const cellv = t.cells[z * t.width + x];
-            const type = cellv[3];
+            const type = t.cells[z * t.width + x][3];
             const cls = type & 0xffff;
             let color = null;
             if (mode === 'collision') color = (type & G.BLOCKED) ? 'rgba(255,40,40,0.3)' : null;
@@ -567,6 +494,18 @@ function allEvents() {
     return out;
 }
 
+// Every prop of the shown chunks, in world units
+function allProps() {
+    const out = [];
+    for (const cell of Object.values(cells)) {
+        if (!cell.geo) continue;
+        cell.geo.props.forEach((p, i) => {
+            out.push({ cx: cell.cx, cz: cell.cz, i, p, x: cell.cx * CHUNK + 256 + p.translation[0], z: cell.cz * CHUNK + 256 + p.translation[2], y: p.translation[1] });
+        });
+    }
+    return out;
+}
+
 const spriteImages = {};
 function spriteImage(code) {
     if (!(code in spriteImages)) {
@@ -579,6 +518,20 @@ function spriteImage(code) {
         }
     }
     return spriteImages[code];
+}
+
+function drawLock(x, y, size) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = '#ffd166';
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.15, size * 0.28, Math.PI, 0);
+    ctx.stroke();
+    ctx.fillRect(-size * 0.4, -size * 0.15, size * 0.8, size * 0.6);
+    ctx.strokeRect(-size * 0.4, -size * 0.15, size * 0.8, size * 0.6);
+    ctx.restore();
 }
 
 function drawOverlay() {
@@ -594,20 +547,15 @@ function drawOverlay() {
         ctx.imageSmoothingEnabled = false;
         for (const cell of Object.values(cells)) {
             const [x0, y0] = toScreen(cell.cx * CHUNK, cell.cz * CHUNK);
-            const size = CHUNK * s;
-            if (x0 > w || y0 > h || x0 + size < 0 || y0 + size < 0) continue;
+            const sz = CHUNK * s;
+            if (x0 > w || y0 > h || x0 + sz < 0 || y0 + sz < 0) continue;
             if (mode !== 'none') {
                 const c = cellOverlay(cell, mode);
-                if (c) ctx.drawImage(c, x0, y0, size, size);
-            }
-            if (cell.missing) {
-                ctx.fillStyle = 'rgba(120,120,140,0.25)';
-                ctx.fillRect(x0, y0, size, size);
+                if (c) ctx.drawImage(c, x0, y0, sz, sz);
             }
         }
         if ($('showGrid').checked) {
-            const tilePx = G.TILE * s;
-            if (tilePx >= 6) {
+            if (G.TILE * s >= 6) {
                 ctx.strokeStyle = 'rgba(255,255,255,0.08)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
@@ -618,11 +566,30 @@ function drawOverlay() {
                 ctx.stroke();
             }
             ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-            ctx.lineWidth = 1;
             ctx.beginPath();
             for (let cz = 0; cz <= m.maps.length; cz++) { const a = toScreen(0, cz * CHUNK), b = toScreen(m.maps[0].length * CHUNK, cz * CHUNK); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
             for (let cx = 0; cx <= m.maps[0].length; cx++) { const a = toScreen(cx * CHUNK, 0), b = toScreen(cx * CHUNK, m.maps.length * CHUNK); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
             ctx.stroke();
+        }
+        // Props: a diamond on each, to pick it
+        if ($('showProps').checked && s * 16 >= 10) {
+            for (const pr of allProps()) {
+                const [sx, sy] = toScreen(pr.x, pr.z);
+                if (sx < -10 || sy < -10 || sx > w + 10 || sy > h + 10) continue;
+                const sel = S.selection && S.selection.type === 'prop' && S.selection.cx === pr.cx && S.selection.cz === pr.cz && S.selection.i === pr.i;
+                const r = sel ? 6 : 4;
+                ctx.fillStyle = sel ? '#ff9f1c' : 'rgba(255,159,28,0.55)';
+                ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy - r); ctx.lineTo(sx + r, sy); ctx.lineTo(sx, sy + r); ctx.lineTo(sx - r, sy); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                if (sel) {
+                    const b = bundleAt(pr.cx, pr.cz);
+                    const f = propFootprint(b, pr.p);
+                    drawTileRect(pr.cx * 32 + f[0], pr.cz * 32 + f[1], f[2] - f[0], f[3] - f[1], '#ff9f1c', 2, true);
+                }
+            }
         }
     }
     if ($('showEvents').checked) {
@@ -657,6 +624,7 @@ function drawOverlay() {
                 ctx.strokeRect(a[0] + 0.5, a[1] + 0.5, bw - 1, bh - 1);
                 ctx.globalAlpha = 1;
             }
+            if (e.kind === 'warps' && E.lockAt(e.zone, e.o.grid.x, e.o.grid.z)) drawLock(a[0] + bw / 2, a[1] + bh / 2, Math.max(10, Math.min(22, bw * 0.8)));
             const hovered = S.hover && S.hover[0] >= tx && S.hover[0] < tx + tw && S.hover[1] >= tz && S.hover[1] < tz + th;
             if ((S.view.scale * 16 >= 30 && !e.fest) || sel || hovered) {
                 const label = eventLabel(e);
@@ -669,35 +637,57 @@ function drawOverlay() {
         }
     }
     if (is3d()) return;
-    // Selection, hover and tool previews
-    if (S.selection && S.selection.type === 'tile') drawTileRect(S.selection.gx, S.selection.gz, 1, 1, '#ffffff', 2);
-    if (S.selection && S.selection.type === 'cell') {
-        const a = toScreen(S.selection.cx * CHUNK, S.selection.cz * CHUNK);
+    const sel = S.selection;
+    if (sel && sel.type === 'tile') drawTileRect(sel.gx, sel.gz, 1, 1, '#ffffff', 2);
+    if (sel && sel.type === 'cell') {
+        const a = toScreen(sel.cx * CHUNK, sel.cz * CHUNK);
         ctx.strokeStyle = '#5aa9ff'; ctx.lineWidth = 3;
         ctx.strokeRect(a[0], a[1], CHUNK * s, CHUNK * s);
     }
+    if (sel && sel.type === 'area') {
+        const r = sel.rect;
+        const d = S.drag && S.drag.move ? S.drag.offset : [0, 0];
+        if (d[0] || d[1]) drawTileRect(r[0], r[1], r[2] - r[0], r[3] - r[1], 'rgba(255,255,255,0.35)', 1, true);
+        drawTileRect(r[0] + d[0], r[1] + d[1], r[2] - r[0], r[3] - r[1], '#ffffff', 2, true, true);
+    }
     if (S.drag && S.drag.rect) {
         const r = normRect(S.drag.rect);
-        drawTileRect(r[0], r[1], r[2] - r[0], r[3] - r[1], S.tool === 'stamp' ? '#6bd88f' : '#ff6b6b', 2);
+        drawTileRect(r[0], r[1], r[2] - r[0], r[3] - r[1], '#ffffff', 1.5, true, true);
     }
-    if (S.tool === 'stamp' && S.clipboard && S.hover && !S.drag) {
-        const [x0, z0, x1, z1] = S.clipboard.rect;
-        drawTileRect(S.hover[0], S.hover[1], x1 - x0, z1 - z0, '#6bd88f', 2, true);
+    if (S.clipboard && S.clipboard.matrix === S.matrixName && !S.pasting) {
+        const r = S.clipboard.rect;
+        drawTileRect(r[0], r[1], r[2] - r[0], r[3] - r[1], 'rgba(107,216,143,0.6)', 1, true);
     }
-    if (S.clipboard && S.clipboard.matrix === S.matrixName) {
-        const [x0, z0, x1, z1] = S.clipboard.rect;
-        drawTileRect(S.clipboard.cx * 32 + x0, S.clipboard.cz * 32 + z0, x1 - x0, z1 - z0, '#6bd88f', 1);
+    if (S.hover) {
+        const t = S.hover;
+        if (S.pasting && S.clipboard) {
+            const r = S.clipboard.rect;
+            drawTileRect(t[0], t[1], r[2] - r[0], r[3] - r[1], '#6bd88f', 2, true);
+        } else if (S.tool === 'brush' || S.tool === 'eraser') {
+            const b = brushRect(t);
+            drawTileRect(b[0], b[1], b[2] - b[0], b[3] - b[1], S.tool === 'eraser' ? '#ff6b6b' : '#6bd88f', 1.5);
+        } else if (S.tool === 'insert' && S.insert && S.insert.type === 'prop') {
+            const f = ghostFootprint(t);
+            if (f) drawTileRect(f[0], f[1], f[2] - f[0], f[3] - f[1], '#ff9f1c', 1.5, true);
+        } else {
+            drawTileRect(t[0], t[1], 1, 1, 'rgba(255,255,255,0.7)', 1);
+        }
     }
-    if (S.hover && S.tool !== 'stamp') drawTileRect(S.hover[0], S.hover[1], 1, 1, 'rgba(255,255,255,0.7)', 1);
 }
 
-function drawTileRect(gx, gz, tw, th, color, width, dashed) {
+function drawTileRect(gx, gz, tw, th, color, width, dashed, marching) {
     const a = toScreen(gx * 16, gz * 16);
     const b = toScreen((gx + tw) * 16, (gz + th) * 16);
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
     ctx.setLineDash(dashed ? [6, 4] : []);
+    ctx.lineDashOffset = marching ? -((performance.now() / 60) % 10) : 0;
     ctx.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+    if (marching) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.lineDashOffset += 5;
+        ctx.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+    }
     ctx.setLineDash([]);
 }
 
@@ -719,13 +709,17 @@ function normRect(r) {
     return [Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.max(r[0], r[2]) + 1, Math.max(r[1], r[3]) + 1];
 }
 
-// ---- Tiles ---------------------------------------------------------------------------------------------------------
+function inRect(x, z, r) {
+    return x >= r[0] && x < r[2] && z >= r[1] && z < r[3];
+}
+
+// ---- Tiles ----------------------------------------------------------------------------------------------------------
 
 function tileInfo(gx, gz) {
     const cx = Math.floor(gx / 32), cz = Math.floor(gz / 32);
-    const cell = cells[cx + ',' + cz];
-    if (!cell || !cell.terrain) return { cx, cz, x: gx - cx * 32, z: gz - cz * 32, cell };
     const x = gx - cx * 32, z = gz - cz * 32;
+    const cell = cells[cx + ',' + cz];
+    if (!cell || !cell.terrain) return { cx, cz, x, z, cell };
     return { cx, cz, x, z, cell, values: cell.terrain.cells[z * cell.terrain.width + x] };
 }
 
@@ -746,47 +740,61 @@ function heightAt(gx, gz) {
     return Math.round(-(tables.offsets[of] + nx * lx + nz * lz) / ny);
 }
 
-// Sets tiles' types in a stroke: one tiles operation for each chunk the stroke touches
-function setTileType(gx, gz, fn) {
+function editable() {
+    if (matrix(S.matrixName).sourceOnly) { toast('This map is here to copy from: pick one of the hack\'s maps to edit.'); return false; }
+    return true;
+}
+
+// Sets a tile's type during a stroke: one tiles operation for each chunk the stroke touches
+function strokeTile(gx, gz, fn) {
     const t = tileInfo(gx, gz);
-    if (!t.values || matrix(S.matrixName).sourceOnly) return;
+    if (!t.values) return;
     const before = t.values[3];
-    const after = fn(before);
+    const after = fn(before) >>> 0;
     if (after === before) return;
-    const key = t.cx + ',' + t.cz;
-    let op = S.drag && S.drag.strokeOps && S.drag.strokeOps[key];
+    const k = t.cx + ',' + t.cz;
+    let op = S.drag.strokeOps[k];
     if (!op) {
         op = { op: 'tiles', matrix: S.matrixName, x: t.cx, z: t.cz, set: {} };
         S.ops.push(op);
-        if (S.drag) S.drag.strokeOps[key] = op;
+        S.drag.strokeOps[k] = op;
     }
     op.set[t.x + ',' + t.z] = { tile_type: after };
-    t.values[3] = after;
-    t.cell.overlay = null;
-    t.cell.terrainKey = t.cell.model + JSON.stringify(cellOps(S.matrixName, t.cx, t.cz).map(clean));
-    S.version++;
-    requestRender();
+    const st = E.state(S.matrixName, t.cx, t.cz);
+    G.tilesOp(st, { set: { [t.x + ',' + t.z]: { tile_type: after } } });
+    st.terVer++;
+}
+
+function brushRect(t) {
+    const n = S.tool === 'eraser' ? S.eraser.size : S.brush.size;
+    if (S.tool === 'brush' && S.brush.mode === 'pattern' && S.clipboard) {
+        const r = S.clipboard.rect;
+        const w = r[2] - r[0], h = r[3] - r[1];
+        if (w > 1 || h > 1) {
+            const x = r[0] + Math.floor((t[0] - r[0]) / w) * w, z = r[1] + Math.floor((t[1] - r[1]) / h) * h;
+            return [x, z, x + w, z + h];
+        }
+    }
+    const o = Math.floor((n - 1) / 2);
+    return [t[0] - o, t[1] - o, t[0] - o + n, t[1] - o + n];
 }
 
 // ---- Events --------------------------------------------------------------------------------------------------------
 
 function findEvent(zone, uid) {
     for (const kind of KINDS) {
-        const o = zoneEvents(zone)[kind].find((e) => e._uid === uid);
-        if (o) return { kind, o, i: zoneEvents(zone)[kind].indexOf(o) };
+        const list = zoneEvents(zone)[kind];
+        const i = list.findIndex((e) => e._uid === uid);
+        if (i >= 0) return { kind, o: list[i], i };
     }
     return null;
 }
 
-function setEvent(zone, kind, uid, value) {
-    const cur = findEvent(zone, uid);
-    if (!cur) return;
-    commit(() => {
-        S.ops.push({ op: 'event', zone, kind, action: 'set', _uid: uid, match: clean(cur.o), value: clean(value) });
-    });
+function eventSetOp(zone, kind, o, value) {
+    return { op: 'event', zone, kind, action: 'set', _uid: o._uid, match: clean(o), value: clean(value) };
 }
 
-function movedEvent(kind, o, gx, gz) {
+function movedEvent(kind, o, gx, gz, dy = null) {
     const v = JSON.parse(JSON.stringify(o));
     const g = v.grid;
     const snap = $('snapHeight').checked;
@@ -796,6 +804,13 @@ function movedEvent(kind, o, gx, gz) {
     if (kind === 'triggers') { g.x = gx; g.z = gz; if (snap) g.y = hgt; }
     if (kind === 'bg_events') { g.x = gx; g.y = gz; if (snap) g.z = hgt; }
     return v;
+}
+
+// The lock edits that go with a warp moved from one place to another
+function lockMoveOps(zone, from, to) {
+    const l = E.lockAt(zone, from.grid.x, from.grid.z);
+    if (!l || (from.grid.x === to.grid.x && from.grid.z === to.grid.z)) return [];
+    return [{ ...clean(l), x: to.grid.x, z: to.grid.z }, { op: 'lock', zone, x: from.grid.x, z: from.grid.z, locked: false }];
 }
 
 function newEvent(kind, zone, gx, gz) {
@@ -827,46 +842,168 @@ function eventAt(px, py) {
     return best && best.e;
 }
 
+function propAt(px, py) {
+    if (!$('showProps').checked || is3d()) return null;
+    let best = null, bestD = 12;
+    for (const pr of allProps()) {
+        const [sx, sy] = toScreen(pr.x, pr.z);
+        const d = Math.hypot(sx - px, sy - py);
+        if (d < bestD) { bestD = d; best = pr; }
+    }
+    return best;
+}
+
+// Events whose place is in a rectangle of the shown matrix
+function eventsIn(r) {
+    return allEvents().filter((e) => !e.fest && inRect(e.r[0], e.r[1], r));
+}
+
+// ---- Layered operations ----------------------------------------------------------------------------------------------
+
+function eraseOps(rect) {
+    const ops = [];
+    const layers = editLayers();
+    if (layers.length) {
+        let groundY = 0;
+        const parts = splitRect(rect).filter((p) => E.view(S.matrixName, p.cx, p.cz));
+        if (parts.length) groundY = Math.round(G.groundHeight(E.view(S.matrixName, parts[0].cx, parts[0].cz).terrain, parts[0].local, S.idx.heights));
+        const op = { op: 'erase', matrix: S.matrixName, rect, layers };
+        if (layers.includes('ground') && S.eraser.ground) { op.ground = S.eraser.ground; op.groundY = groundY; }
+        ops.push(op);
+    }
+    if (S.layers.has('events')) {
+        for (const e of eventsIn(rect)) {
+            ops.push({ op: 'event', zone: e.zone, kind: e.kind, action: 'delete', _uid: e.o._uid, match: clean(e.o) });
+            if (e.kind === 'warps' && E.lockAt(e.zone, e.o.grid.x, e.o.grid.z)) ops.push({ op: 'lock', zone: e.zone, x: e.o.grid.x, z: e.o.grid.z, locked: false });
+        }
+    }
+    return ops;
+}
+
+function copyOp(fromMatrix, rect, tos) {
+    const layers = editLayers();
+    return layers.length ? { op: 'copy', from: { matrix: fromMatrix, rect }, matrix: S.matrixName, to: tos, layers } : null;
+}
+
+// Moving a selection: copied to its new place, then whatever of the old place it no longer covers is erased
+function moveOps(rect, dx, dz) {
+    const dest = [rect[0] + dx, rect[1] + dz, rect[2] + dx, rect[3] + dz];
+    const ops = [];
+    const layers = editLayers();
+    if (layers.length) {
+        ops.push(copyOp(S.matrixName, rect, [[dest[0], dest[1]]]));
+        const keep = [Math.max(rect[0], dest[0]), Math.max(rect[1], dest[1]), Math.min(rect[2], dest[2]), Math.min(rect[3], dest[3])];
+        const rests = [];
+        if (keep[0] >= keep[2] || keep[1] >= keep[3]) rests.push(rect);
+        else {
+            if (rect[1] < keep[1]) rests.push([rect[0], rect[1], rect[2], keep[1]]);
+            if (keep[3] < rect[3]) rests.push([rect[0], keep[3], rect[2], rect[3]]);
+            if (rect[0] < keep[0]) rests.push([rect[0], keep[1], keep[0], keep[3]]);
+            if (keep[2] < rect[2]) rests.push([keep[2], keep[1], rect[2], keep[3]]);
+        }
+        const events = S.layers.has('events');
+        S.layers.delete('events');
+        for (const r of rests) ops.push(...eraseOps(r));
+        if (events) S.layers.add('events');
+    }
+    if (S.layers.has('events')) {
+        for (const e of eventsIn(rect)) {
+            const v = movedEvent(e.kind, e.o, e.r[0] + dx, e.r[1] + dz);
+            ops.push(eventSetOp(e.zone, e.kind, e.o, v));
+            if (e.kind === 'warps') ops.push(...lockMoveOps(e.zone, e.o, v));
+        }
+    }
+    return ops;
+}
+
+function pasteOps(at) {
+    const c = S.clipboard;
+    const ops = [];
+    const op = copyOp(c.matrix, c.rect, [at]);
+    if (op) ops.push(op);
+    if (S.layers.has('events') && c.events.length) {
+        const nextId = {};
+        for (const e of c.events) {
+            const gx = at[0] + e.r[0] - c.rect[0], gz = at[1] + e.r[1] - c.rect[1];
+            const zone = cellZone(S.matrixName, Math.floor(gx / 32), Math.floor(gz / 32));
+            if (!zone) continue;
+            const v = movedEvent(e.kind, e.o, gx, gz);
+            if (e.kind === 'npcs') {
+                if (nextId[zone] === undefined) nextId[zone] = Math.max(-1, ...zoneEvents(zone).npcs.map((n) => n.id)) + 1;
+                v.id = nextId[zone]++;
+            }
+            ops.push({ op: 'event', zone, kind: e.kind, action: 'add', _uid: newUid(), value: clean(v) });
+        }
+    }
+    return ops;
+}
+
+function copySelection(cut) {
+    const sel = S.selection;
+    if (!sel || sel.type !== 'area') { toast('Select a rectangle first (Rectangle tool, R).'); return; }
+    S.clipboard = { matrix: S.matrixName, rect: sel.rect.slice(), events: S.layers.has('events') ? eventsIn(sel.rect).map((e) => ({ kind: e.kind, o: clean(e.o), r: e.r })) : [] };
+    toast(`Copied ${sel.rect[2] - sel.rect[0]}×${sel.rect[3] - sel.rect[1]} tiles (${[...S.layers].join(', ')}). Ctrl+V to paste; the Brush's pattern mode paints with it.`);
+    if (cut && editable()) commit(eraseOps(sel.rect));
+    setTool(S.tool);
+}
+
 // ---- Input ---------------------------------------------------------------------------------------------------------
 
 function setTool(t) {
     S.tool = t;
+    if (t !== 'marquee') S.pasting = false;
     for (const b of document.querySelectorAll('#tools button')) b.classList.toggle('on', b.dataset.tool === t);
     const opts = $('toolOptions');
     opts.innerHTML = '';
-    const hint = (txt) => { const d = document.createElement('div'); d.className = 'hint'; d.innerHTML = txt; opts.appendChild(d); };
-    if (t === 'select') hint('Click an event to edit it, drag it to move it. Click a tile to see and set its type. Right-drag or Space+drag pans, the wheel zooms.');
-    if (t === 'block') hint('Drag to block tiles. Shift+drag to clear them.');
-    if (t === 'class') {
-        const sel = document.createElement('select');
-        for (const [v, n] of Object.entries(S.idx.constants.tile_classes)) {
-            const o = document.createElement('option');
-            o.value = v; o.textContent = `${n} (0x${(+v).toString(16)})`;
-            if (+v === S.classBrush) o.selected = true;
-            sel.appendChild(o);
+    const hint = (txt) => opts.appendChild(el('div', { class: 'hint' }, txt));
+    const sizes = (obj) => {
+        const row = el('div', { class: 'btns' });
+        for (const n of [1, 2, 3, 5, 8]) row.appendChild(el('button', { class: obj.size === n ? 'on' : '', onclick: () => { obj.size = n; setTool(t); } }, `${n}×${n}`));
+        opts.appendChild(row);
+    };
+    $('palette').style.display = t === 'insert' ? 'block' : 'none';
+    if (t === 'select') hint('Click an event or a prop (orange diamond) to see and edit it, drag it to move it. Click a tile to see and set its type. Right-drag or Space+drag pans, the wheel zooms.');
+    if (t === 'marquee') hint('Drag to select a rectangle. Drag inside it to move it, on the ticked layers. Ctrl+C copies, Ctrl+X cuts, Ctrl+V pastes (click to place), Delete erases, Esc lets go. A selection on the overworld map copies from it.');
+    if (t === 'brush') {
+        const modes = [['block', 'Block'], ['unblock', 'Unblock'], ['class', 'Tile class'], ['pattern', 'Pattern']];
+        const row = el('div', { class: 'btns' });
+        for (const [m, label] of modes) row.appendChild(el('button', { class: S.brush.mode === m ? 'on' : '', onclick: () => { S.brush.mode = m; setTool(t); } }, label));
+        opts.appendChild(row);
+        if (S.brush.mode === 'class') {
+            const sel = el('select');
+            for (const [v, n] of Object.entries(S.idx.constants.tile_classes)) {
+                const o = el('option', { value: v }, `${n} (0x${(+v).toString(16)})`);
+                if (+v === S.brush.cls) o.selected = true;
+                sel.appendChild(o);
+            }
+            sel.onchange = () => { S.brush.cls = +sel.value; };
+            opts.appendChild(sel);
         }
-        sel.onchange = () => { S.classBrush = +sel.value; };
-        opts.appendChild(sel);
-        hint('Drag to paint the class. Alt+click picks a tile\'s class.');
+        if (S.brush.mode !== 'pattern' || !S.clipboard || (S.clipboard.rect[2] - S.clipboard.rect[0] === 1 && S.clipboard.rect[3] - S.clipboard.rect[1] === 1)) sizes(S.brush);
+        if (S.brush.mode === 'pattern') {
+            const c = S.clipboard;
+            hint(c ? `Paints ${c.rect[2] - c.rect[0]}×${c.rect[3] - c.rect[1]} tiles of ${c.matrix.replace('MAP_MATRIX_', '')} on the ticked layers, tiled like wallpaper. Alt+click picks one tile to paint with.` : 'Alt+click a tile to paint with it (on the ticked layers), or copy a rectangle with the Rectangle tool to paint with that.');
+        } else if (S.brush.mode === 'class') hint('Paints the class. Alt+click picks a tile\'s class.');
+        else hint(S.brush.mode === 'block' ? 'Paints collision on (the red overlay).' : 'Clears collision.');
     }
-    if (t === 'cut') {
-        const inp = document.createElement('input');
-        inp.type = 'text'; inp.value = S.ground; inp.placeholder = 'ground material (blank: none)';
-        inp.onchange = () => { S.ground = inp.value.trim(); };
-        const row = document.createElement('div'); row.className = 'row';
-        const l = document.createElement('label'); l.textContent = 'Lay ground';
-        row.append(l, inp); opts.appendChild(row);
-        hint('Drag a rectangle: everything on it goes (trees, rocks, props), the ground material is laid flat at the height around it, and its tiles copy the nearest walkable tile.');
+    if (t === 'eraser') {
+        sizes(S.eraser);
+        const inp = el('input', { type: 'text', value: S.eraser.ground, placeholder: 'ground material (blank: none)' });
+        inp.onchange = () => { S.eraser.ground = inp.value.trim(); };
+        opts.appendChild(el('div', { class: 'row' }, el('label', {}, 'Lay ground'), inp));
+        hint('Drag to erase the ticked layers: ground takes the trees and cliffs away and lays this material flat; props go; collision clears; the class becomes the nearest walkable tile\'s; events go.');
     }
-    if (t === 'stamp') hint(S.clipboard ? `Copied ${S.clipboard.rect[2] - S.clipboard.rect[0]}×${S.clipboard.rect[3] - S.clipboard.rect[1]} tiles of ${S.clipboard.model.replace('MAP_MODEL_', '')}. Click to place it; drag to copy another area; Esc to drop it.` : 'Drag a rectangle inside one chunk to copy it (geometry, props and tiles), on this map or another, then click where its top left goes (it can land across chunks). Shift+drag copies another. The overworld map has every route to copy from.');
-    if (t === 'matrix') hint('Click a chunk to set which map model it shows and its zone.');
-    if (KINDS.includes(t)) hint(`Click a tile to add a ${KIND_LABEL[t]} to the zone there.`);
+    if (t === 'insert') {
+        hint(S.insert ? `Click to place ${S.insert.label}. Q turns it 90°.` : 'Pick something below to place it.');
+        palette();
+    }
+    if (t === 'chunk') hint('Click a chunk to set which map model it shows and its zone.');
     requestRender();
 }
 
 let spaceDown = false;
 
-function onDown(ev) {
+async function onDown(ev) {
     ov.setPointerCapture(ev.pointerId);
     const px = ev.offsetX, py = ev.offsetY;
     if (is3d()) return;
@@ -883,56 +1020,117 @@ function onDown(ev) {
             if (!sourceOnly) S.drag = { event: e, start: tile, moved: false };
             return;
         }
+        const pr = propAt(px, py);
+        if (pr) {
+            select({ type: 'prop', cx: pr.cx, cz: pr.cz, i: pr.i, key: G.propKey(pr.p) });
+            if (!sourceOnly) S.drag = { prop: pr, start: tile, moved: false };
+            return;
+        }
         select({ type: 'tile', gx: tile[0], gz: tile[1] });
         return;
     }
-    if (sourceOnly && S.tool !== 'stamp') { toast('The overworld is here to copy from: pick one of the hack\'s maps to edit.'); return; }
-    if (S.tool === 'block' || S.tool === 'class') {
-        if (S.tool === 'class' && ev.altKey) {
-            const t = tileInfo(tile[0], tile[1]);
-            if (t.values) { S.classBrush = t.values[3] & 0xffff; setTool('class'); }
+    if (S.tool === 'marquee') {
+        if (S.pasting && S.clipboard) {
+            if (!editable()) return;
+            await commit(pasteOps(tile));
+            const r = S.clipboard.rect;
+            S.selection = { type: 'area', rect: [tile[0], tile[1], tile[0] + r[2] - r[0], tile[1] + r[3] - r[1]] };
+            if (!ev.shiftKey) S.pasting = false;
+            inspector();
             return;
         }
-        S.undo.push(S.ops.slice());
-        S.redo = [];
-        S.drag = { paint: true, strokeOps: {}, clear: ev.shiftKey };
-        paintAt(tile);
-        return;
-    }
-    if (S.tool === 'cut' || (S.tool === 'stamp' && (!S.clipboard || ev.shiftKey))) {
+        const sel = S.selection;
+        if (sel && sel.type === 'area' && inRect(tile[0], tile[1], sel.rect) && !sourceOnly) {
+            S.drag = { move: true, start: tile, offset: [0, 0] };
+            return;
+        }
         S.drag = { rect: [tile[0], tile[1], tile[0], tile[1]] };
         return;
     }
-    if (S.tool === 'stamp' && S.clipboard) {
-        placeStamp(tile);
-        return;
-    }
-    if (S.tool === 'matrix') {
+    if (S.tool === 'chunk') {
         const m = matrix(S.matrixName);
         const cx = Math.floor(tile[0] / 32), cz = Math.floor(tile[1] / 32);
         if (m.maps[cz] && m.maps[cz][cx] !== undefined) select({ type: 'cell', cx, cz });
         return;
     }
-    if (KINDS.includes(S.tool)) {
-        const zone = cellZone(S.matrixName, Math.floor(tile[0] / 32), Math.floor(tile[1] / 32));
-        if (!zone) { toast('No zone here.'); return; }
-        const uid = newUid();
-        const value = newEvent(S.tool, zone, tile[0], tile[1]);
-        commit(() => S.ops.push({ op: 'event', zone, kind: S.tool, action: 'add', _uid: uid, value }));
-        select({ type: 'event', zone, uid });
-        setTool('select');
+    if (S.tool === 'brush' && ev.altKey) {
+        const t = tileInfo(tile[0], tile[1]);
+        if (S.brush.mode === 'class') { if (t.values) S.brush.cls = t.values[3] & 0xffff; }
+        else {
+            S.clipboard = { matrix: S.matrixName, rect: [tile[0], tile[1], tile[0] + 1, tile[1] + 1], events: [] };
+            S.brush.mode = 'pattern';
+        }
+        setTool('brush');
+        return;
+    }
+    if (!editable()) return;
+    if (S.tool === 'brush' || S.tool === 'eraser') {
+        if (S.tool === 'brush' && S.brush.mode === 'pattern' && !S.clipboard) { toast('Alt+click a tile to paint with first.'); return; }
+        const need = S.tool === 'eraser' ? null : { block: 'collision', unblock: 'collision', class: 'class' }[S.brush.mode];
+        if (need && !S.layers.has(need)) { toast(`The ${need === 'class' ? 'Tile class' : 'Collision'} layer is off.`); return; }
+        S.undo.push(S.ops.slice());
+        S.redo = [];
+        S.drag = { paint: true, strokeOps: {}, done: new Set() };
+        if (S.tool === 'brush' && S.brush.mode === 'pattern') {
+            await E.preload([{ op: 'copy', from: { matrix: S.clipboard.matrix, rect: S.clipboard.rect }, matrix: S.matrixName, to: [] }]);
+            S.drag.snaps = E.snapshot(S.clipboard.matrix, S.clipboard.rect);
+        }
+        paintAt(tile);
+        requestRender();
+        return;
+    }
+    if (S.tool === 'insert') {
+        if (!S.insert) { toast('Pick something to place first.'); return; }
+        await placeInsert(tile);
     }
 }
 
 function paintAt(tile) {
-    if (S.tool === 'block') setTileType(tile[0], tile[1], (v) => (S.drag.clear ? v & ~G.BLOCKED : v | G.BLOCKED));
-    else setTileType(tile[0], tile[1], (v) => (v & ~0xffff) | S.classBrush);
+    const d = S.drag;
+    const r = brushRect(tile);
+    const k = r.join(',');
+    if (d.done.has(k)) return;
+    d.done.add(k);
+    if (S.tool === 'eraser') {
+        const ops = eraseOps(r);
+        for (const op of ops) { S.ops.push(op); E.applyOp(op); }
+        return;
+    }
+    if (S.brush.mode === 'pattern') {
+        const c = S.clipboard;
+        const w = c.rect[2] - c.rect[0], h = c.rect[3] - c.rect[1];
+        const tos = [];
+        for (let x = r[0]; x < r[2]; x += w) for (let z = r[1]; z < r[3]; z += h) tos.push([x, z]);
+        let op = d.patternOp;
+        if (!op) {
+            op = d.patternOp = copyOp(c.matrix, c.rect, []);
+            if (!op) return;
+            S.ops.push(op);
+        }
+        op.to.push(...tos);
+        E.applyOp({ ...op, to: tos }, d.snaps);
+        return;
+    }
+    for (let x = r[0]; x < r[2]; x++) {
+        for (let z = r[1]; z < r[3]; z++) {
+            if (S.brush.mode === 'block') strokeTile(x, z, (v) => v | G.BLOCKED);
+            else if (S.brush.mode === 'unblock') strokeTile(x, z, (v) => v & ~G.BLOCKED);
+            else strokeTile(x, z, (v) => (v & ~0xffff) | S.brush.cls);
+        }
+    }
+}
+
+// Lines between pointer events, so a fast stroke leaves no gaps
+function strokeTo(from, to) {
+    const n = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]));
+    for (let i = 1; i <= n; i++) paintAt([Math.round(from[0] + (to[0] - from[0]) * i / n), Math.round(from[1] + (to[1] - from[1]) * i / n)]);
 }
 
 function onMove(ev) {
     const px = ev.offsetX, py = ev.offsetY;
     if (is3d()) return;
     const tile = tileAt(px, py);
+    const last = S.hover;
     S.hover = tile;
     status(tile);
     const d = S.drag;
@@ -940,89 +1138,137 @@ function onMove(ev) {
         S.view.x = d.vx - (px - d.px) / S.view.scale;
         S.view.z = d.vz - (py - d.py) / S.view.scale;
     } else if (d && d.paint) {
-        paintAt(tile);
+        if (last) strokeTo(last, tile); else paintAt(tile);
     } else if (d && d.rect) {
         d.rect[2] = tile[0]; d.rect[3] = tile[1];
-    } else if (d && d.event) {
+    } else if (d && d.move) {
+        d.offset = [tile[0] - d.start[0], tile[1] - d.start[1]];
+    } else if (d && (d.event || d.prop)) {
         if (tile[0] !== d.start[0] || tile[1] !== d.start[1]) d.moved = true;
         d.to = tile;
     }
+    updateGhost(tile);
     requestRender();
 }
 
-function onUp() {
+async function onUp() {
     const d = S.drag;
     S.drag = null;
     if (!d) return;
     if (d.paint) { changed(); return; }
     if (d.event && d.moved && d.to) {
         const e = d.event;
-        const dx = d.to[0] - d.start[0], dz = d.to[1] - d.start[1];
-        const r = eventRect(e.kind, e.o);
-        setEvent(e.zone, e.kind, e.o._uid, movedEvent(e.kind, e.o, r[0] + dx, r[1] + dz));
+        const cur = findEvent(e.zone, e.o._uid);
+        if (!cur) return;
+        const r = eventRect(e.kind, cur.o);
+        const v = movedEvent(e.kind, cur.o, r[0] + d.to[0] - d.start[0], r[1] + d.to[1] - d.start[1]);
+        await commit([eventSetOp(e.zone, e.kind, cur.o, v), ...(e.kind === 'warps' ? lockMoveOps(e.zone, cur.o, v) : [])]);
+        return;
+    }
+    if (d.prop && d.moved && d.to) {
+        await commit(movePropOps(d.prop, d.to[0] - d.start[0], d.to[1] - d.start[1], 0));
+        return;
+    }
+    if (d.move) {
+        const [dx, dz] = d.offset;
+        if (dx || dz) {
+            const r = S.selection.rect;
+            await commit(moveOps(r, dx, dz));
+            S.selection = { type: 'area', rect: [r[0] + dx, r[1] + dz, r[2] + dx, r[3] + dz] };
+        }
+        requestRender();
         return;
     }
     if (d.rect) {
         const r = normRect(d.rect);
-        if (S.tool === 'cut') {
-            const ops = [];
-            let missing = false;
-            for (const part of splitRect(r)) {
-                const cell = cells[part.cx + ',' + part.cz];
-                if (!cell || !cell.geo) continue;
-                const groundY = G.groundHeight(cell.terrain, part.local, S.idx.heights);
-                const ground = S.ground && cell.geo.materials.some((m) => m.name === S.ground) ? S.ground : null;
-                if (S.ground && !ground) missing = true;
-                ops.push({ op: 'cut', matrix: S.matrixName, x: part.cx, z: part.cz, rect: part.local, ground, groundY });
-            }
-            if (missing) toast(`A chunk here has no ${S.ground} material: cleared there without laying ground.`);
-            if (ops.length) commit(() => S.ops.push(...ops));
-        } else {
-            const cx = Math.floor(r[0] / 32), cz = Math.floor(r[1] / 32);
-            if (Math.floor((r[2] - 1) / 32) !== cx || Math.floor((r[3] - 1) / 32) !== cz) { toast('Copy from inside one chunk (the grid\'s bright lines).'); requestRender(); return; }
-            const cell = cells[cx + ',' + cz];
-            if (!cell) return;
-            const base = (S.idx.bases || {})[cell.model];
-            if (base) toast('This chunk has edits: the stamp copies it as it was before them.');
-            S.clipboard = { matrix: S.matrixName, cx, cz, model: base || cell.model, rect: [r[0] - cx * 32, r[1] - cz * 32, r[2] - cx * 32, r[3] - cz * 32], zone: cellZone(S.matrixName, cx, cz) };
-            setTool('stamp');
-        }
+        select({ type: 'area', rect: r });
     }
     requestRender();
 }
 
-// A rectangle of the matrix's tiles [x0, z0, x1, z1) as the parts in each chunk, in the chunk's own tiles
-function splitRect(r) {
-    const parts = [];
-    for (let cz = Math.floor(r[1] / 32); cz * 32 < r[3]; cz++) {
-        for (let cx = Math.floor(r[0] / 32); cx * 32 < r[2]; cx++) {
-            const x0 = Math.max(r[0], cx * 32), z0 = Math.max(r[1], cz * 32);
-            const x1 = Math.min(r[2], cx * 32 + 32), z1 = Math.min(r[3], cz * 32 + 32);
-            if (x0 < x1 && z0 < z1) parts.push({ cx, cz, global: [x0, z0, x1, z1], local: [x0 - cx * 32, z0 - cz * 32, x1 - cx * 32, z1 - cz * 32] });
-        }
+// A prop moved by tiles and turned by quarter turns: an edit of its chunk, or out of one chunk into another
+function movePropOps(pr, dx, dz, turns) {
+    const p = pr.p;
+    const gx = pr.x + dx * 16, gz = pr.z + dz * 16;
+    const cx = Math.floor(gx / CHUNK), cz = Math.floor(gz / CHUNK);
+    const m = matrix(S.matrixName);
+    if (!m.maps[cz] || !m.maps[cz][cx]) { toast('No chunk there.'); return []; }
+    let y = p.translation[1];
+    if ($('snapHeight').checked && (dx || dz)) {
+        const t0 = [Math.floor(pr.x / 16), Math.floor(pr.z / 16)];
+        y += heightAt(t0[0] + dx, t0[1] + dz) - heightAt(t0[0], t0[1]);
     }
-    return parts;
+    const value = { resId: p.resId, translation: [gx - cx * CHUNK - 256, y, gz - cz * CHUNK - 256], rotation: turns ? yawQuat(yaw(p.rotation) + turns * Math.PI / 2) : p.rotation.slice(), scale: p.scale.slice() };
+    const match = { resId: p.resId, translation: p.translation.slice(), rotation: p.rotation.slice(), scale: p.scale.slice() };
+    if (cx === pr.cx && cz === pr.cz) return [{ op: 'prop', matrix: S.matrixName, x: cx, z: cz, action: 'set', match, value }];
+    if (bundleAt(cx, cz) !== bundleAt(pr.cx, pr.cz)) { toast('That chunk uses another prop set.'); return []; }
+    return [{ op: 'prop', matrix: S.matrixName, x: pr.cx, z: pr.cz, action: 'delete', match },
+        { op: 'prop', matrix: S.matrixName, x: cx, z: cz, action: 'add', value }];
 }
 
-// Places the copied rectangle with its top left at a tile: one stamp for each chunk it lands on
-function placeStamp(tile) {
-    const c = S.clipboard;
-    const w = c.rect[2] - c.rect[0], h = c.rect[3] - c.rect[1];
-    const m = matrix(S.matrixName);
-    const srcBundle = (areaOf(c.zone) || {}).prop_bundle;
+function blockTilesOps(cx, cz, f) {
     const ops = [];
-    let noProps = false;
-    for (const part of splitRect([tile[0], tile[1], tile[0] + w, tile[1] + h])) {
-        if (!m.maps[part.cz] || !m.maps[part.cz][part.cx]) continue;
-        const dx = part.global[0] - tile[0], dz = part.global[1] - tile[1];
-        const rect = [c.rect[0] + dx, c.rect[1] + dz, c.rect[0] + dx + part.local[2] - part.local[0], c.rect[1] + dz + part.local[3] - part.local[1]];
-        const dstBundle = (areaOf(cellZone(S.matrixName, part.cx, part.cz)) || {}).prop_bundle;
-        const props = !!srcBundle && srcBundle === dstBundle;
-        if (!props) noProps = true;
-        ops.push({ op: 'stamp', matrix: S.matrixName, x: part.cx, z: part.cz, from: c.model, rect, to: [part.local[0], part.local[1]], props });
+    for (const part of splitRect([cx * 32 + f[0], cz * 32 + f[1], cx * 32 + f[2], cz * 32 + f[3]])) {
+        const v = E.view(S.matrixName, part.cx, part.cz);
+        if (!v || !v.terrain) continue;
+        const set = {};
+        for (let x = part.local[0]; x < part.local[2]; x++) {
+            for (let z = part.local[1]; z < part.local[3]; z++) set[x + ',' + z] = { tile_type: (v.terrain.cells[z * 32 + x][3] | G.BLOCKED) >>> 0 };
+        }
+        ops.push({ op: 'tiles', matrix: S.matrixName, x: part.cx, z: part.cz, set });
     }
-    if (noProps) toast('The two places use different prop sets: copied without props.');
-    if (ops.length) commit(() => S.ops.push(...ops));
+    return ops;
+}
+
+async function placeInsert(tile) {
+    const it = S.insert;
+    const cx = Math.floor(tile[0] / 32), cz = Math.floor(tile[1] / 32);
+    if (it.type === 'object') {
+        const zone = cellZone(S.matrixName, cx, cz);
+        if (!zone) { toast('No zone here.'); return; }
+        const value = newEvent(it.kind, zone, tile[0], tile[1]);
+        Object.assign(value, it.value || {});
+        const uid = newUid();
+        await commit([{ op: 'event', zone, kind: it.kind, action: 'add', _uid: uid, value }]);
+        select({ type: 'event', zone, uid });
+        if (it.kind === 'warps') toast('Door placed: set where it leads in the panel.');
+        return;
+    }
+    const bundle = bundleAt(cx, cz);
+    if (bundle !== it.bundle) { toast('This chunk uses another prop set: pick from its own.'); return; }
+    const value = { resId: it.resId, translation: [(tile[0] - cx * 32) * 16 + 8 - 256, heightAt(tile[0], tile[1]), (tile[1] - cz * 32) * 16 + 8 - 256], rotation: yawQuat(S.rot * Math.PI / 2), scale: [1, 1, 1] };
+    const ops = [{ op: 'prop', matrix: S.matrixName, x: cx, z: cz, action: 'add', value }];
+    if ($('blockUnder') && $('blockUnder').checked) ops.push(...blockTilesOps(cx, cz, propFootprint(bundle, value)));
+    await commit(ops);
+}
+
+function ghostFootprint(tile) {
+    const it = S.insert;
+    if (!it || it.type !== 'prop') return null;
+    const cx = Math.floor(tile[0] / 32), cz = Math.floor(tile[1] / 32);
+    const p = { resId: it.resId, translation: [(tile[0] - cx * 32) * 16 + 8 - 256, 0, (tile[1] - cz * 32) * 16 + 8 - 256], rotation: yawQuat(S.rot * Math.PI / 2) };
+    const f = propFootprint(it.bundle, p);
+    return [cx * 32 + f[0], cz * 32 + f[1], cx * 32 + f[2], cz * 32 + f[3]];
+}
+
+async function updateGhost(tile) {
+    const it = S.tool === 'insert' ? S.insert : null;
+    const want = it && it.type === 'prop' && tile ? it.bundle + ':' + it.resId : null;
+    if (!want) { if (ghost) { scene.remove(ghost); ghost = null; } return; }
+    if (!ghost || ghost.userData.id !== want) {
+        if (ghost) scene.remove(ghost);
+        ghost = null;
+        const scn = await propModel(it.bundle, it.resId);
+        if (!scn || !S.insert || S.insert.bundle + ':' + S.insert.resId !== want) return;
+        if (ghost) scene.remove(ghost);
+        ghost = SkeletonUtils.clone(scn);
+        ghost.userData.id = want;
+        scene.add(ghost);
+    }
+    const t = S.hover || tile;
+    ghost.position.set(t[0] * 16 + 8, heightAt(t[0], t[1]), t[1] * 16 + 8);
+    ghost.quaternion.set(...yawQuat(S.rot * Math.PI / 2));
+    requestRender();
 }
 
 function onWheel(ev) {
@@ -1047,6 +1293,7 @@ function status(tile) {
         const cls = type & 0xffff;
         s += `  ·  ${S.idx.constants.tile_classes[cls] || '0x' + cls.toString(16)}${type & G.BLOCKED ? ', blocked' : ''}  ·  height ${heightAt(tile[0], tile[1])}`;
     }
+    if (S.selection && S.selection.type === 'area') { const r = S.selection.rect; s += `  ·  selection ${r[2] - r[0]}×${r[3] - r[1]}`; }
     $('status').textContent = s;
 }
 
@@ -1055,10 +1302,114 @@ function toast(msg) {
     t.textContent = msg;
     t.style.display = 'block';
     clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+    toast.timer = setTimeout(() => { t.style.display = 'none'; }, 4000);
 }
 
-// ---- Inspector ---------------------------------------------------------------------------------------------------
+// ---- Insert palette ------------------------------------------------------------------------------------------------
+
+let thumbRenderer = null;
+const thumbs = {};
+
+function thumbnail(bundle, resId, img) {
+    const id = bundle + ':' + resId;
+    if (thumbs[id]) { img.src = thumbs[id]; return; }
+    propModel(bundle, resId).then((scn) => {
+        if (!scn) return;
+        if (!thumbRenderer) {
+            thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+            thumbRenderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+            thumbRenderer.setSize(96, 96);
+        }
+        const sc = new THREE.Scene();
+        sc.add(new THREE.AmbientLight(0xffffff, 3));
+        sc.add(SkeletonUtils.clone(scn));
+        const box = propBoxes[id];
+        const c = box.getCenter(new THREE.Vector3());
+        const r = Math.max(8, box.getSize(new THREE.Vector3()).length() / 2);
+        const cam = new THREE.OrthographicCamera(-r, r, r, -r, -r * 10, r * 10);
+        cam.position.set(c.x + r, c.y + r * 1.1, c.z + r * 1.6);
+        cam.lookAt(c);
+        thumbRenderer.render(sc, cam);
+        thumbs[id] = thumbRenderer.domElement.toDataURL();
+        img.src = thumbs[id];
+    });
+}
+
+function palette() {
+    const box = $('palette');
+    box.innerHTML = '';
+    const filter = el('input', { type: 'text', placeholder: 'Filter (door, fence, rock…)', value: S.paletteFilter || '' });
+    filter.oninput = () => { S.paletteFilter = filter.value; paletteItems(); };
+    box.appendChild(filter);
+    const turn = el('div', { class: 'row' }, el('label', {}, 'Turn'), el('button', { onclick: () => { S.rot = (S.rot + 1) % 4; palette(); updateGhost(S.hover); } }, `${S.rot * 90}° (Q)`));
+    const block = el('input', { type: 'checkbox', id: 'blockUnder' });
+    block.checked = S.blockUnder !== false;
+    block.onchange = () => { S.blockUnder = block.checked; };
+    box.appendChild(turn);
+    box.appendChild(el('div', { class: 'checks' }, el('label', {}, block, 'Block the tiles under a prop')));
+    box.appendChild(el('div', { id: 'palItems' }));
+    paletteItems();
+}
+
+function paletteItems() {
+    const list = $('palItems');
+    if (!list) return;
+    list.innerHTML = '';
+    const f = (S.paletteFilter || '').toLowerCase();
+    const pick = (item) => { S.insert = item; setTool('insert'); };
+    const isOn = (item) => S.insert && S.insert.label === item.label && S.insert.type === item.type;
+    list.appendChild(el('h3', {}, 'Objects'));
+    const objs = el('div', { class: 'pal' });
+    for (const o of OBJECTS) {
+        if (f && !o.label.toLowerCase().includes(f)) continue;
+        const item = { type: 'object', ...o };
+        const img = el('img');
+        const url = o.value && o.value.model ? pack.sprite(o.value.model) : null;
+        if (url) {
+            // The sprite's first frame
+            const raw = new Image();
+            raw.onload = () => {
+                const c = document.createElement('canvas');
+                const fw = Math.min(raw.width, raw.height);
+                c.width = fw; c.height = fw;
+                c.getContext('2d').drawImage(raw, 0, 0, fw, fw, 0, 0, fw, fw);
+                img.src = c.toDataURL();
+            };
+            raw.src = url;
+        }
+        const tile = el('div', { class: 'palItem' + (isOn(item) ? ' on' : ''), title: o.hint || o.label, onclick: () => pick(item) }, url ? img : el('i', { class: 'swatch', style: `background:${KIND_COLOR[o.kind]}` }), el('span', {}, o.label));
+        objs.appendChild(tile);
+    }
+    list.appendChild(objs);
+    const center = toWorld(size().w / 2, size().h / 2);
+    let cx = Math.floor(center[0] / CHUNK), cz = Math.floor(center[1] / CHUNK);
+    if (S.hover) { cx = Math.floor(S.hover[0] / 32); cz = Math.floor(S.hover[1] / 32); }
+    const bundles = new Set();
+    for (const c of Object.values(cells)) { const b = bundleAt(c.cx, c.cz); if (b) bundles.add(b); }
+    const first = bundleAt(cx, cz);
+    const order = [...bundles].sort((a, b) => (b === first) - (a === first) || a.localeCompare(b));
+    pack.loadIndex().then(() => {
+        for (const b of order) {
+            pack.loadProps(b).then((entries) => {
+                if (!entries || !$('palItems')) return;
+                const items = Object.entries(entries).filter(([, e]) => !f || e.name.toLowerCase().includes(f)).sort((a, b2) => a[1].name.localeCompare(b2[1].name));
+                if (!items.length) return;
+                list.appendChild(el('h3', {}, 'Props: ' + b.replace('FIELD_PROPS_', '').toLowerCase()));
+                const grid = el('div', { class: 'pal' });
+                for (const [resId, e] of items) {
+                    const item = { type: 'prop', bundle: b, resId: +resId, label: e.name };
+                    const img = el('img', { loading: 'lazy' });
+                    const tile = el('div', { class: 'palItem' + (S.insert && S.insert.type === 'prop' && S.insert.bundle === b && S.insert.resId === +resId ? ' on' : ''), title: `${e.name} (${resId})`, onclick: () => pick(item) }, img, el('span', {}, e.name));
+                    grid.appendChild(tile);
+                    thumbnail(b, +resId, img);
+                }
+                list.appendChild(grid);
+            });
+        }
+    });
+}
+
+// ---- Inspector -----------------------------------------------------------------------------------------------------
 
 function select(sel) {
     S.selection = sel;
@@ -1087,25 +1438,28 @@ function datalist(id, values) {
     return id;
 }
 
+function row(label, input) {
+    return el('div', { class: 'row' }, el('label', { title: label }, label), input);
+}
+
 // A form for an event: every field, nested ones under their parent's name
 function eventForm(value, onApply) {
     const box = el('div');
     const inputs = [];
     const walk = (obj, path) => {
         for (const [k, v] of Object.entries(obj)) {
-            if (k === '_uid') continue;
+            if (k === '_uid' || k === 'unk0a') continue;
             const p = path.concat(k);
             if (v && typeof v === 'object') { walk(v, p); continue; }
             const inp = el('input', { type: 'text', value: String(v) });
             const list = LISTS[k] && path.length === 0 ? datalist('dl-' + k, S.idx.constants[LISTS[k]]) : k === 'direction' && typeof v === 'string' ? datalist('dl-dir', DIRS) : null;
             if (list) inp.setAttribute('list', list);
-            inputs.push([p, inp, typeof v]);
-            const label = el('label', { title: p.join('.') }, p.join('.'));
-            box.appendChild(el('div', { class: 'row' }, label, inp));
+            inputs.push([p, inp]);
+            box.appendChild(row(p.join('.'), inp));
         }
     };
     walk(value, []);
-    const apply = el('button', { onclick: () => {
+    box.appendChild(el('div', { class: 'btns' }, el('button', { onclick: () => {
         const v = JSON.parse(JSON.stringify(value));
         for (const [p, inp] of inputs) {
             let o = v;
@@ -1114,8 +1468,69 @@ function eventForm(value, onApply) {
             o[p[p.length - 1]] = /^-?\d+$/.test(raw) ? parseInt(raw, 10) : /^0x[0-9a-f]+$/i.test(raw) && p[p.length - 1] !== 'flag' ? parseInt(raw, 16) : raw;
         }
         onApply(v);
-    } }, 'Apply');
-    box.appendChild(el('div', { class: 'btns' }, apply));
+    } }, 'Apply')));
+    return box;
+}
+
+// The door panel: where a warp leads, how the player arrives, and its lock
+function doorPanel(zone, o) {
+    const box = el('div', { class: 'feature' });
+    box.appendChild(el('h3', {}, 'Door'));
+    const zi = el('input', { type: 'text', value: o.zone, list: datalist('dl-zone', S.idx.constants.zones) });
+    const wi = el('select');
+    const fillDoors = () => {
+        wi.innerHTML = '';
+        const dz = zi.value.trim();
+        const list = S.idx.zones[dz] ? zoneEvents(dz).warps : [];
+        if (!list.length) wi.appendChild(el('option', { value: o.warp }, `warp ${o.warp}`));
+        list.forEach((w, i) => wi.appendChild(el('option', { value: i }, `#${i} at ${Math.floor(w.grid.x / 16)}, ${Math.floor(w.grid.z / 16)} → ${String(w.zone).replace('ZONE_', '')}`)));
+        wi.value = String(dz === o.zone ? o.warp : 0);
+    };
+    zi.onchange = fillDoors;
+    fillDoors();
+    const fi = el('select');
+    for (const [v, n] of ARRIVE) fi.appendChild(el('option', { value: v }, n));
+    fi.value = String(o.unk4 || 0);
+    box.appendChild(row('Leads to', zi));
+    box.appendChild(row('Its door', wi));
+    box.appendChild(row('Arrive facing', fi));
+    const lock = E.lockAt(zone, o.grid.x, o.grid.z);
+    const li = el('input', { type: 'checkbox' }); li.checked = !!lock;
+    const ki = el('input', { type: 'text', value: (lock && lock.item) || '', placeholder: 'none: never opens', list: datalist('dl-items', S.idx.constants.items || []) });
+    const ci = el('input', { type: 'checkbox' }); ci.checked = !!(lock && lock.consume);
+    const ri = el('input', { type: 'checkbox' }); ri.checked = !!(lock && lock.relock);
+    const lockBox = el('div', {}, row('Key item', ki), el('div', { class: 'checks' }, el('label', {}, ci, 'Uses up the key'), el('label', {}, ri, 'Locks again each raid')));
+    const sync = () => { lockBox.style.display = li.checked ? 'block' : 'none'; };
+    li.onchange = sync; sync();
+    box.appendChild(el('div', { class: 'checks' }, el('label', {}, li, 'Locked')));
+    box.appendChild(lockBox);
+    box.appendChild(el('div', { class: 'hint' }, 'A locked door says so when walked into. With a key item it opens for good once the player has it; without one it stays shut.'));
+    const btns = el('div', { class: 'btns' });
+    btns.appendChild(el('button', { onclick: async () => {
+        const v = JSON.parse(JSON.stringify(clean(o)));
+        v.zone = zi.value.trim(); v.warp = +wi.value; v.unk4 = +fi.value;
+        if (v.zone && !S.idx.constants.zones.includes(v.zone)) { toast(v.zone + ' is not a zone.'); return; }
+        const item = ki.value.trim();
+        if (item && S.idx.constants.items && !S.idx.constants.items.includes(item)) { toast(item + ' is not an item.'); return; }
+        const ops = [];
+        if (canon(v) !== canon(clean(o))) ops.push(eventSetOp(zone, 'warps', o, v));
+        const want = li.checked ? { op: 'lock', zone, x: o.grid.x, z: o.grid.z, locked: true, item: item || null, consume: ci.checked, relock: ri.checked } : null;
+        if (want && (!lock || canon({ ...clean(lock), locked: true }) !== canon(want))) ops.push(want);
+        if (!want && lock) ops.push({ op: 'lock', zone, x: o.grid.x, z: o.grid.z, locked: false });
+        await commit(ops);
+    } }, 'Apply'));
+    btns.appendChild(el('button', { onclick: () => goToWarp(zi.value.trim(), +wi.value) }, 'Show its door'));
+    btns.appendChild(el('button', { title: 'Sets the door it leads to to lead back here', onclick: async () => {
+        const dz = zi.value.trim();
+        const target = S.idx.zones[dz] && zoneEvents(dz).warps[+wi.value];
+        if (!target) { toast('No such door.'); return; }
+        const here = zoneEvents(zone).warps.findIndex((w) => w._uid === o._uid);
+        const v = { ...clean(target), zone, warp: here };
+        if (canon(v) === canon(clean(target))) { toast('It already leads back here.'); return; }
+        await commit([eventSetOp(dz, 'warps', target, v)]);
+        toast(`${dz.replace('ZONE_', '')} #${wi.value} now leads back here.`);
+    } }, 'Make it two-way'));
+    box.appendChild(btns);
     return box;
 }
 
@@ -1124,7 +1539,7 @@ function inspector() {
     box.innerHTML = '';
     const sel = S.selection;
     const sourceOnly = S.matrixName && matrix(S.matrixName).sourceOnly;
-    if (!sel) { box.appendChild(el('div', { class: 'hint' }, 'Click a tile, an event or (Chunk tool) a chunk.')); return; }
+    if (!sel) { box.appendChild(el('div', { class: 'hint' }, 'Click a tile, an event, a prop or (Chunk tool) a chunk.')); return; }
     if (sel.type === 'event') {
         const found = findEvent(sel.zone, sel.uid);
         if (!found) { box.appendChild(el('div', { class: 'hint' }, 'Gone.')); return; }
@@ -1132,30 +1547,90 @@ function inspector() {
         box.appendChild(el('div', {}, el('b', {}, `${KIND_LABEL[kind]} ${i}`), ` of ${sel.zone.replace('ZONE_', '')}`));
         if (o.script !== undefined) box.appendChild(el('div', { class: 'hint' }, `Script ${o.script}${S.idx.constants.scripts[String(o.script)] ? ' = ' + scriptName(o.script) : ''}`));
         if (kind === 'warps') {
-            const dest = S.idx.zones[o.zone];
-            const go = el('button', { onclick: () => goToWarp(o.zone, o.warp) }, `Go to ${String(o.zone).replace('ZONE_', '')} warp ${o.warp}`);
-            box.appendChild(el('div', { class: 'btns' }, go));
-            if (!dest) box.appendChild(el('div', { class: 'warn' }, 'That zone is not in the pack.'));
+            if (!sourceOnly) box.appendChild(doorPanel(sel.zone, o));
             box.appendChild(el('div', { class: 'hint' }, 'Warps are counted by their place in the list: other zones\' warps lead here by number.'));
         }
+        const preset = kind === 'npcs' && OBJECTS.find((p) => p.value && p.value.model === o.model && (p.value.script === undefined || p.value.script === o.script));
+        if (preset && preset.hint) box.appendChild(el('div', { class: 'hint' }, preset.hint));
         if (sourceOnly) { box.appendChild(el('pre', { class: 'hint' }, JSON.stringify(clean(o), null, 1))); return; }
-        box.appendChild(eventForm(clean(o), (v) => setEvent(sel.zone, kind, sel.uid, v)));
+        const details = el('details', kind === 'warps' ? {} : { open: '' }, el('summary', {}, 'All fields'));
+        details.appendChild(eventForm(clean(o), (v) => commit([eventSetOp(sel.zone, kind, o, v), ...(kind === 'warps' ? lockMoveOps(sel.zone, o, v) : [])])));
+        box.appendChild(details);
         const btns = el('div', { class: 'btns' });
-        btns.appendChild(el('button', { onclick: () => {
+        btns.appendChild(el('button', { onclick: async () => {
             const uid = newUid();
-            const v = clean(o);
-            const r = eventRect(kind, v);
-            const moved = movedEvent(kind, v, r[0] + 1, r[1]);
+            const r = eventRect(kind, o);
+            const moved = movedEvent(kind, clean(o), r[0] + 1, r[1]);
             if (kind === 'npcs') moved.id = Math.max(...zoneEvents(sel.zone).npcs.map((n) => n.id)) + 1;
-            commit(() => S.ops.push({ op: 'event', zone: sel.zone, kind, action: 'add', _uid: uid, value: moved }));
+            await commit([{ op: 'event', zone: sel.zone, kind, action: 'add', _uid: uid, value: moved }]);
             select({ type: 'event', zone: sel.zone, uid });
         } }, 'Duplicate'));
-        btns.appendChild(el('button', { class: 'danger', onclick: () => {
+        btns.appendChild(el('button', { class: 'danger', onclick: async () => {
             const list = zoneEvents(sel.zone)[kind];
             if (kind === 'warps' && i < list.length - 1 && !confirm('Deleting this warp renumbers the warps after it, which other zones\' warps may lead to. Delete anyway?')) return;
-            commit(() => S.ops.push({ op: 'event', zone: sel.zone, kind, action: 'delete', _uid: sel.uid, match: clean(o) }));
+            const ops = [{ op: 'event', zone: sel.zone, kind, action: 'delete', _uid: sel.uid, match: clean(o) }];
+            if (kind === 'warps' && E.lockAt(sel.zone, o.grid.x, o.grid.z)) ops.push({ op: 'lock', zone: sel.zone, x: o.grid.x, z: o.grid.z, locked: false });
+            await commit(ops);
             select(null);
         } }, 'Delete'));
+        box.appendChild(btns);
+        return;
+    }
+    if (sel.type === 'prop') {
+        const pr = allProps().find((q) => q.cx === sel.cx && q.cz === sel.cz && G.propKey(q.p) === sel.key) || allProps().find((q) => q.cx === sel.cx && q.cz === sel.cz && q.i === sel.i);
+        if (!pr) { box.appendChild(el('div', { class: 'hint' }, 'Gone.')); return; }
+        sel.i = pr.i; sel.key = G.propKey(pr.p);
+        const bundle = bundleAt(pr.cx, pr.cz);
+        const name = (pack.propName && pack.propName(bundle, pr.p.resId)) || `prop ${pr.p.resId}`;
+        box.appendChild(el('div', {}, el('b', {}, name), ` · chunk ${pr.cx}, ${pr.cz}`));
+        box.appendChild(el('div', { class: 'hint' }, `id ${pr.p.resId} · at ${pr.p.translation.map((v) => Math.round(v * 10) / 10).join(', ')} · turned ${Math.round(yaw(pr.p.rotation) * 180 / Math.PI)}°`));
+        if (sourceOnly) return;
+        const btns = el('div', { class: 'btns' });
+        btns.appendChild(el('button', { onclick: async () => { await commit(movePropOps(pr, 0, 0, 1)); } }, 'Turn 90°'));
+        btns.appendChild(el('button', { onclick: async () => { await commit(blockTilesOps(pr.cx, pr.cz, propFootprint(bundle, pr.p))); toast('Blocked the tiles under it.'); } }, 'Block its tiles'));
+        btns.appendChild(el('button', { class: 'danger', onclick: async () => {
+            await commit([{ op: 'prop', matrix: S.matrixName, x: pr.cx, z: pr.cz, action: 'delete', match: { resId: pr.p.resId, translation: pr.p.translation, rotation: pr.p.rotation, scale: pr.p.scale } }]);
+            select(null);
+        } }, 'Delete'));
+        box.appendChild(btns);
+        // A door: the warp on or beside it
+        const gx = Math.floor(pr.x / 16), gz = Math.floor(pr.z / 16);
+        const zone = cellZone(S.matrixName, pr.cx, pr.cz);
+        const near = allEvents().filter((e) => e.kind === 'warps' && Math.abs(e.r[0] - gx) <= 1 && Math.abs(e.r[1] - gz) <= 1);
+        if (near.length) {
+            const e = near.sort((a, b) => (Math.abs(a.r[0] - gx) + Math.abs(a.r[1] - gz)) - (Math.abs(b.r[0] - gx) + Math.abs(b.r[1] - gz)))[0];
+            box.appendChild(doorPanel(e.zone, e.o));
+        } else if (/door|gate|shutter|entrance/i.test(name) && zone) {
+            box.appendChild(el('div', { class: 'btns' }, el('button', { onclick: async () => {
+                const uid = newUid();
+                await commit([{ op: 'event', zone, kind: 'warps', action: 'add', _uid: uid, value: newEvent('warps', zone, gx, gz) }]);
+                select({ type: 'event', zone, uid });
+            } }, 'Make it a door (add a warp)')));
+        }
+        return;
+    }
+    if (sel.type === 'area') {
+        const r = sel.rect;
+        box.appendChild(el('div', {}, el('b', {}, `Selection ${r[2] - r[0]}×${r[3] - r[1]}`), ` from ${r[0]}, ${r[1]}`));
+        box.appendChild(el('div', { class: 'hint' }, `Layers: ${[...S.layers].join(', ') || 'none'}. ${eventsIn(r).length} event(s) inside.`));
+        const btns = el('div', { class: 'btns' });
+        btns.appendChild(el('button', { onclick: () => copySelection(false) }, 'Copy'));
+        if (!sourceOnly) {
+            btns.appendChild(el('button', { onclick: () => copySelection(true) }, 'Cut'));
+            btns.appendChild(el('button', { class: 'danger', onclick: () => commit(eraseOps(r)) }, 'Erase'));
+            btns.appendChild(el('button', { onclick: () => {
+                const ops = [];
+                for (const part of splitRect(r)) {
+                    const v = E.view(S.matrixName, part.cx, part.cz);
+                    if (!v || !v.terrain) continue;
+                    const set = {};
+                    for (let x = part.local[0]; x < part.local[2]; x++) for (let z = part.local[1]; z < part.local[3]; z++) set[x + ',' + z] = { tile_type: (v.terrain.cells[z * 32 + x][3] | G.BLOCKED) >>> 0 };
+                    ops.push({ op: 'tiles', matrix: S.matrixName, x: part.cx, z: part.cz, set });
+                }
+                commit(ops);
+            } }, 'Block all'));
+        }
+        if (S.clipboard) btns.appendChild(el('button', { onclick: () => { S.pasting = true; setTool('marquee'); } }, 'Paste…'));
         box.appendChild(btns);
         return;
     }
@@ -1170,13 +1645,9 @@ function inspector() {
         const clsSel = el('select');
         const classes = S.idx.constants.tile_classes;
         if (!classes[cls]) clsSel.appendChild(el('option', { value: cls }, `0x${cls.toString(16)}`));
-        for (const [v, n] of Object.entries(classes)) {
-            const o = el('option', { value: v }, `${n} (0x${(+v).toString(16)})`);
-            if (+v === cls) o.selected = true;
-            clsSel.appendChild(o);
-        }
+        for (const [v, n] of Object.entries(classes)) clsSel.appendChild(el('option', { value: v }, `${n} (0x${(+v).toString(16)})`));
         clsSel.value = String(cls);
-        box.appendChild(el('div', { class: 'row' }, el('label', {}, 'Class'), clsSel));
+        box.appendChild(row('Class', clsSel));
         const checks = el('div', { class: 'checks' });
         const flagInputs = FLAGS.map(([bit, name]) => {
             const c = el('input', { type: 'checkbox' });
@@ -1185,12 +1656,11 @@ function inspector() {
             return [bit, c];
         });
         box.appendChild(checks);
-        box.appendChild(el('div', { class: 'btns' }, el('button', { onclick: () => {
+        box.appendChild(el('div', { class: 'btns' }, el('button', { onclick: async () => {
             let flags = (type >>> 16) & ~FLAGS.reduce((a, [b]) => a | b, 0);
             for (const [bit, c] of flagInputs) if (c.checked) flags |= bit;
             const nt = ((flags << 16) | +clsSel.value) >>> 0;
-            commit(() => { S.drag = null; setTileType(sel.gx, sel.gz, () => nt); });
-            inspector();
+            await commit([{ op: 'tiles', matrix: S.matrixName, x: t.cx, z: t.cz, set: { [t.x + ',' + t.z]: { tile_type: nt } } }]);
         } }, 'Apply')));
         return;
     }
@@ -1200,24 +1670,21 @@ function inspector() {
         const zone = m.zones ? m.zones[sel.cz][sel.cx] : cellZone(S.matrixName, sel.cx, sel.cz);
         box.appendChild(el('div', {}, el('b', {}, `Chunk ${sel.cx}, ${sel.cz}`)));
         const mi = el('input', { type: 'text', value: model, list: datalist('dl-models', Object.keys(S.idx.models)) });
-        box.appendChild(el('div', { class: 'row' }, el('label', {}, 'Map model'), mi));
+        box.appendChild(row('Map model', mi));
         let zi = null;
         if (m.zones) {
             zi = el('input', { type: 'text', value: zone, list: datalist('dl-zone', S.idx.constants.zones) });
-            box.appendChild(el('div', { class: 'row' }, el('label', {}, 'Zone'), zi));
+            box.appendChild(row('Zone', zi));
         }
-        const pending = cellOps(S.matrixName, sel.cx, sel.cz).length;
-        if (pending) box.appendChild(el('div', { class: 'warn' }, `${pending} edit(s) on this chunk are dropped if its model changes.`));
-        box.appendChild(el('div', { class: 'hint' }, 'Only models in the pack can be shown; the list has them all. OVERWORLD_2_MAP_OUTTREE is the blocked forest.'));
+        box.appendChild(el('div', { class: 'hint' }, 'A new model drops the edits made to this chunk before. Only models in the pack can be shown; OVERWORLD_2_MAP_OUTTREE is the blocked forest.'));
         if (sourceOnly) return;
-        box.appendChild(el('div', { class: 'btns' }, el('button', { onclick: () => {
+        box.appendChild(el('div', { class: 'btns' }, el('button', { onclick: async () => {
             const op = { op: 'matrix', matrix: S.matrixName, x: sel.cx, z: sel.cz };
             if (mi.value.trim() && mi.value.trim() !== model) op.model = mi.value.trim();
             if (zi && zi.value.trim() && zi.value.trim() !== zone) op.zone = zi.value.trim();
             if (!op.model && !op.zone) return;
             if (op.model && !S.idx.models[op.model]) { toast(op.model + ' is not in the pack.'); return; }
-            commit(() => S.ops.push(op));
-            inspector();
+            await commit([op]);
         } }, 'Apply')));
     }
 }
@@ -1228,8 +1695,7 @@ async function goToWarp(zone, warp) {
     const m = z.header.matrix;
     if (!S.idx.matrices[m]) { toast(m + ' is not in the pack.'); return; }
     await showMatrix(m, false);
-    const list = zoneEvents(zone).warps;
-    const w = list[warp];
+    const w = zoneEvents(zone).warps[warp];
     if (w) {
         const r = eventRect('warps', w);
         S.view.x = r[0] * 16 + 8; S.view.z = r[1] * 16 + 8;
@@ -1250,10 +1716,9 @@ async function showMatrix(name, fit = true) {
     inspector();
     const m = matrix(name);
     if (fit) {
-        // Fit the chunks that aren't the forest filler
         let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
-        m.maps.forEach((row, cz) => row.forEach((c, cx) => {
-            if (c && (!c.endsWith('OUTTREE') || m.maps.length * row.length <= 4)) {
+        m.maps.forEach((r, cz) => r.forEach((c, cx) => {
+            if (c && (!c.endsWith('OUTTREE') || m.maps.length * r.length <= 4)) {
                 x0 = Math.min(x0, cx); z0 = Math.min(z0, cz); x1 = Math.max(x1, cx + 1); z1 = Math.max(z1, cz + 1);
             }
         }));
@@ -1265,13 +1730,13 @@ async function showMatrix(name, fit = true) {
     }
     $('loading').style.display = 'flex';
     $('loading').textContent = 'Loading ' + name.replace('MAP_MATRIX_', '') + '…';
-    await refreshCells();
+    await E.loadMatrix(name);
     $('loading').style.display = 'none';
+    if (S.tool === 'insert') palette();
     requestRender();
 }
 
 function refreshAll() {
-    refreshCells();
     inspector();
     summary();
     requestRender();
@@ -1279,10 +1744,13 @@ function refreshAll() {
 
 function describe(op) {
     const cell = op.matrix ? `${op.matrix.replace('MAP_MATRIX_', '')} ${op.x},${op.z}` : '';
+    const rect = (r) => `${r[2] - r[0]}×${r[3] - r[1]} at ${r[0]},${r[1]}`;
     if (op.op === 'event') return `${op.action} ${KIND_LABEL[op.kind]} in ${op.zone.replace('ZONE_', '')}`;
     if (op.op === 'tiles') return `${Object.keys(op.set).length} tile(s) in ${cell}`;
-    if (op.op === 'cut') return `clear ${op.rect.join(',')} in ${cell}`;
-    if (op.op === 'stamp') return `stamp ${op.from.replace('MAP_MODEL_', '')} ${op.rect.join(',')} → ${cell} at ${op.to.join(',')}`;
+    if (op.op === 'erase') return `erase ${rect(op.rect)} (${op.layers.join(', ')})`;
+    if (op.op === 'copy') return `copy ${rect(op.from.rect)} to ${op.to.length > 1 ? op.to.length + ' places' : op.to[0].join(',')} (${op.layers.join(', ')})`;
+    if (op.op === 'prop') return `${op.action} prop in ${cell}`;
+    if (op.op === 'lock') return `${op.locked === false ? 'unlock' : 'lock'} a door in ${op.zone.replace('ZONE_', '')}${op.item ? ' (' + op.item.replace('ITEM_', '') + ')' : ''}`;
     if (op.op === 'matrix') return `chunk ${cell}: ${op.model || ''} ${op.zone || ''}`;
     return op.op;
 }
@@ -1299,13 +1767,29 @@ function summary() {
     $('redoBtn').disabled = !S.redo.length;
 }
 
+function layerBoxes() {
+    const box = $('layers');
+    box.innerHTML = '';
+    const all = el('input', { type: 'checkbox' });
+    all.checked = LAYERS.every(([l]) => S.layers.has(l));
+    all.onchange = () => { for (const [l] of LAYERS) all.checked ? S.layers.add(l) : S.layers.delete(l); layerBoxes(); };
+    box.appendChild(el('label', { class: 'all' }, all, 'All'));
+    LAYERS.forEach(([l, label], i) => {
+        const c = el('input', { type: 'checkbox' });
+        c.checked = S.layers.has(l);
+        c.onchange = () => { c.checked ? S.layers.add(l) : S.layers.delete(l); layerBoxes(); };
+        box.appendChild(el('label', { title: `Alt+${i + 1}` }, c, label));
+    });
+    if (S.selection && S.selection.type === 'area') inspector();
+}
+
 // ---- Saving --------------------------------------------------------------------------------------------------------
 
 let fileHandle = null;
 
 function output() {
     const ops = compact([...S.baseOps, ...S.ops]);
-    return '{\n"version": 1,\n"ops": [\n' + ops.map((o) => JSON.stringify(o)).join(',\n') + '\n]\n}\n';
+    return '{\n"version": 2,\n"ops": [\n' + ops.map((o) => JSON.stringify(o)).join(',\n') + '\n]\n}\n';
 }
 
 async function save() {
@@ -1329,51 +1813,100 @@ async function save() {
     toast('Downloaded world_edits.json');
 }
 
-function openEdits(text) {
+async function openEdits(text) {
     let data;
     try { data = JSON.parse(text); } catch (e) { toast('Not JSON.'); return; }
     const ops = data.ops || [];
     const base = S.baseOps.map(canon);
     const prefix = base.every((b, i) => ops[i] && canon(ops[i]) === b);
     if (!prefix && !confirm('This file doesn\'t start with the edits this pack was made with. Show all of its edits as new?')) return;
-    commit(() => adopt(ops.slice(prefix ? base.length : 0)));
+    S.undo.push(S.ops.slice());
+    await adopt(ops.slice(prefix ? base.length : 0));
+    changed();
 }
 
-// Event operations from a file name their thing by its fields: give each the uid of the event it matches, in order,
-// so that an edit of an event added earlier finds it
-function adopt(ops) {
+// Operations from a file: event edits name their event by its fields, so each gets the uid of the event it matches
+// as the edits before it leave the world
+async function adopt(ops) {
+    await E.preload(ops);
+    E.replay([]);
     S.ops = [];
     for (const op of ops) {
         let o = op;
         if (op.op === 'event') {
             if (op.action === 'add') o = { ...op, _uid: newUid() };
             else {
-                derived.version = -1;
-                const key = canon(op.match);
-                const found = zoneEvents(op.zone)[op.kind].find((e) => canon(e) === key);
+                const k = canon(op.match);
+                const found = zoneEvents(op.zone)[op.kind].find((e) => canon(e) === k);
                 o = { ...op, _uid: found ? found._uid : newUid() };
             }
         }
         S.ops.push(o);
+        E.applyOp(o);
     }
-    derived.version = -1;
-    return S.ops;
 }
 
 // ---- Boot ----------------------------------------------------------------------------------------------------------
 
 function setup3d(on) {
     if (on) {
-        if (!orbit) orbit = new OrbitControls(persp, ov);
+        if (!orbit) { orbit = new OrbitControls(persp, ov); orbit.addEventListener('change', requestRender); }
         orbit.enabled = true;
         persp.position.set(S.view.x, 700, S.view.z + 700);
         orbit.target.set(S.view.x, 0, S.view.z);
         orbit.update();
-        orbit.addEventListener('change', requestRender);
     } else if (orbit) {
         orbit.enabled = false;
     }
     requestRender();
+}
+
+function zonesOfMatrixRaw(idx, name) {
+    const m = idx.matrices[name];
+    const set = new Set();
+    if (m.zones && !m.source_only) for (const r of m.zones) for (const z of r) set.add(z);
+    if (!m.source_only) for (const [z, v] of Object.entries(idx.zones)) if (v.header.matrix === name) set.add(z);
+    return [...set].filter(Boolean);
+}
+
+function onKey(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    const k = e.key.toLowerCase();
+    const mod = e.ctrlKey || e.metaKey;
+    if (e.code === 'Space') { spaceDown = true; e.preventDefault(); return; }
+    if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+    if (mod && k === 's') { e.preventDefault(); save(); return; }
+    if (mod && k === 'c') { e.preventDefault(); copySelection(false); return; }
+    if (mod && k === 'x') { e.preventDefault(); copySelection(true); return; }
+    if (mod && k === 'v') { e.preventDefault(); if (S.clipboard) { S.pasting = true; setTool('marquee'); S.pasting = true; toast('Click where the top left goes. Shift+click to paste again.'); } return; }
+    if (mod && k === 'a') { e.preventDefault(); for (const [l] of LAYERS) S.layers.add(l); layerBoxes(); return; }
+    if (e.altKey && /^[1-5]$/.test(e.key)) {
+        e.preventDefault();
+        const l = LAYERS[+e.key - 1][0];
+        S.layers.has(l) ? S.layers.delete(l) : S.layers.add(l);
+        layerBoxes();
+        return;
+    }
+    if (e.key === 'Escape') {
+        S.pasting = false; S.drag = null;
+        if (S.selection && S.selection.type === 'area') select(null);
+        if (S.tool === 'insert') { S.insert = null; setTool('insert'); updateGhost(null); }
+        requestRender();
+        return;
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        const sel = S.selection;
+        if (sel && sel.type === 'area') { if (editable()) commit(eraseOps(sel.rect)); return; }
+        if (sel && (sel.type === 'event' || sel.type === 'prop')) { const b = [...document.querySelectorAll('#inspector button.danger')][0]; if (b) b.click(); }
+        return;
+    }
+    if (k === 'q' && !mod) {
+        if (S.tool === 'insert') { S.rot = (S.rot + 1) % 4; palette(); updateGhost(S.hover); return; }
+        if (S.selection && S.selection.type === 'prop') { const b = [...document.querySelectorAll('#inspector button')].find((x) => x.textContent === 'Turn 90°'); if (b) b.click(); return; }
+    }
+    const t = TOOLS.find(([, , key]) => key.toLowerCase() === k);
+    if (t && !mod && !e.altKey) setTool(t[0]);
 }
 
 async function boot() {
@@ -1381,6 +1914,7 @@ async function boot() {
     if (!idx) { $('loading').textContent = 'No pack/ folder next to index.html: run export_pack.py.'; return; }
     S.idx = idx;
     S.baseOps = (idx.edits && idx.edits.ops) || [];
+    E.init(idx, S.baseOps);
     const sel = $('mapSelect');
     const names = Object.keys(idx.matrices).sort((a, b) => (b.startsWith('MAP_MATRIX_EFU') - a.startsWith('MAP_MATRIX_EFU')) || a.localeCompare(b));
     for (const n of names) {
@@ -1391,54 +1925,36 @@ async function boot() {
     sel.onchange = () => showMatrix(sel.value);
     const tools = $('tools');
     for (const [t, label, key] of TOOLS) tools.appendChild(el('button', { 'data-tool': t, onclick: () => setTool(t) }, label, el('kbd', {}, key)));
-    $('legend').innerHTML = Object.entries(KIND_COLOR).map(([k, c]) => `<span><i style="background:${c}"></i>${KIND_LABEL[k]}</span>`).join('');
+    $('legend').innerHTML = Object.entries(KIND_COLOR).map(([k, c]) => `<span><i style="background:${c}"></i>${KIND_LABEL[k]}</span>`).join('') + '<span><i style="background:#ff9f1c;transform:rotate(45deg)"></i>Prop</span>';
     for (const id of ['overlay', 'showEvents', 'showGrid', 'snapHeight', 'showFest']) $(id).onchange = () => requestRender();
     $('showProps').onchange = () => { for (const c of Object.values(cells)) if (c.propGroup) c.propGroup.visible = $('showProps').checked; requestRender(); };
     $('show3d').onchange = () => setup3d($('show3d').checked);
     $('saveBtn').onclick = save;
     $('openBtn').onclick = () => $('openFile').click();
-    $('openFile').onchange = async () => { const f = $('openFile').files[0]; if (f) openEdits(await f.text()); $('openFile').value = ''; };
+    $('openFile').onchange = async () => { const f = $('openFile').files[0]; if (f) await openEdits(await f.text()); $('openFile').value = ''; };
     $('undoBtn').onclick = undo;
     $('redoBtn').onclick = redo;
     ov.addEventListener('pointerdown', onDown);
     ov.addEventListener('pointermove', onMove);
     ov.addEventListener('pointerup', onUp);
-    ov.addEventListener('pointerleave', () => { S.hover = null; requestRender(); });
+    ov.addEventListener('pointerleave', () => { S.hover = null; updateGhost(null); requestRender(); });
     ov.addEventListener('wheel', onWheel, { passive: false });
     ov.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('resize', resize);
-    window.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-        if (e.code === 'Space') { spaceDown = true; e.preventDefault(); return; }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); return; }
-        if (e.key === 'Escape') { S.clipboard = null; S.drag = null; if (S.tool === 'stamp') setTool('stamp'); requestRender(); return; }
-        if (e.key === 'Delete' && S.selection && S.selection.type === 'event') { const b = [...document.querySelectorAll('#inspector button.danger')][0]; if (b) b.click(); return; }
-        const t = TOOLS.find(([, , k]) => k.toLowerCase() === e.key.toLowerCase());
-        if (t && !e.ctrlKey && !e.metaKey) setTool(t[0]);
-    });
+    window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceDown = false; });
+    // The selection's border marches
+    setInterval(() => { if (S.selection && S.selection.type === 'area' && !is3d()) requestRender(); }, 120);
     resize();
+    layerBoxes();
     setTool('select');
-    // Work not yet saved from the last session in this browser
     try {
         const saved = JSON.parse(localStorage.getItem(STORAGE) || 'null');
-        if (saved && saved.ops && saved.ops.length && saved.base === canon(S.baseOps) && confirm(`Restore ${saved.ops.length} unsaved edit(s) from last time?`)) {
-            adopt(saved.ops);
-        }
+        if (saved && saved.ops && saved.ops.length && saved.base === canon(S.baseOps) && confirm(`Restore ${saved.ops.length} unsaved edit(s) from last time?`)) await adopt(saved.ops);
     } catch (e) { /* storage is a convenience */ }
     summary();
     await showMatrix(names.includes('MAP_MATRIX_EFU_ZONE_1') ? 'MAP_MATRIX_EFU_ZONE_1' : names[0]);
-    window.__efu = { S, cells, matrix, zoneEvents, output, compact, requestRender, showMatrix, commit, adopt, changed, refreshCells };
-}
-
-function zonesOfMatrixRaw(idx, name) {
-    const m = idx.matrices[name];
-    const set = new Set();
-    if (m.zones && !m.source_only) for (const r of m.zones) for (const z of r) set.add(z);
-    if (!m.source_only) for (const [z, v] of Object.entries(idx.zones)) if (v.header.matrix === name) set.add(z);
-    return [...set].filter(Boolean);
+    window.__efu = { S, E, cells, output, compact, commit, adopt, showMatrix, setTool, select, requestRender, allProps, copySelection, moveOps, eraseOps, pasteOps };
 }
 
 boot();
