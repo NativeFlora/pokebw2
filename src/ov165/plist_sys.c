@@ -2265,7 +2265,7 @@ static void PokeList_DoMenuItem(PokeListWork *wk) {
             PokeList_ShowMessage(wk, PartyList_Text_IsntHoldingAnything, TRUE, PokeList_MessageDoneSelect);
             PokeListMessage_FreeWordSet(wk, wk->message);
         } else if (PokeList_GetBagCount(wk, item) == 999 || !Efu_BagHasRoom(wk->param->bag, item, 1)) {
-            // The bag is full, or (Escape from Unova) already holds its one item (efu_bag.h)
+            // The bag is full, or (Escape from Unova) is already full of holdable items (efu_bag.h)
             PokeList_ShowMessage(wk, PartyList_Text_BagFull, TRUE, PokeList_MessageDoneSelect);
         } else {
             PokeList_SetHeldItem(wk, wk->pkm, 0);
@@ -2928,7 +2928,7 @@ static void PokeList_AnswerDeleteMail(PokeListWork *wk, u32 item) {
     if (item == POKELIST_MENU_YES) {
         u32 heldItem = PokeParty_GetParam(wk->pkm, PKM_PARAM_ITEM, NULL);
 
-        // Escape from Unova: the one-item bag (efu_bag.h)
+        // Escape from Unova: the small bag (efu_bag.h)
         if (PokeList_GetBagCount(wk, heldItem) == 999 || !Efu_BagHasRoom(wk->param->bag, heldItem, 1)) {
             PokeList_ShowMessage(wk, PartyList_Text_BagFull, TRUE, PokeList_MessageDoneSelect);
         } else {

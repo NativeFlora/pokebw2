@@ -56,6 +56,7 @@
     ScriptEntry Script_PaidExit
     ScriptEntry Script_RanchEnter
     ScriptEntry Script_Burgh
+    ScriptEntry Script_Tinkerer
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -375,8 +376,8 @@ L_LootGive:
     VMJumpIf CMP_NE, L_ItemSwapped
     VMJump L_ItemTaken
 
-// The one-item bag (include/efu_bag.h): with the bag's item already carried, a loot ball swaps it for what's in the
-// ball, unseen, without asking: the bag's item is left on the ball's tile, where it can be picked up again. What a ball
+// The small bag (include/efu_bag.h): with the bag full, a loot ball swaps its first holdable item for what's in the
+// ball, unseen, without asking: that item is left on the ball's tile, where it can be picked up again. What a ball
 // holds is rolled only when it is taken, so it can't be peeked at and rolled again (every loot item can be held, so a
 // Poke Ball stands for them all). 0x8012 is the item left, or 0
 L_LootSwapOut:
@@ -910,6 +911,85 @@ L_BurghLost:
     CallTrainerLose
     VMHalt
 
+// The tinkerer, at the back of Floccesy Ranch (build_raid.py), not yet one to recruit. She makes the Blank HM into
+// Strength or Cut, then offers the bag upgrade for EFU_BAG_UPGRADE_PRICE until it is done (EFU_FLAG_BAG_UPGRADED)
+Script_Tinkerer:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ItemCheckAmount EFU_ITEM_BLANK_HM, 1, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_TinkerBag
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerHmAsk, 0, 0
+    ListMenuAnchorTopRight 31, 13, 0, 1, 0x8021
+    ListMenuAdd Efu_Text_TinkerStrength, 65535, 0
+    ListMenuAdd Efu_Text_TinkerCut, 65535, 1
+    ListMenuAdd Efu_Text_TinkerNotNow, 65535, 2
+    ListMenuShow
+    WorkCmpConst 0x8021, 2
+    VMJumpIf CMP_EQ, L_TinkerBag
+    WorkSetConst 0x800c, ITEM_HM04
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_EQ, L_TinkerHmMake
+    WorkSetConst 0x800c, ITEM_HM01
+L_TinkerHmMake:
+    ItemSub EFU_ITEM_BLANK_HM, 1, 0x8022
+    ItemAdd 0x800c, 1, 0x8022
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerHmDone, 0, 0
+    LastKeyWait
+    MsgWinCloseAll
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_TinkerReceived, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+L_TinkerBag:
+    FlagGet EFU_FLAG_BAG_UPGRADED, 0x8020
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_EQ, L_TinkerChat
+    // The money below the balloon, by the yes and no
+    MoneyWinDisp 31, 16
+    WorkSetConst 0x8020, EFU_BAG_UPGRADE_PRICE
+    WordSetNumber 0, 0x8020, 4
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerBagAsk, 0, 0
+    YesNoWin 0x8021
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_TinkerBagNo
+    MoneyCheck 0x8022, 0x8020
+    WorkCmpConst 0x8022, 0
+    VMJumpIf CMP_EQ, L_TinkerBagPoor
+    MoneySub 0x8020
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_08
+    FlagSet EFU_FLAG_BAG_UPGRADED
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerBagDone, 0, 0
+    LastKeyWait
+    MsgWinCloseAll
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_TinkerBagUpgraded, 2
+    MEWait
+    LastKeyWait
+    VMJump L_TinkerBagEnd
+L_TinkerBagPoor:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerBagPoor, 0, 0
+    LastKeyWait
+    VMJump L_TinkerBagEnd
+L_TinkerBagNo:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerBagNo, 0, 0
+    LastKeyWait
+L_TinkerBagEnd:
+    MsgWinCloseAll
+    MoneyWinClose
+    VMJump L_TinkerEnd
+L_TinkerChat:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerChat, 0, 0
+    LastKeyWait
+    MsgWinCloseAll
+L_TinkerEnd:
+    ActorsUnpauseAll
+    VMHalt
+
 // Heading out: each door that can be shut is, on EFU_DOOR_SHUT_CHANCE percent of explorations (its boulder out)
 L_DoorRoll:
     .irp i, 0,1,2
@@ -1038,11 +1118,12 @@ L_LockerNoSale:
     LastKeyWait
     VMJump L_LockerMenu
 
-// Store everything: the bag's holdable item, then each Pokémon's held item, while there is room. 0x802a counts what
+// Store everything: the bag's holdable items, then each Pokémon's held item, while there is room. 0x802a counts what
 // went in and 0x802b what didn't fit
 L_LockerStore:
     WorkSetConst 0x802a, 0
     WorkSetConst 0x802b, 0
+L_LockerStoreBag:
     EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8030
     WorkCmpConst 0x8030, 0
     VMJumpIf CMP_EQ, L_LockerStoreParty
@@ -1051,9 +1132,11 @@ L_LockerStore:
     VMJumpIf CMP_EQ, L_LockerStoreBagFull
     ItemSub 0x8030, 1, 0x8025
     WorkAdd 0x802a, 1
-    VMJump L_LockerStoreParty
+    VMJump L_LockerStoreBag
+// The locker is full: what is left in the bag stays
 L_LockerStoreBagFull:
-    WorkAdd 0x802b, 1
+    EfuSpecial EFU_SPECIAL_BAG_ITEM, EFU_BAG_ITEM_COUNT, 0, 0, 0x8031
+    WorkAdd 0x802b, 0x8031
 L_LockerStoreParty:
     WorkSetConst 0x802c, 0
 L_LockerStorePkm:

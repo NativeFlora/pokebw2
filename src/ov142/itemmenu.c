@@ -80,11 +80,17 @@ enum {
 #define EFU_BAG_FLASH_FRAMES 1
 #define EFU_BAG_ARROW_FRAMES 2
 
-// Escape from Unova: the bag has only the Items, TMs and HMs, and Key Items pockets, and no Free Space. The Items
-// pocket is whichever of the Items, Medicine and Berries pockets holds the bag's one holdable item (efu_bag.h), set
-// when the bag opens, in the work's efuItemPocket. Whether a pocket is one the bag shows
+// Escape from Unova: the bag has the TMs and HMs and Key Items pockets, those of the Items, Medicine and Berries
+// pockets that hold an item, and no Free Space. The first of those, or the Items pocket when none holds one, is named
+// Items (efu_bag.h), in the work's efuItemPocket. Whether a pocket is one the bag shows
 static BOOL Efu_IsShownPocket(ItemMenuWork *work, s32 pocket) {
-    return pocket == work->efuItemPocket || pocket == BAG_POCKET_TMS_HMS || pocket == BAG_POCKET_KEY_ITEMS;
+    if (pocket == work->efuItemPocket || pocket == BAG_POCKET_TMS_HMS || pocket == BAG_POCKET_KEY_ITEMS) {
+        return TRUE;
+    }
+    if (pocket == BAG_POCKET_ITEMS || pocket == BAG_POCKET_MEDICINE || pocket == BAG_POCKET_BERRIES) {
+        return BagSave_GetPocketItemCountCore(work->bag, pocket, TRUE) > 0;
+    }
+    return FALSE;
 }
 
 // The shown pocket a step to the right (step 1) or the left (step -1) of another, wrapping around
@@ -290,7 +296,7 @@ static BOOL ItemMenu_CanUseInMode(ItemMenuWork *work, u8 fieldPocket);
 static void ItemMenu_StatePocketArrowDone(ItemMenuWork *work);
 static void ItemMenu_SaveFreeSpaceFilter(BagCursor *cursor, u32 mode, u32 result, u32 freeSpaceFilter);
 static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot);
-static void ItemMenu_EfuStartPickParty(ItemMenuWork *work);
+static void ItemMenu_EfuStartPickParty(ItemMenuWork *work, u16 item);
 static void ItemMenu_StateEfuPickParty(ItemMenuWork *work);
 
 const GameProcFunctions BAG_PROC_FUNCTIONS = { ItemMenuProc_Init, ItemMenuProc_Main, ItemMenuProc_Exit };
@@ -986,7 +992,7 @@ static void ItemMenu_StateItemMenu(ItemMenuWork *work) {
         case ITEMMENU_ACTION_GIVE:
             // Escape from Unova: the field bag gives the item to a Pokémon of its own party
             if (work->efuParty) {
-                ItemMenu_EfuStartPickParty(work);
+                ItemMenu_EfuStartPickParty(work, work->item);
                 break;
             }
             work->result = BAG_RESULT_GIVE_ITEM;
@@ -1120,6 +1126,13 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
         return;
     }
     if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_START) {
+        // Escape from Unova: Start in the field bag's pockets of holdable items picks a Pokémon of the party, to take
+        // its held item
+        if (work->efuParty && (work->pocket == BAG_POCKET_ITEMS || work->pocket == BAG_POCKET_MEDICINE ||
+                               work->pocket == BAG_POCKET_BERRIES)) {
+            ItemMenu_EfuStartPickParty(work, ITEM_NONE);
+            return;
+        }
         if (work->pocket != BAG_POCKET_FREE_SPACE) {
             if (ItemMenu_GetItemCount(work) > 1) {
                 ItemMenu_PressSortButton(work);
@@ -1147,7 +1160,7 @@ static void ItemMenu_StateList(ItemMenuWork *work) {
         }
         // Escape from Unova: A in the empty Items pocket picks a Pokémon of the party, to take its held item
         if (work->pocket == work->efuItemPocket && work->efuParty) {
-            ItemMenu_EfuStartPickParty(work);
+            ItemMenu_EfuStartPickParty(work, ITEM_NONE);
             return;
         }
     } else if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_SELECT) {
@@ -2014,7 +2027,7 @@ static void ItemMenu_GetItemActions(ItemMenuWork *work, u8 *actions) {
                 actions[2] = ITEMMENU_ACTION_REGISTER;
             }
         }
-        // Escape from Unova: no Free Space (the slot stays empty), and Give comes first, for moving the one item
+        // Escape from Unova: no Free Space (the slot stays empty), and Give comes first, for moving the bag's few items
         // quickly
         if (actions[1] == ITEMMENU_ACTION_GIVE) {
             actions[1] = actions[0];
@@ -2969,21 +2982,22 @@ static void ItemMenu_StatePocketArrowDone(ItemMenuWork *work) {
     ItemMenu_ReturnToList(work);
 }
 
-// Escape from Unova: redraws the list and the party after an item went between the bag and a Pokémon. The bag's
-// Items pocket follows its one holdable item (efu_bag.h)
+// Escape from Unova: redraws the list and the party after an item went between the bag and a Pokémon. The pockets of
+// holdable items the bag shows, and the one it names Items, follow what they hold (efu_bag.h)
 static void ItemMenu_EfuRefresh(ItemMenuWork *work) {
-    u32 itemPocket = Efu_BagItemPocket(work->bag);
-    u32 oldPocket = work->efuItemPocket;
+    u32 pocket = work->pocket;
 
-    work->efuItemPocket = itemPocket;
-    if (work->pocket == oldPocket) {
-        work->pocket = itemPocket;
-        if (itemPocket != oldPocket) {
-            ItemMenu_ChangePocket(work, oldPocket, itemPocket);
+    work->efuItemPocket = Efu_BagItemPocket(work->bag);
+    if (pocket == BAG_POCKET_ITEMS || pocket == BAG_POCKET_MEDICINE || pocket == BAG_POCKET_BERRIES) {
+        if (!Efu_IsShownPocket(work, pocket)) {
+            work->pocket = work->efuItemPocket;
+            ItemMenu_ChangePocket(work, pocket, work->pocket);
         }
         work->cursorRow = 0;
         work->scroll = -1;
         ItemMenuDisp_UpdateScrollBar(work);
+        ItemMenuDisp_DrawPocketName(work, work->pocket);
+        ItemMenuDisp_SetPocketTab(work, work->pocket);
     }
     work->drawnScroll = ITEMMENU_DRAWN_SCROLL_INVALID;
     ItemMenu_UpdateList(work);
@@ -2995,11 +3009,11 @@ static void ItemMenu_EfuRefresh(ItemMenuWork *work) {
     ItemMenuDisp_EfuUpdateParty(work);
 }
 
-// Escape from Unova: what picking a Pokémon of the party does. With the bag's holdable item, gives it to the Pokémon,
-// putting the Pokémon's item in the bag in its place. Without it, takes the Pokémon's item. Eggs and mail stay
+// Escape from Unova: what picking a Pokémon of the party does. With an item of the bag to give, gives it to the Pokémon,
+// putting the Pokémon's item in the bag in its place. Without one, takes the Pokémon's item. Eggs and mail stay
 static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot) {
     PartyPkm *pkm = PokeParty_GetPkm(GameData_GetParty(work->gameData), slot);
-    u16 item = Efu_BagHoldableItem(work->bag);
+    u16 item = work->efuGiveItem;
     u16 heldItem = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
 
     if (PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL) || PML_ItemIsMail(heldItem)) {
@@ -3033,8 +3047,10 @@ static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot) {
     ItemMenu_EfuRefresh(work);
 }
 
-// Escape from Unova: picks a Pokémon of the party with the keys, on the upper screen, for ItemMenu_EfuPartyAction
-static void ItemMenu_EfuStartPickParty(ItemMenuWork *work) {
+// Escape from Unova: picks a Pokémon of the party with the keys, on the upper screen, for ItemMenu_EfuPartyAction, to
+// give it an item of the bag, or to take its item with ITEM_NONE
+static void ItemMenu_EfuStartPickParty(ItemMenuWork *work, u16 item) {
+    work->efuGiveItem = item;
     ItemMenuDisp_SetButtonsActive(work, TRUE);
     ClActor_SetAutoAnim(work->scrollBar, FALSE);
     work->efuPartyCursor = 0;

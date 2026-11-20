@@ -855,8 +855,9 @@ static u32 ShopUI_GetBalance(ShopUIWork *wk) {
 static void ShopUI_TryBuyItem(ShopUIWork *wk) {
     u32 balance = ShopUI_GetBalance(wk);
     u16 owned = BagSave_GetItemCountByID(wk->bag, wk->item, wk->heapId);
+    u32 room;
 
-    // Escape from Unova: the one-item bag (efu_bag.h)
+    // Escape from Unova: the small bag (efu_bag.h)
     if (!Efu_BagHasRoom(wk->bag, wk->item, 1) || !BagSave_CheckAvailItemSpace(wk->bag, wk->item, 1, wk->heapId)) {
         ShopUI_SetStatusDialogue(wk, ScrcmdShop_Text_CantTakeAnyMore, wk->item, FALSE);
         wk->state = SHOP_UI_SEQ_WAIT_MESSAGE;
@@ -890,8 +891,9 @@ static void ShopUI_TryBuyItem(ShopUIWork *wk) {
         if (wk->maxAmount + owned > PML_ItemGetMaxStorageCount(wk->item)) {
             wk->maxAmount = PML_ItemGetMaxStorageCount(wk->item) - owned;
         }
-        if (!Efu_BagHasRoom(wk->bag, wk->item, 2)) {
-            wk->maxAmount = EFU_BAG_HOLDABLE_MAX;
+        room = Efu_BagRoom(wk->bag, wk->item);
+        if (wk->maxAmount > room) {
+            wk->maxAmount = room;
         }
     } else {
         ShopUI_SetBuyConfirmMessage(wk, wk->listMode);

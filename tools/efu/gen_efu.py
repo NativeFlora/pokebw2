@@ -57,7 +57,7 @@ def tree(lo, hi, label):
     tree(mid, hi, label + '_H')
 tree(0, len(pool), 'L_LostSoulPick')
 # Loot comes in tiers, each a table of items with their weights, from everyday finds to the valuable ones; every item
-# can be held, since the bag carries one item a Pokemon can hold (include/efu_bag.h), and every roll gives one
+# can be held, since the bag carries only items a Pokemon can hold (include/efu_bag.h), and every roll gives one
 LOOT_TIERS = {
     'Common': {'TINY_MUSHROOM': 6, 'POKE_BALL': 6, 'ORAN_BERRY': 4, 'POTION': 4, 'ANTIDOTE': 2, 'PARLYZ_HEAL': 2,
                'REPEL': 2, 'AWAKENING': 1, 'BURN_HEAL': 1, 'ICE_HEAL': 1, 'CHERI_BERRY': 1, 'PECHA_BERRY': 1,

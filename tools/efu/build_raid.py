@@ -562,6 +562,11 @@ RANCH_HEIGHT = 32
 FLAG_RANCH_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_RANCH_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 assert int(re.search(r'#define EFU_RANCH_SCAV_COUNT (\d+)', efu_h).group(1)) == len(RANCH_SPOTS)
 
+# The tinkerer, at the ranch's back (north) end, always there (Script_Tinkerer)
+TINKERER = {'model': 'OBJ_CODE_SCIENTIST_F_46', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
+            'flag': 0, 'script': efu_script('TINKERER'), 'direction': 'DIR_DOWN', 'params': [0, 0, 0],
+            'area': {'width': 0, 'height': 0}, 'grid': {'x': 40, 'z': 10, 'y': RANCH_HEIGHT * 4096}}
+
 
 def build_ranch(pool):
     """Floccesy Ranch's scavengers (RANCH_SPOTS), whose rolls on each entry to its entrance (Script_RanchEnter) take
@@ -574,6 +579,7 @@ def build_ranch(pool):
         n = {'id': first + i, 'model': '', 'movement': '', 'type': '', 'flag': 0, 'script': 0, 'direction': 'DIR_DOWN',
              'params': [0, 0, 0], 'area': {}, 'grid': {'x': x, 'z': z, 'y': RANCH_HEIGHT * 4096}}
         e['npcs'].append(scav_npc(n, tid, first + i, FLAG_RANCH_SCAV_FIRST + i))
+    e['npcs'].append(dict(TINKERER, id=first + len(RANCH_SPOTS)))
     write(path, e)
     path = 'res/field/events/floccesy_ranch.json'
     e = json.load(open(os.path.join(root, path)))

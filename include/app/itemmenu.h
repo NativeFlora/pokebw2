@@ -247,6 +247,8 @@ struct ItemMenuWork {
     BOOL efuParty;
     // The Pokémon picked with the keys while picking one (ItemMenu_StateEfuPickParty), or -1
     s32 efuPartyCursor;
+    // The item of the bag given to the Pokémon picked, or ITEM_NONE to take its held item
+    u16 efuGiveItem;
     ClActor *efuPartyIcons[6];
     // Each plate's held item icon, its resources and the item it shows
     ClActor *efuItemIcons[6];

@@ -1050,8 +1050,8 @@ void ItemMenuDisp_CreatePocketTabs(ItemMenuWork *work) {
 void ItemMenuDisp_SetPocketTab(ItemMenuWork *work, u32 pocket) {
     u32 i;
 
-    // Escape from Unova: Medicine and Berries show as Items (efu_bag.h)
-    pocket = Efu_BagShownPocket(pocket);
+    // Escape from Unova: the first pocket of holdable items shows as Items (efu_bag.h)
+    pocket = Efu_BagShownPocket(pocket, work->efuItemPocket);
     for (i = 0; i < NELEMS(work->pocketTabs); i++) {
         if (i == pocket) {
             ClActor_SetSequence(work->pocketTabs[i], sPocketTabSequences[i][ITEMMENU_TAB_SELECTED]);
@@ -1301,7 +1301,7 @@ void ItemMenuDisp_DrawPocketName(ItemMenuWork *work, u32 pocket) {
 
     GFL_BitmapFill(BmpWin_GetBitmap(work->pocketNameWindow.window), 0);
     GFL_MsgDataLoadStrbuf(work->msgData, BagMenu_Text_Empty_100, work->strbuf);
-    loadBagPocketNameToStrbuf(work->wordSet, 0, Efu_BagShownPocket(pocket));
+    loadBagPocketNameToStrbuf(work->wordSet, 0, Efu_BagShownPocket(pocket, work->efuItemPocket));
     GFL_WordSetFormatStrbuf(work->wordSet, work->expandBuf, work->strbuf);
     x = (96 - GFL_FontGetBlockWidth(work->expandBuf, work->font, 0)) / 2;
     ItemMenuDisp_Print(work, &work->pocketNameWindow, work->expandBuf, x, 4, ITEMMENU_TITLE_COLOR);

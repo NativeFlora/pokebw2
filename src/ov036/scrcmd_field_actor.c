@@ -1099,7 +1099,8 @@ BOOL Scrcmd_FieldActor_ActorFallDownToXZ(VM *vm, FieldScriptEnv *env) {
 // Escape from Unova: EfuSpecial, where the unused Nop was in the command table (0x15f), so ov012 keeps its size. With
 // EFU_SPECIAL_DROP, it puts an item ball holding the item on a tile, or with x EFU_GROUND_BESIDE_PLAYER on the first
 // free tile around the player, and sets result to whether it did (with no free tile, or every ground item's ID taken,
-// the item is lost); with EFU_SPECIAL_BAG_ITEM, it sets result to the bag's holdable item
+// the item is lost); with EFU_SPECIAL_BAG_ITEM, it sets result to the bag's first holdable item, or with item
+// EFU_BAG_ITEM_COUNT to how many it holds
 BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
     static const s8 sAround[8][2] = { { 0, 1 },  { -1, 0 }, { 1, 0 },   { 0, -1 },
                                       { -1, 1 }, { 1, 1 },  { -1, -1 }, { 1, -1 } };
@@ -1117,7 +1118,9 @@ BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
     int i;
 
     if (op == EFU_SPECIAL_BAG_ITEM) {
-        *result = Efu_BagHoldableItem(GameData_GetBag(FieldScriptEnv_GetGameData(env)));
+        BagSave *bag = GameData_GetBag(FieldScriptEnv_GetGameData(env));
+
+        *result = item == EFU_BAG_ITEM_COUNT ? Efu_BagHoldableCount(bag) : Efu_BagHoldableItem(bag);
         return FALSE;
     }
     if (op == EFU_SPECIAL_PARTY_LEVELS) {

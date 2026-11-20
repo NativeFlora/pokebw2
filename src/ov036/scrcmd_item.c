@@ -42,7 +42,7 @@ BOOL Scrcmd_Item_ItemCheckSpace(VM *vm, FieldScriptEnv *env) {
     u16 count = ScriptReadAny(vm, env);
     u16 *result = ScriptReadVar(vm, env);
 
-    // Escape from Unova: the one-item bag (efu_bag.h)
+    // Escape from Unova: the small bag (efu_bag.h)
     *result = Efu_BagHasRoom(bag, item, count) && BagSave_CheckAvailItemSpace(bag, item, count, heapId);
     return FALSE;
 }

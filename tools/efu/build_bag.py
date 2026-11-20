@@ -1,8 +1,9 @@
 """Escape from Unova: the bag's pockets.
 
-Medicine and berries go in the Items pocket, so the bag has only Items (where the one-item limit applies), TMs and HMs,
-and Key Items. The save code's own table of pockets (src/system/myitem_savedata.c) is edited by hand; this script
-sets each item's field_pocket in res/items to match, starting from the decomp's data in BASE_COMMIT.
+Medicine and berries say the Items pocket in their field_pocket, for the pickup messages. The save still keeps them in
+their own pockets (main's table of pockets can't change), and the bag shows those of the Items, Medicine and Berries
+pockets that hold an item, the first named Items (include/efu_bag.h). This script sets each item's field_pocket in
+res/items, starting from the decomp's data in BASE_COMMIT.
 """
 import json, os, subprocess
 

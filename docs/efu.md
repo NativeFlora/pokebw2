@@ -47,8 +47,8 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | The base's beach and sea (Undella's sand and surf textures), and the grass filled in where cutting off the north left the ground bare | `tools/efu/build_coast.py`, run by `build_base.py` |
 | The first exploration zone's maps (`MAP_MATRIX_EFU_ZONE_1`: Route 3, Striaton's garden and Route 2; `MAP_MATRIX_EFU_ZONE_2`: Route 19, Route 20 and Floccesy Ranch), forest everywhere else | `tools/efu/build_zone.py` |
 | The zone's events, wild Pokémon (`WILD_LEVELS` and `PLACE_LEVELS`: 2 to 15 on Route 3, 4 to 16 on Route 2, 10 to 20 on Routes 19 and 20, 12 to 22 in Floccesy Ranch, 8 to 18 in the caves, 12 to 22 in the target), the scavs (teams of 2 to 6 at 65 to 90% of the cap, 14 to 20) and their lines, the caves and the target, the childcare centre, Route 3's Day Care, Nurse Joy, and the loot spots (`tools/efu/loot.json`) | `tools/efu/build_raid.py` |
-| The one-item bag (one item a Pokémon can hold at a time; Key Items and TMs are free) | `include/efu_bag.h`, used by `Scrcmd_Item_ItemCheckSpace` (`src/ov036/scrcmd_item.c`), taking a held item in `src/ov165/plist_sys.c` and in the PC in `src/ov255/box2_seq.c`, and buying in `src/ov036/scrcmd_shop.c` |
-| The bag's pockets (Items, TMs and Key Items; Medicine and Berries show as Items), Give first, A in the empty Items pocket for the party screen, the quicker animations, and the toss to the ground | `src/ov142/itemmenu.c`, `src/ov142/itemmenu_disp.c`, `tools/efu/build_bag.py` (the items' `field_pocket`) |
+| The small bag (one item a Pokémon can hold, three after the tinkerer's upgrade; Key Items and TMs are free) | `include/efu_bag.h`, used by `Scrcmd_Item_ItemCheckSpace` (`src/ov036/scrcmd_item.c`), taking a held item in `src/ov165/plist_sys.c` and in the PC in `src/ov255/box2_seq.c`, and buying in `src/ov036/scrcmd_shop.c` |
+| The bag's pockets (TMs, Key Items and the pockets of holdable items that hold one, the first named Items), Give first, Start or A in the empty Items pocket to take a held item, the quicker animations, and the toss to the ground | `src/ov142/itemmenu.c`, `src/ov142/itemmenu_disp.c`, `tools/efu/build_bag.py` (the items' `field_pocket`) |
 | Items on the ground, the party's total level, the Day Care's growth, the locker's held items and sell price (`EfuSpecial`, script command 0x15f) | `Scrcmd_Efu_Special` in `src/ov036/scrcmd_field_actor.c`, `Efu_DayCareGrow` in `src/ov036/day_care.c` |
 | The locker: its furniture and tiles, its script, and the routines that read and write its slots | `LOCKERS` and `build_lockers` in `tools/efu/build_base.py`, `Script_Locker` in `tools/efu/efu.s.in`, `LOCKER_WORKS` in `tools/efu/gen_efu.py` |
 | The base's people: Nurse Joy, the clerk and the Day Care Lady, and the gate's guide | `build_interiors` in `tools/efu/build_base.py`, `Script_Nurse` and below in `tools/efu/efu.s.in`, the mart's prices in `src/ov036/scrcmd_shop.c` |
@@ -105,6 +105,7 @@ Taken so far:
 | `EVENT_FLAG_0x0922` to `0x0927` (`EFU_FLAG_RANCH_SCAV_FIRST`) | Floccesy Ranch's six scavengers' hide flags: set on heading out, then each still hidden comes out by chance on an entry like the target's (`Script_RanchEnter`); set again when beaten. |
 | `EVENT_FLAG_0x0928` (`EFU_FLAG_RANCH_ENTERED`) | Set on the first entry to Floccesy Ranch on an exploration, cleared on heading out. |
 | `EVENT_FLAG_0x0929` (`EFU_FLAG_BURGH_BEATEN`) | Burgh has been beaten: he stays gone, the guide is free, and the first zone's story is done. |
+| `EVENT_FLAG_0x092b` (`EFU_FLAG_BAG_UPGRADED`) | The tinkerer has upgraded the bag, for $3000 (`EFU_BAG_UPGRADE_PRICE`): it carries three holdable items (`EFU_BAG_UPGRADED_MAX`) in place of one. |
 | `EVENT_FLAG_0x092a` (`EFU_FLAG_RUMINATION_SCAV`) | The hide flag of the generic scavenger who may hold Rumination Field once Burgh is beaten (on `EFU_SIDE_SCAV_CHANCE`, 75%, of explorations); set on heading out and when they are beaten. |
 | `EVENT_FLAG_0x091e` (`EFU_FLAG_CHILDCARE_GENERIC`) | The hide flag of the generic scavenger who takes Billy's place once the quest is done: out by chance as the target's (75% on the first entry, 25% after); set on heading out and when they are beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
@@ -131,7 +132,7 @@ Taken so far:
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x092b to 0x095f; take them upward from 0x092b. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x092c to 0x095f; take them upward from 0x092c. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
 0x4156 to 0x415c. Take the next from the end of the list back, and move it into the table above.
@@ -216,8 +217,12 @@ Burgh holds Rumination Field (`build_rumination`, `Script_Burgh`), the zone's bo
 six Bug types: his Challenge Mode team (`leader_burgh_2`, two levels up as Castelia's Gym gives it, 24 to 26) and
 Swadloon and Whirlipede. Beating him gives the Blank HM, sets `EFU_FLAG_BURGH_BEATEN` (he stays gone, and the gate's
 guide says the way on is open), and the game says the first zone is done. From then on a generic scavenger may hold
-the field in his place. The Blank HM is Gram 1 renamed, a key item drawn as HM01 is (`build_bag.py`'s `BLANK_HM`); it
-does nothing yet.
+the field in his place. The Blank HM is Gram 1 renamed, a key item drawn as HM01 is (`build_bag.py`'s `BLANK_HM`).
+
+The tinkerer stands at the back (north end) of Floccesy Ranch, at (40, 10) of `floccesy_ranch_2` (`TINKERER` in
+`build_raid.py`, `Script_Tinkerer`), drawn as the female scientist; she can't be recruited yet. Shown the Blank HM, she
+offers to make it Strength (HM04) or Cut (HM01), or not now. Then, until she has, she offers the bag upgrade for
+`EFU_BAG_UPGRADE_PRICE` ($3000), which sets `EFU_FLAG_BAG_UPGRADED`; after that she only chats.
 
 The guide waits on Route 3 near the gate (`GUIDE`, `Script_GuideMeet`). Meeting them sets `EFU_FLAG_GUIDE_MET`, and
 from then on they stand behind the east gate's counter (`Script_GateInit`). The gate's news board says how many
@@ -246,37 +251,39 @@ Rare Candy is its own place, out on 10% of explorations. The hidden items of the
 table ties them to their original places. `FieldScript_CheckSCRID` (ov012) lets actors run the hack's scripts (above
 the original's last, 10913), or talking to a loot ball would do nothing.
 
-## The one-item bag
+## The small bag
 
-The bag carries one item that a Pokémon can hold: one item of the Items, Medicine or Berries pockets (Poké Balls are
-in Items), counting each of a stack. Key Items and TMs and HMs are free. To carry more, give items to the team. Main's
-bag code can't change, so `Efu_BagHasRoom` (`include/efu_bag.h`) is asked where items come in:
+The bag carries one item that a Pokémon can hold, or three once the tinkerer has upgraded it (`EFU_FLAG_BAG_UPGRADED`,
+`Efu_BagHoldableMax`): items of the Items, Medicine or Berries pockets (Poké Balls are in Items), counting each of a
+stack. Key Items and TMs and HMs are free. To carry more, give items to the team. Main's bag code can't change, so
+`Efu_BagHasRoom` (`include/efu_bag.h`) is asked where items come in:
 
 - `ItemCheckSpace` (script command), which the item ball script (7400), hidden items and most gifts ask first, so a
-  loot ball asks first too (`L_LootSwapOut`): with the bag's item carried it leaves it on the ball's tile for what's in
-  the ball, unseen and without asking, and what the ball holds is rolled only when it is taken, so it can't be peeked
+  loot ball asks first too (`L_LootSwapOut`): with the bag full it leaves its first holdable item on the ball's tile
+  for what's in the ball, unseen and without asking, and what the ball holds is rolled only when it is taken, so it can't be peeked
   at and rolled again. A loot ball gives its item with one message over the item fanfare, not through the original's
   item ball script (global 7400) with its two messages and pickup pose. `ItemAdd`
   isn't gated: ov036's size is luck, and every way into the bag in the zone and the base asks `ItemCheckSpace` first.
 - Taking a held item, or a held mail, in the party menu, which says the bag is full.
 - Taking a held item in the PC, in either mode, which keeps it on the Pokémon.
-- Buying in a shop (`ShopUI_TryBuyItem`), one at a time.
+- Buying in a shop (`ShopUI_TryBuyItem`), as many as there is room for.
 
 Giving an item to a Pokémon that holds one swaps them, which keeps the count, so it is allowed. In battle, an item
 chosen and then cancelled goes back to the bag, which is also allowed.
 
-The bag shows three pockets: Items, TMs and HMs, and Key Items. Main's table of pockets (`sItemPockets`) can't change,
-so medicine and berries still go in their own pockets in the save, and the bag shows whichever of the Items, Medicine
-and Berries pockets holds the one item as Items (`Efu_BagItemPocket`, named and tabbed as Items by
-`Efu_BagShownPocket`); the item data's `field_pocket` says Items for them too, for the pickup messages
-(`build_bag.py`). There is no Free Space. The fades, the cursor's flash and the pocket arrows are quicker. Trash is Toss,
+The bag shows TMs and HMs, Key Items, and those of the Items, Medicine and Berries pockets that hold an item. Main's
+table of pockets (`sItemPockets`) can't change, so medicine and berries still go in their own pockets in the save. The
+first of those that holds an item, or the Items pocket when none does, is named and tabbed as Items
+(`Efu_BagItemPocket`, `Efu_BagShownPocket`); the others keep their own names. The item data's `field_pocket` says
+Items for medicine and berries too, for the pickup messages (`build_bag.py`). There is no Free Space. The fades, the cursor's flash and the pocket arrows are quicker. Trash is Toss,
 and tossing a single item doesn't ask.
 
 The field bag shows the party on the upper screen in place of the item's description, as the party screen's grid and
 plates (BGs 4, 5 and 7, `ItemMenuDisp_EfuCreateParty`), each with the Pokémon's name and level and, where the party
 screen has its HP and sex, its held item's icon and name; the lower screen is the bag's own. Picking a Pokémon with the
-keys after Give in an item's menu or A in the empty Items pocket (`ItemMenu_StateEfuPickParty`, its plate lit) gives it
-the bag's item, swapping for the one it holds, or takes its item when the bag has none (`ItemMenu_EfuPartyAction`). Eggs
+keys after Give in an item's menu (`ItemMenu_StateEfuPickParty`, its plate lit) gives it that item, swapping for the
+one it holds; picking one after Start in a pocket of holdable items, or A in the empty Items pocket, takes its item if
+the bag has room (`ItemMenu_EfuPartyAction`). Eggs
 and mail are left alone. Arceus's and Genesect's forms follow the item as in the party screen.
 
 ## Items on the ground

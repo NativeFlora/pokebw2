@@ -71,6 +71,8 @@
 #define EFU_SCRIPT_RANCH_ENTER (EFU_SCRIPT_FIRST + 32)
 // Burgh, Rumination Field's boss: his battle, the Blank HM and the end of the zone's story (EFU_FLAG_BURGH_BEATEN)
 #define EFU_SCRIPT_BURGH (EFU_SCRIPT_FIRST + 33)
+// The tinkerer at the back of Floccesy Ranch: the Blank HM made into Strength or Cut, and the bag upgrade
+#define EFU_SCRIPT_TINKERER (EFU_SCRIPT_FIRST + 34)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -163,6 +165,10 @@
 #define EFU_FLAG_RUMINATION_SCAV 0x92a
 // Burgh's reward, the Blank HM, which took Gram 1's place (build_bag.py)
 #define EFU_ITEM_BLANK_HM ITEM_GRAM_1
+// Set once the tinkerer has upgraded the bag, for EFU_BAG_UPGRADE_PRICE: it carries EFU_BAG_UPGRADED_MAX holdable items
+// in place of one (efu_bag.h)
+#define EFU_FLAG_BAG_UPGRADED 0x92b
+#define EFU_BAG_UPGRADE_PRICE 3000
 // Billy's Trainer: the childcare centre's named scavenger, whose team is his own on every exploration
 #define EFU_TRAINER_BILLY 401
 // How many Pokémon a scavenger's team has on an exploration (Efu_ScavParty in field_encount.c)
@@ -173,10 +179,12 @@
 
 // EfuSpecial (script command 0x15f, Scrcmd_Efu_Special in scrcmd_field_actor.c), the hack's odd jobs by operation:
 // put an item on the ground (on a tile, or with EFU_GROUND_BESIDE_PLAYER as its x on a free one of the eight around the
-// player), read the bag's holdable item (efu_bag.h), add up the party's levels (eggs aside), or give each Pokémon in
+// player), read the bag's first holdable item or their number (efu_bag.h), add up the party's levels (eggs aside), or give each Pokémon in
 // the Day Care a level, up to EFU_LEVEL_CAP (Efu_DayCareGrow in day_care.c), and the locker's jobs below
 #define EFU_SPECIAL_DROP 0
 #define EFU_SPECIAL_BAG_ITEM 1
+// EFU_SPECIAL_BAG_ITEM's item for the number of holdable items in place of the first of them
+#define EFU_BAG_ITEM_COUNT 1
 #define EFU_SPECIAL_PARTY_LEVELS 2
 #define EFU_SPECIAL_DAYCARE_GROW 3
 // The locker (EFU_WORK_LOCKER_*): the held item of the party's Pokémon in item's place (eggs' and mail aside), or
