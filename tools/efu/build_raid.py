@@ -95,6 +95,13 @@ SCAVS = {
                             "The deeper you go, the more\nyou find. And the more find you."),
     'youngster_keita_2': (False, "I heard you coming a mile off.\nDrop the bag!{be01}", "Aw, man...",
                           "There's good stuff under these\ntrees. I'm not telling you where."),
+    # Burgh's minions in Rumination Field (MINIONS)
+    'team_plasma_grunt_34': (False, "Burgh said nobody gets past.\nNobody means you!{be01}", "The boss won't like this...",
+                             "Go on, then. He's waiting for you.\nHis bugs are always hungry."),
+    'team_plasma_grunt_35': (True, "You hear that buzzing? That's the\nsound of you losing everything!{be01}",
+                             "Ugh, my bugs!", "Burgh keeps the good stuff deep in\nthe webs. Good luck getting it."),
+    'team_plasma_grunt_36': (False, "Another one for the webs!\nHold still!{be01}", "Wait, wait! I give up!",
+                             "That guide in the webs? Burgh's\nsaving them for later."),
     # Route 2's
     'veteran_rayne': (False, "I've seen worse than you crawl\nout of that forest.{be01}", "Heh. Not bad, kid.",
                       "The forest's way in is past the\ngarden. Go in light, come out heavy."),
@@ -183,10 +190,11 @@ FOREST_SCAV = {'trainer': 646, 'grid': {'x': 88, 'z': 45}}
 APPROACH = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
 # The routes' scavs' NPC IDs, from this one (the garden's is the one before)
 SPOT_ID_FIRST = 128
-# The guide, out on Route 3 by the way in, until the player has met them (Script_GuideMeet)
-GUIDE = {'id': 121, 'model': 'OBJ_CODE_76', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
-         'flag': efu_flag('GUIDE_MET'), 'script': efu_script('GUIDE_MEET'), 'direction': 'DIR_DOWN',
-         'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': {'x': 684, 'z': 594, 'y': 0}}
+# The guide, caged in webs at the back of Burgh's hideout (Rumination Field) until the player has freed them
+# (Script_GuideCage, EFU_FLAG_GUIDE_MET); before alpha 8.3 they waited on Route 3 (Script_GuideMeet)
+GUIDE = {'id': int(re.search(r'#define EFU_GUIDE_CAGE_NPC (\d+)', efu_h).group(1)), 'model': 'OBJ_CODE_76', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
+         'flag': efu_flag('GUIDE_MET'), 'script': efu_script('GUIDE_CAGE'), 'direction': 'DIR_DOWN',
+         'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': {'x': 10, 'z': 10, 'y': 0}}
 # The inner forest's ways out, by the zone each led to: A, its way in from the garden's path south (its old way out to the
 # outer forest), B, out to Route 19's old gate to Aspertia (its old gate to Skyarrow Bridge), and C, Rumination Field's
 # (unchanged)
@@ -529,7 +537,7 @@ def build_events(loot):
     scavs.trainers.add(GARDEN_SCAV['trainer'])
     route_2_n = len(json.loads(orig('res/field/events/route_2.json'))['warps'])
     route_3_n = len(json.loads(orig('res/field/events/route_3.json'))['warps'])
-    route_3 = build_route('route_3', loot, scavs, route_3_pool, extra_npcs=[GUIDE, garden_scav()],
+    route_3 = build_route('route_3', loot, scavs, route_3_pool, extra_npcs=[garden_scav()],
                           spot_extra=garden_people(),
                           warps={'new': [dict(GARDEN_EAST, warp=route_2_n), GARDEN_SOUTH]})
     build_route('route_20', loot, scavs, route_20_pool, warps={
@@ -562,10 +570,22 @@ RANCH_HEIGHT = 32
 FLAG_RANCH_SCAV_FIRST = int(re.search(r'#define EFU_FLAG_RANCH_SCAV_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
 assert int(re.search(r'#define EFU_RANCH_SCAV_COUNT (\d+)', efu_h).group(1)) == len(RANCH_SPOTS)
 
-# The tinkerer, at the ranch's back (north) end, always there (Script_Tinkerer)
+# The tinkerer, at home in the old lab (ROUTE_6_2, whose door is on the ranch's house, a warp from Tom's world edits),
+# always there (Script_Tinkerer)
 TINKERER = {'model': 'OBJ_CODE_SCIENTIST_F_46', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
             'flag': 0, 'script': efu_script('TINKERER'), 'direction': 'DIR_DOWN', 'params': [0, 0, 0],
-            'area': {'width': 0, 'height': 0}, 'grid': {'x': 40, 'z': 10, 'y': RANCH_HEIGHT * 4096}}
+            'area': {'width': 0, 'height': 0}, 'grid': {'x': 7, 'z': 3, 'y': 0}}
+# The ranch's boss, at its back (north) end until beaten (Script_RanchBoss, EFU_FLAG_RANCH_BOSS_BEATEN): a Roughneck
+# with his own team, whose reward is the Relic Band
+RANCH_BOSS = {'model': 'OBJ_CODE_ROUGHNECK', 'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE',
+              'flag': efu_flag('RANCH_BOSS_BEATEN'), 'script': efu_script('RANCH_BOSS'), 'direction': 'DIR_DOWN',
+              'params': [0, 0, 0], 'area': {'width': 0, 'height': 0},
+              'grid': {'x': 40, 'z': 10, 'y': RANCH_HEIGHT * 4096}}
+RANCH_BOSS_TRAINER = 'res/trainers/data/roughneck_fletcher.json'
+RANCH_BOSS_NAME = 'Garrick'
+RANCH_BOSS_TEAM = [('SPECIES_HERDIER', 20, ['MOVE_BITE', 'MOVE_TAKE_DOWN', 'MOVE_WORK_UP', 'MOVE_ODOR_SLEUTH']),
+                   ('SPECIES_KROKOROK', 20, ['MOVE_BITE', 'MOVE_SAND_TOMB', 'MOVE_ASSURANCE', 'MOVE_MUD_SLAP']),
+                   ('SPECIES_SCRAGGY', 21, ['MOVE_BRICK_BREAK', 'MOVE_HEADBUTT', 'MOVE_FAINT_ATTACK', 'MOVE_SWAGGER'])]
 
 
 def build_ranch(pool):
@@ -574,12 +594,26 @@ def build_ranch(pool):
     path = 'res/field/events/floccesy_ranch_2.json'
     e = json.loads(orig(path))
     first = max([n['id'] for n in e['npcs']] + [0]) + 1
+    # Only its item balls stay: its people, Trainers, Pokémon and story are gone
+    e['npcs'] = [n for n in e['npcs'] if n['model'] == 'OBJ_CODE_110']
     for i, (x, z) in enumerate(RANCH_SPOTS):
         tid = pool[i % len(pool)]
         n = {'id': first + i, 'model': '', 'movement': '', 'type': '', 'flag': 0, 'script': 0, 'direction': 'DIR_DOWN',
              'params': [0, 0, 0], 'area': {}, 'grid': {'x': x, 'z': z, 'y': RANCH_HEIGHT * 4096}}
         e['npcs'].append(scav_npc(n, tid, first + i, FLAG_RANCH_SCAV_FIRST + i))
-    e['npcs'].append(dict(TINKERER, id=first + len(RANCH_SPOTS)))
+    e['npcs'].append(dict(RANCH_BOSS, id=first + len(RANCH_SPOTS)))
+    write(path, e)
+    t = json.loads(orig(RANCH_BOSS_TRAINER))
+    t['name'] = RANCH_BOSS_NAME
+    t['reward'] = 'ITEM_NONE'
+    t['party'] = [dict(t['party'][0], species=sp, level=lv, moves=mv, item='ITEM_NONE', gender=0, ability=0)
+                  for sp, lv, mv in RANCH_BOSS_TEAM]
+    write(RANCH_BOSS_TRAINER, t)
+    # The tinkerer's home, the old lab: her alone
+    path = 'res/field/events/route_6_2.json'
+    e = json.loads(orig(path))
+    e['npcs'] = [dict(TINKERER, id=0)]
+    e['init_scripts'] = []
     write(path, e)
     path = 'res/field/events/floccesy_ranch.json'
     e = json.load(open(os.path.join(root, path)))
@@ -599,6 +633,20 @@ BURGH_MODEL = 'OBJ_CODE_225'
 BURGH_TEAM = [('SPECIES_SWADLOON', 24, ['MOVE_STRUGGLE_BUG', 'MOVE_RAZOR_LEAF', 'MOVE_STRING_SHOT', 'MOVE_PROTECT']),
               ('SPECIES_WHIRLIPEDE', 25, ['MOVE_POISON_TAIL', 'MOVE_PURSUIT', 'MOVE_PROTECT', 'MOVE_SCREECH'])]
 BURGH_LEVEL_UP = 2
+# Burgh's hideout: Burgh at the back, his minions (scavengers out on every exploration until beaten, by
+# EFU_FLAG_MINION_FIRST, with Bug teams of their own since nothing wild lives here) along the way in, and the guide webbed
+# into the north-west corner (OBJ_CODE_148, a web, on the tiles around them). Its music is the Shadow Triad's and its
+# weather a thunderstorm (6)
+MINIONS = [(449, {'x': 15, 'z': 19}, 'DIR_DOWN'), (450, {'x': 12, 'z': 13}, 'DIR_RIGHT'),
+           (451, {'x': 19, 'z': 12}, 'DIR_LEFT')]
+MINION_TEAMS = {449: [('SPECIES_SEWADDLE', 19), ('SPECIES_VENIPEDE', 20)],
+                450: [('SPECIES_KARRABLAST', 20), ('SPECIES_SHELMET', 20), ('SPECIES_SWADLOON', 21)],
+                451: [('SPECIES_DWEBBLE', 20), ('SPECIES_JOLTIK', 20), ('SPECIES_WHIRLIPEDE', 21)]}
+MINION_NAMES = {449: 'Moth', 450: 'Silk', 451: 'Grub'}
+WEB_MODEL = 'OBJ_CODE_148'
+WEBS = [(11, 10), (10, 11), (11, 11)]
+RUMINATION_BGM = 'SEQ_BGM_DARK_TRINITY'
+RUMINATION_WEATHER = 6
 
 
 def build_rumination():
@@ -610,9 +658,24 @@ def build_rumination():
              'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': grid}
     scav = scav_npc(dict(burgh, grid=grid), RUMINATION_SCAV['trainer'], 1,
                     int(efu_flag('RUMINATION_SCAV')[len('EVENT_FLAG_'):], 16))
-    e['npcs'] = [burgh, scav]
+    flag = int(re.search(r'#define EFU_FLAG_MINION_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+    assert int(re.search(r'#define EFU_MINION_COUNT (\d+)', efu_h).group(1)) == len(MINIONS)
+    minions = [dict(scav_npc(dict(burgh, grid=dict(g, y=0)), tid, 3 + i, flag + i), direction=d, area={'width': 1, 'height': 1})
+               for i, (tid, g, d) in enumerate(MINIONS)]
+    web_first = int(re.search(r'#define EFU_GUIDE_WEB_FIRST (\d+)', efu_h).group(1))
+    assert int(re.search(r'#define EFU_GUIDE_WEB_COUNT (\d+)', efu_h).group(1)) == len(WEBS)
+    assert web_first == 3 + len(MINIONS)
+    webs = [{'id': web_first + i, 'model': WEB_MODEL, 'movement': 'MOVE_CODE_NONE', 'type': 'ACTOR_EVENT_TYPE_NONE',
+             'flag': efu_flag('GUIDE_MET'), 'script': efu_script('GUIDE_CAGE'), 'direction': 'DIR_DOWN', 'params': [0, 0, 0],
+             'area': {'width': 0, 'height': 0}, 'grid': {'x': x, 'z': z, 'y': 0}} for i, (x, z) in enumerate(WEBS)]
+    e['npcs'] = [burgh, scav, GUIDE] + minions + webs
     e['init_scripts'] = []
     write(path, e)
+    path = 'res/field/zones/rumination_field.json'
+    z = json.loads(orig(path))
+    z['bgm'] = RUMINATION_BGM
+    z['weather'] = RUMINATION_WEATHER
+    write(path, z)
     t = json.loads(orig('res/trainers/data/leader_burgh_2.json'))
     team = [dict(t['party'][0], species=sp, level=lv, moves=mv, item='ITEM_NONE') for sp, lv, mv in BURGH_TEAM]
     team += [dict(p, level=p['level'] + BURGH_LEVEL_UP) for p in t['party']]
@@ -621,6 +684,18 @@ def build_rumination():
     burgh_trainer['party'] = team
     write('res/trainers/data/leader_burgh.json', burgh_trainer)
     return RUMINATION_SCAV['trainer']
+
+
+def build_minion_teams():
+    """Burgh's minions' Bug teams, over what build_trainers gave them."""
+    for tid, team in MINION_TEAMS.items():
+        path = trainer_file(tid)
+        t = json.load(open(os.path.join(root, path)))
+        t['name'] = MINION_NAMES[tid]
+        t['party'] = [dict(t['party'][0], species=sp, level=lv) for sp, lv in team]
+        for mon in t['party']:
+            mon.pop('moves', None)
+        write(path, t)
 
 
 def build_daycare():
@@ -827,10 +902,11 @@ if __name__ == '__main__':
     build_places(loot, route_warps)
     scavs.append(build_childcare(loot))
     scavs.append(CHILDCARE_GENERIC_TRAINER)
-    scavs += TARGET_SCAVS + [FOREST_SCAV['trainer'], build_rumination()]
+    scavs += TARGET_SCAVS + [FOREST_SCAV['trainer'], build_rumination()] + [tid for tid, g, d in MINIONS]
     build_daycare()
     build_pc()
     loot.save()
     build_trainers(sorted(set(scavs)))
+    build_minion_teams()
     build_trainer_scripts()
     build_wild_swap()

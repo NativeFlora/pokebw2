@@ -1,37 +1,60 @@
 {
     "$schema": "trainer.schema.json",
-    "name": "Fletcher",
+    "name": "Garrick",
     "class": "TRAINER_CLASS_ROUGHNECK",
     "battle_style": "BTL_STYLE_SINGLE",
     "items": [],
-    "ai_flags": [ "AI_FLAG_BASIC" ],
+    "ai_flags": [
+        "AI_FLAG_BASIC"
+    ],
     "heals": false,
     "money": 6,
-    "reward": "ITEM_DUSK_BALL",
+    "reward": "ITEM_NONE",
     "party": [
         {
-            "species": "SPECIES_MIGHTYENA",
+            "species": "SPECIES_HERDIER",
             "form": 0,
-            "level": 60,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
-            "ability": 0
+            "ability": 0,
+            "moves": [
+                "MOVE_BITE",
+                "MOVE_TAKE_DOWN",
+                "MOVE_WORK_UP",
+                "MOVE_ODOR_SLEUTH"
+            ],
+            "item": "ITEM_NONE"
         },
         {
-            "species": "SPECIES_SKUNTANK",
+            "species": "SPECIES_KROKOROK",
             "form": 0,
-            "level": 60,
+            "level": 20,
             "difficulty": 0,
             "gender": 0,
-            "ability": 0
+            "ability": 0,
+            "moves": [
+                "MOVE_BITE",
+                "MOVE_SAND_TOMB",
+                "MOVE_ASSURANCE",
+                "MOVE_MUD_SLAP"
+            ],
+            "item": "ITEM_NONE"
         },
         {
-            "species": "SPECIES_CRAWDAUNT",
+            "species": "SPECIES_SCRAGGY",
             "form": 0,
-            "level": 60,
+            "level": 21,
             "difficulty": 0,
             "gender": 0,
-            "ability": 0
+            "ability": 0,
+            "moves": [
+                "MOVE_BRICK_BREAK",
+                "MOVE_HEADBUTT",
+                "MOVE_FAINT_ATTACK",
+                "MOVE_SWAGGER"
+            ],
+            "item": "ITEM_NONE"
         }
     ],
     "messages": [

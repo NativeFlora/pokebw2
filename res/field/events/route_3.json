@@ -911,29 +911,6 @@
             }
         },
         {
-            "id": 121,
-            "model": "OBJ_CODE_76",
-            "movement": "MOVE_CODE_FACE_DOWN",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0a9e",
-            "script": 11025,
-            "direction": "DIR_DOWN",
-            "params": [
-                0,
-                0,
-                0
-            ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 684,
-                "z": 594,
-                "y": 0
-            }
-        },
-        {
             "id": 127,
             "model": "OBJ_CODE_TEAM_PLASMA_GRUNT_F",
             "movement": "MOVE_CODE_TURN_RANDOM",
@@ -1011,20 +988,6 @@
                 "z": 8872,
                 "width": 1,
                 "height": 2,
-                "unk0a": 0
-            }
-        },
-        {
-            "zone": "ZONE_PINWHEEL_FOREST_2",
-            "warp": 0,
-            "unk4": 3,
-            "transition": 4,
-            "grid": {
-                "x": 12472,
-                "y": 0,
-                "z": 8984,
-                "width": 1,
-                "height": 5,
                 "unk0a": 0
             }
         }

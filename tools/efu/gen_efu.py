@@ -192,6 +192,14 @@ for n in range(1, LOCK_COUNT + 1):
         resets.append(f'    FlagReset {flag}\n')
     body = [f'Script_Lock_{n}:\n    FlagGet {flag}, 0x8020\n    WorkCmpConst 0x8020, 0\n'
             f'    VMJumpIf CMP_NE, L_Lock_{n}_End\n    ActorsPauseAll\n']
+    # A lock's own words (world_edits_fixes.json), in place of the shared ones
+    shut_text, open_text = 'Efu_Text_LockKey', 'Efu_Text_LockOpen'
+    if lock.get('text'):
+        shut_text = f'Efu_Text_Lock_{n}'
+        text.append(f'{shut_text} = {lock["text"]}')
+    if lock.get('open_text'):
+        open_text = f'Efu_Text_LockOpen_{n}'
+        text.append(f'{open_text} = {lock["open_text"]}')
     if lock.get('item'):
         item = items.index(lock['item'])
         body.append(f'    WordSetItemNameEx 0, {item}, 1, 0\n    ItemCheckAmount {item}, 1, 0x8021\n'
@@ -199,8 +207,8 @@ for n in range(1, LOCK_COUNT + 1):
         if lock.get('consume'):
             body.append(f'    ItemSub {item}, 1, 0x8021\n    SystemMsg Efu_Text_LockUsed, 2\n')
         else:
-            body.append('    SystemMsg Efu_Text_LockOpen, 2\n')
-        body.append(f'    VMJump L_Lock_{n}_Close\nL_Lock_{n}_Shut:\n    SystemMsg Efu_Text_LockKey, 2\n')
+            body.append(f'    SystemMsg {open_text}, 2\n')
+        body.append(f'    VMJump L_Lock_{n}_Close\nL_Lock_{n}_Shut:\n    SystemMsg {shut_text}, 2\n')
     else:
         body.append('    SystemMsg Efu_Text_BoardedDoor, 2\n')
     body.append(f'L_Lock_{n}_Close:\n    LastKeyWait\n    SystemMsgClose\n    ActorsUnpauseAll\n'

@@ -1,0 +1,255 @@
+{
+ "version": 2,
+ "note": "The hack's own edits over Tom's world_edits.json, applied after it by apply_world_edits.py",
+ "ops": [
+  {
+   "op": "copy",
+   "from": {
+    "matrix": "MAP_MATRIX_EFU_ZONE_2",
+    "rect": [
+     82,
+     670,
+     90,
+     674
+    ]
+   },
+   "matrix": "MAP_MATRIX_EFU_ZONE_2",
+   "to": [
+    [
+     82,
+     670
+    ]
+   ],
+   "layers": [
+    "ground",
+    "props",
+    "collision",
+    "class"
+   ],
+   "dy": 32,
+   "mask": [
+    "11000111",
+    "11111111",
+    "11111111",
+    "11111111"
+   ]
+  },
+  {
+   "op": "event",
+   "zone": "ZONE_ROUTE_19",
+   "kind": "warps",
+   "action": "set",
+   "match": {
+    "zone": "ZONE_PINWHEEL_FOREST_2",
+    "warp": 1,
+    "unk4": 1,
+    "transition": 4,
+    "grid": {
+     "x": 1352,
+     "y": 0,
+     "z": 10744,
+     "width": 3,
+     "height": 1,
+     "unk0a": 0
+    }
+   },
+   "value": {
+    "zone": "ZONE_PINWHEEL_FOREST_2",
+    "warp": 1,
+    "unk4": 1,
+    "transition": 4,
+    "grid": {
+     "x": 1352,
+     "y": 32,
+     "z": 10744,
+     "width": 3,
+     "height": 1,
+     "unk0a": 0
+    }
+   }
+  },
+  {
+   "op": "lock",
+   "zone": "ZONE_ROUTE_2",
+   "x": 12456,
+   "z": 9608,
+   "locked": true,
+   "item": "ITEM_RELIC_BAND",
+   "consume": false,
+   "relock": false,
+   "text": "There's a slot here for a small hoop\\nto fit into.{be01}\\nI wonder if it opens something?",
+   "open_text": "The {ff00:2}{0109:0}{ff00:0} slid into the slot.\\nSomething below gave way!"
+  },
+  {
+   "op": "event",
+   "zone": "ZONE_FLOCCESY_RANCH_2",
+   "kind": "warps",
+   "action": "set",
+   "match": {
+    "zone": "ZONE_ROUTE_6_2",
+    "warp": 0,
+    "unk4": 1,
+    "transition": 4,
+    "grid": {
+     "x": 632,
+     "y": 32,
+     "z": 584,
+     "width": 1,
+     "height": 1,
+     "unk0a": 0
+    }
+   },
+   "value": {
+    "zone": "ZONE_ROUTE_6_2",
+    "warp": 0,
+    "unk4": 2,
+    "transition": 4,
+    "grid": {
+     "x": 632,
+     "y": 32,
+     "z": 584,
+     "width": 1,
+     "height": 1,
+     "unk0a": 0
+    }
+   }
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 24,
+   "z": 16,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 25,
+   "z": 16,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 26,
+   "z": 16,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 24,
+   "z": 17,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 25,
+   "z": 17,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 26,
+   "z": 17,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 24,
+   "z": 18,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 25,
+   "z": 18,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "matrix",
+   "matrix": "MAP_MATRIX_EFU_ZONE_1",
+   "x": 26,
+   "z": 18,
+   "zone": "ZONE_ROUTE_2"
+  },
+  {
+   "op": "event",
+   "zone": "ZONE_ROUTE_3",
+   "kind": "warps",
+   "action": "delete",
+   "match": {
+    "zone": "ZONE_PINWHEEL_FOREST_2",
+    "warp": 0,
+    "unk4": 3,
+    "transition": 4,
+    "grid": {
+     "x": 12472,
+     "y": 0,
+     "z": 8984,
+     "width": 1,
+     "height": 5,
+     "unk0a": 0
+    }
+   }
+  },
+  {
+   "op": "event",
+   "zone": "ZONE_ROUTE_2",
+   "kind": "warps",
+   "action": "add",
+   "value": {
+    "zone": "ZONE_PINWHEEL_FOREST_2",
+    "warp": 0,
+    "unk4": 3,
+    "transition": 4,
+    "grid": {
+     "x": 12472,
+     "y": 0,
+     "z": 8984,
+     "width": 1,
+     "height": 5,
+     "unk0a": 0
+    }
+   }
+  },
+  {
+   "op": "event",
+   "zone": "ZONE_PINWHEEL_FOREST_2",
+   "kind": "warps",
+   "action": "set",
+   "match": {
+    "zone": "ZONE_ROUTE_3",
+    "warp": 4,
+    "unk4": 4,
+    "transition": 4,
+    "grid": {
+     "x": 1384,
+     "y": 0,
+     "z": 1176,
+     "width": 1,
+     "height": 5,
+     "unk0a": 0
+    }
+   },
+   "value": {
+    "zone": "ZONE_ROUTE_2",
+    "warp": 2,
+    "unk4": 4,
+    "transition": 4,
+    "grid": {
+     "x": 1384,
+     "y": 0,
+     "z": 1176,
+     "width": 1,
+     "height": 5,
+     "unk0a": 0
+    }
+   }
+  }
+ ]
+}

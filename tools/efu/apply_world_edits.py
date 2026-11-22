@@ -21,7 +21,8 @@ can run again at any time. The editor (tools/efu/world_editor/) saves the file: 
   flipX, flipZ} flips the copy (x, then z) and then turns it clockwise rot quarters, seen from above; props turn with
   it and the terrain's planes take the table entries nearest the turned ones. mask (rows of '0'/'1' over the source)
   leaves out the '0' tiles, on every layer: a transparent copy. move erases the copied tiles of the source first, as
-  an erase with the op's ground and groundY would;
+  an erase with the op's ground and groundY would dy (the hack's own edits, world_edits_fixes.json) puts the copy dy units
+  higher;
 - {"op": "prop", "matrix", "x", "z", "action": "add" | "set" | "delete", "match"?, "value"?}: a field prop of a chunk,
   {resId, translation, rotation, scale} in the chunk's own units, found by its id, place and turn;
 - {"op": "event", "zone", "kind", "action": "add" | "set" | "delete", "match"?, "value"?}: a zone's NPC, warp,
@@ -30,8 +31,8 @@ can run again at any time. The editor (tools/efu/world_editor/) saves the file: 
   same event shows);
 - {"op": "lock", "zone", "x", "z", "locked", "item"?, "consume"?, "relock"?}: the zone's warp at grid x, z (world
   units) is locked until opened, with the key item if any (used up if consume), and locks again on each raid if
-  relock. Each lock keeps its number in world_locks.json (EFU_LOCK_COUNT of them, never reused, since saves keep
-  their flags): the warp's grid.unk0a is the number, and a sign on its tile runs the lock's script (gen_efu.py).
+  relock. text and open_text (the hack's own edits) are what its sign says while shut and on opening. Each lock keeps its number in world_locks.json (EFU_LOCK_COUNT of them, never reused, since saves keep
+  their flags): the warp's grid.unk0a is the number, and a sign on each of its tiles runs the lock's script (gen_efu.py).
 
 Edits run in order, each on the chunks as the edits before it left them, as the editor shows them.
 
@@ -56,6 +57,8 @@ RES = os.path.join(root, 'res', 'field')
 MODELS = os.path.join(RES, 'maps', 'models')
 TEXTURES = os.path.join(RES, 'maps', 'textures')
 EDITS = os.path.join(here, 'world_edits.json')
+# The hack's own edits in the same form, applied after Tom's (world_edits.json is the editor's file, kept as it saves it)
+FIXES = os.path.join(here, 'world_edits_fixes.json')
 BASES = os.path.join(here, 'world_edit_bases.json')
 TILE = 16
 KINDS = ('npcs', 'warps', 'triggers', 'bg_events')
@@ -612,12 +615,12 @@ def js_round(v):
     return math.floor(v + 0.5)
 
 
-def moved_plane(slope, offset, frm, to, tf):
+def moved_plane(slope, offset, frm, to, tf, dy=0):
     s = bz.SLOPES
     a, b, c = s[3 * slope], s[3 * slope + 1], s[3 * slope + 2]
-    if a == 0 and c == 0:
+    if a == 0 and c == 0 and not dy:
         return slope, offset
-    y = -(bz.OFFSETS[offset] + a * frm[0] - c * frm[1]) / b
+    y = -(bz.OFFSETS[offset] + a * frm[0] - c * frm[1]) / b + dy
     na, nc = tf_vector(a, -c, tf)
     slope2 = nearest_slope([js_round(na), b, js_round(-nc)])
     a2, b2, c2 = s[3 * slope2], s[3 * slope2 + 1], s[3 * slope2 + 2]
@@ -627,14 +630,14 @@ def moved_plane(slope, offset, frm, to, tf):
 HALVES = [[(16 / 3, 16 / 3), (32 / 3, 32 / 3)], [(32 / 3, 16 / 3), (16 / 3, 32 / 3)]]
 
 
-def moved_cell(cell, split, frm, to, tf):
+def moved_cell(cell, split, frm, to, tf, dy=0):
     """region.js's cell(): a terrain cell [shape, slope, offset, tile_type, diagonal] and its split row [slope0, slope1,
     offset0, offset1] moved from tile frm of a chunk to tile to of another, transformed."""
     def center(t, p):
         return (t[0] * TILE + p[0] - 256, t[1] * TILE + p[1] - 256)
     out = list(cell)
     if cell[0] == 0:
-        out[1], out[2] = moved_plane(cell[1], cell[2], center(frm, (8, 8)), center(to, (8, 8)), tf)
+        out[1], out[2] = moved_plane(cell[1], cell[2], center(frm, (8, 8)), center(to, (8, 8)), tf, dy)
         return out, None
     if not split:
         return out, None
@@ -647,7 +650,7 @@ def moved_cell(cell, split, frm, to, tf):
     for h in range(2):
         c = HALVES[d][h]
         c2 = tf_point(c[0], c[1], 1, 1, tf)
-        s, o = moved_plane(planes[h][0], planes[h][1], center(frm, c), center(to, c2), tf)
+        s, o = moved_plane(planes[h][0], planes[h][1], center(frm, c), center(to, c2), tf, dy)
         slot = (0 if c2[0] + c2[1] < 16 else 1) if d2 == 0 else (0 if c2[0] > c2[1] else 1)
         row[slot], row[slot + 2] = s, o
     out[4] = d2
@@ -729,6 +732,17 @@ def transform_clip(clip, tf):
     return out
 
 
+def raise_clip(clip, dy):
+    """A copy's ground, props and tiles dy units higher (its "dy")."""
+    clip['pieces'] = [(mat, [[(v[0], v[1] + dy) + tuple(v[2:]) for v in p] for p in polys])
+                      for mat, polys in clip['pieces']]
+    for p in clip['props']:
+        p['translation'] = [p['translation'][0], p['translation'][1] + dy, p['translation'][2]]
+    for c in clip['cells']:
+        if c:
+            c['dy'] = c.get('dy', 0) + dy
+
+
 def write_clip(model, cx, cz, part, clip, at, layers, mask):
     ox, oz = (cx * 32 - at[0]) * TILE + 256, (cz * 32 - at[1]) * TILE + 256
     rel = [part[0] - at[0], part[1] - at[1], part[2] - at[0], part[3] - at[1]]
@@ -772,7 +786,7 @@ def write_clip(model, cx, cz, part, clip, at, layers, mask):
             s = c['cell']
             t = int(d['tile_type'])
             if 'ground' in layers:
-                cell, split = moved_cell(s, c['split'], c['tile'], (tx, tz), c['tf'])
+                cell, split = moved_cell(s, c['split'], c['tile'], (tx, tz), c['tf'], c.get('dy', 0))
                 d.update({'shape': str(cell[0]), 'slope': str(cell[1]), 'offset': str(cell[2]), 'diagonal': str(cell[4])})
                 if s[0] != 0 and split:
                     model.splits.append({'index': str(len(model.splits)), 'unused': str(split[4]), 'slope0': str(split[0]),
@@ -859,9 +873,17 @@ def apply_locks(files, locks, notes):
             sys.exit('more than EFU_LOCK_COUNT (%d) locks: raise it in include/efu.h' % LOCK_COUNT)
         registry[i] = {'zone': zone, 'x': x, 'z': z, 'item': lock.get('item') or None,
                        'consume': bool(lock.get('consume')), 'relock': bool(lock.get('relock'))}
+        # The hack's own words for the lock's sign, shut and opened (world_edits_fixes.json)
+        for k in ('text', 'open_text'):
+            if lock.get(k):
+                registry[i][k] = lock[k]
         warp['grid']['unk0a'] = i + 1
-        e.setdefault('bg_events', []).append({'script': LOCK_SCRIPT + i, 'condition': 0, 'direction': 4,
-                                              'grid': {'x': x // 16, 'y': z // 16, 'z': warp['grid']['y']}})
+        # A sign on each of the warp's tiles
+        for dz in range(warp['grid'].get('height', 1)):
+            for dx in range(warp['grid'].get('width', 1)):
+                e.setdefault('bg_events', []).append({'script': LOCK_SCRIPT + i, 'condition': 0, 'direction': 4,
+                                                      'grid': {'x': x // 16 + dx, 'y': z // 16 + dz,
+                                                               'z': warp['grid']['y']}})
     with open(LOCKS, 'w', newline='\n') as f:
         f.write('{\n"locks": [\n' + ',\n'.join(json.dumps(r) for r in registry) + '\n]\n}\n')
     return registry
@@ -877,7 +899,7 @@ def main():
     if not os.path.exists(EDITS):
         print('no world_edits.json: nothing to apply')
         return
-    ops = load(EDITS).get('ops', [])
+    ops = load(EDITS).get('ops', []) + (load(FIXES).get('ops', []) if os.path.exists(FIXES) else [])
     bases = load(BASES) if os.path.exists(BASES) else {}
     files = Files()
     notes = []
@@ -961,6 +983,8 @@ def main():
                         dirty.add((op['from']['matrix'], cx, cz))
             tf = op.get('transform')
             out = transform_clip(clip, tf)
+            if op.get('dy'):
+                raise_clip(out, op['dy'])
             mask2 = transform_mask(mask, w, h, tf)
             dst_m = files.matrix(op['matrix'])
             for to in op['to']:

@@ -1,5 +1,5 @@
 {
 "locks": [
-{"zone": "ZONE_ROUTE_2", "x": 12456, "z": 9608, "item": "ITEM_RELIC_BAND", "consume": false, "relock": false}
+{"zone": "ZONE_ROUTE_2", "x": 12456, "z": 9608, "item": "ITEM_RELIC_BAND", "consume": false, "relock": false, "text": "There's a slot here for a small hoop\\nto fit into.{be01}\\nI wonder if it opens something?", "open_text": "The {ff00:2}{0109:0}{ff00:0} slid into the slot.\\nSomething below gave way!"}
 ]
 }

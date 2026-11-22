@@ -58,6 +58,8 @@
     ScriptEntry Script_Burgh
     ScriptEntry Script_Tinkerer
 @LOCK_ENTRIES@
+    ScriptEntry Script_RanchBoss
+    ScriptEntry Script_GuideCage
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -168,6 +170,13 @@ L_RuminationScavEnd:
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
     // The world editor's locks that lock again on each raid (gen_efu.py)
 @LOCK_RESET@
+    // Burgh's minions are out on every exploration (EFU_FLAG_MINION_FIRST)
+    .irp i, 0,1,2
+    FlagReset EFU_FLAG_MINION_FIRST + \i
+    .endr
+    TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_34
+    TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_35
+    TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_36
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
     .irp i, 0,1,2
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
@@ -890,6 +899,73 @@ Script_Burgh:
 
 L_BurghLost:
     CallTrainerLose
+    VMHalt
+
+// Floccesy Ranch's boss, at its back end (build_raid.py), until beaten: the Relic Band, the key to Route 2's boulder
+// hole (EFU_FLAG_RANCH_BOSS_BEATEN)
+Script_RanchBoss:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_RanchBossIntro, 0x8011, 2, 0
+    ActorMsgClose
+    CallTrainerBattle TRAINER_ROUGHNECK_FLETCHER, 0, 0
+    TrainerBattleIsVictory 0x8010
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_RanchBossLost
+    CallTrainerBattleEnd
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_RanchBossBeaten, 0x8011, 2, 0
+    ActorMsgClose
+    WorkSetConst 0x800c, ITEM_RELIC_BAND
+    ItemAdd 0x800c, 1, 0x8010
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_RanchBossReward, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+    FlagSet EFU_FLAG_RANCH_BOSS_BEATEN
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete 0x8011
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    ActorsUnpauseAll
+    VMHalt
+
+L_RanchBossLost:
+    CallTrainerLose
+    VMHalt
+
+// The guide, caged in webs at the back of Burgh's hideout (build_raid.py), spoken to through the webs, which run this
+// too: a plea until Burgh is beaten, then freed with the webs, and from then on at the east gate (EFU_FLAG_GUIDE_MET,
+// Script_GateInit)
+Script_GuideCage:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    FlagGet EFU_FLAG_BURGH_BEATEN, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_NE, L_GuideFree
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GuideCaged, EFU_GUIDE_CAGE_NPC, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_GuideFree:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GuideFreed, EFU_GUIDE_CAGE_NPC, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    FlagSet EFU_FLAG_GUIDE_MET
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete EFU_GUIDE_CAGE_NPC
+    .irp i, 0,1,2
+    ActorDelete EFU_GUIDE_WEB_FIRST + \i
+    .endr
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    ActorsUnpauseAll
     VMHalt
 
 // The tinkerer, at the back of Floccesy Ranch (build_raid.py), not yet one to recruit. She makes the Blank HM into

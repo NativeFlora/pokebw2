@@ -79,6 +79,16 @@
 // tools/efu/world_locks.json)
 #define EFU_SCRIPT_LOCK_FIRST (EFU_SCRIPT_FIRST + 35)
 #define EFU_LOCK_COUNT 32
+// Floccesy Ranch's boss, at the back of the ranch until beaten (EFU_FLAG_RANCH_BOSS_BEATEN): his battle and the Relic
+// Band, the key to Route 2's boulder hole (a world editor lock)
+#define EFU_SCRIPT_RANCH_BOSS (EFU_SCRIPT_FIRST + 67)
+// The guide, caged in Burgh's hideout (Rumination Field) until Burgh is beaten, then freed (EFU_FLAG_GUIDE_MET)
+#define EFU_SCRIPT_GUIDE_CAGE (EFU_SCRIPT_FIRST + 68)
+// The caged guide's NPC in Rumination Field, and the webs around them (EFU_GUIDE_WEB_COUNT NPCs from this one), which
+// run the same script, since the webs leave no tile beside the guide to talk from
+#define EFU_GUIDE_CAGE_NPC 2
+#define EFU_GUIDE_WEB_FIRST 6
+#define EFU_GUIDE_WEB_COUNT 3
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -182,6 +192,12 @@
 #define EFU_BAG_UPGRADE_PRICE 3000
 // Billy's Trainer: the childcare centre's named scavenger, whose team is his own on every exploration
 #define EFU_TRAINER_BILLY 401
+// Set once Floccesy Ranch's boss (EFU_SCRIPT_RANCH_BOSS) is beaten: he stays gone, and the Relic Band is the player's
+#define EFU_FLAG_RANCH_BOSS_BEATEN 0x94c
+// Burgh's minions in Rumination Field, EFU_MINION_COUNT scavengers: out on every exploration (Script_RaidDepart clears
+// their hide flags), each gone once beaten
+#define EFU_FLAG_MINION_FIRST 0x94d
+#define EFU_MINION_COUNT 3
 // How many Pokémon a scavenger's team has on an exploration (Efu_ScavParty in field_encount.c)
 #define EFU_SCAV_TEAM_MIN 2
 #define EFU_SCAV_TEAM_MAX 5

@@ -57,7 +57,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | Wild Pokémon that count as equivalent, by egg group | `tools/efu/wild_groups.py` → `tools/efu/wild_groups.json` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` and `EventTrainerEye_EfuIdle` in `src/ov036/event_trainer_eye.c`, called each step, or each frame the player stands still, from `src/ov036/fieldmap_event.c` |
 | The scavs' teams | `Efu_ScavParty` in `src/ov036/field_encount.c` |
-| The world editor (a paint program's tools on the ground, props, collision, tile classes and events; doors and their locks), its saved edits and their applying | `tools/efu/world_editor/` (its `README.md`), `tools/efu/world_edits.json`, `tools/efu/apply_world_edits.py` |
+| The world editor (a paint program's tools on the ground, props, collision, tile classes and events; doors and their locks), its saved edits and their applying | `tools/efu/world_editor/` (its `README.md`), `tools/efu/world_edits.json` (Tom's, kept as the editor saves it), `tools/efu/world_edits_fixes.json` (the hack's own ops, applied after Tom's), `tools/efu/apply_world_edits.py` |
 | The world editor's locked doors: the warp's lock number, its flag and its sign's script | `world_locks.json` and `apply_locks` in `tools/efu/apply_world_edits.py`, `Efu_IsShutDoor` in `src/ov036/fieldmap_event.c`, the lock scripts in `tools/efu/gen_efu.py` |
 | Script commands | `src/ov012/scrcmd_pokemon.c`, `EVCMD_TABLE` in `src/ov012/scrcmd_vm.c` from 0x2f3, and a row each in `EVCMD_PERM_TABLE` in `src/ov012/script_sys.c` (without one the command reads past the table and hangs); 0x2db and 0x15f took over unused commands' rows, so the tables keep their size |
 
@@ -112,6 +112,8 @@ Taken so far:
 | `EVENT_FLAG_0x092b` (`EFU_FLAG_BAG_UPGRADED`) | The tinkerer has upgraded the bag, for $3000 (`EFU_BAG_UPGRADE_PRICE`): it carries three holdable items (`EFU_BAG_UPGRADED_MAX`) in place of one. |
 | `EVENT_FLAG_0x092a` (`EFU_FLAG_RUMINATION_SCAV`) | The hide flag of the generic scavenger who may hold Rumination Field once Burgh is beaten (on `EFU_SIDE_SCAV_CHANCE`, 75%, of explorations); set on heading out and when they are beaten. |
 | `EVENT_FLAG_0x092c` to `0x094b` (`EFU_FLAG_LOCK_FIRST`, `EFU_LOCK_COUNT`) | The world editor's locks, by their number in `tools/efu/world_locks.json`: set once a locked door is opened with its key, cleared on heading out for a lock that locks again each raid. A lock's number is never reused. |
+| `EVENT_FLAG_0x094c` (`EFU_FLAG_RANCH_BOSS_BEATEN`) | Floccesy Ranch's mini-boss has been beaten and has given the Relic Band (his hide flag). Kept across explorations. |
+| `EVENT_FLAG_0x094d` to `0x094f` (`EFU_FLAG_MINION_FIRST`, `EFU_MINION_COUNT`) | Burgh's three minions' hide flags in Rumination Field, set when each is beaten, cleared with their Trainer flags on heading out. |
 | `EVENT_FLAG_0x091e` (`EFU_FLAG_CHILDCARE_GENERIC`) | The hide flag of the generic scavenger who takes Billy's place once the quest is done: out by chance as the target's (75% on the first entry, 25% after); set on heading out and when they are beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
 | `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
@@ -124,7 +126,7 @@ Taken so far:
 | `EVENT_FLAG_0x0a43` (`EFU_FLAG_DAYCARE_DEPOSIT_ONLY`) | Set while the Day Care Lady's original script runs for her Route 3 NPC, which leaves Withdraw out of its menu. Cleared after. |
 | `EVENT_FLAG_0x0a45` | Retired: set on the first entry to Route 3 on an exploration, when the first entry brought no scav (version 4). Not to be reused. |
 | `EVENT_FLAG_0x0a44` (`EFU_FLAG_DAYCARE_QUEST_DONE`) | Set once the childcare centre's scav (trainer 401) has been beaten: the Day Care Lady's quest. |
-| `EVENT_FLAG_0x0a9e` (`EFU_FLAG_GUIDE_MET`) | The guide has been met on Route 3 (and their Route 3 NPC's hide flag). |
+| `EVENT_FLAG_0x0a9e` (`EFU_FLAG_GUIDE_MET`) | The guide has been freed from the web cage in Rumination Field (the hide flag of the caged guide and of the webs). |
 | `EVENT_FLAG_0x0a9f` (`EFU_FLAG_BASE_GUIDE_HIDDEN`) | The gate guide's hide flag, set from the above on entering the gate. |
 | `EVENT_FLAG_0x0a40` to `0x0a42` (`EFU_FLAG_TARGET_SCAV_FIRST`) | The target's scavs' hide flags: set on heading out, then each one still hidden comes out on an entry by chance (75% on the first entry, 25% after); set again only when it is beaten. |
 | `EVENT_FLAG_0x0a46` (`EFU_FLAG_TARGET_ENTERED`) | Set on the first entry to the target on an exploration, cleared on heading out. Version 4. |
@@ -137,7 +139,7 @@ Taken so far:
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x094c to 0x095f; take them upward from 0x094c. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x0950 to 0x095f; take them upward from 0x0950. (0x0aa0 and up are daily flags, which the game clears each day.)
 
 Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
 0x4156 to 0x415b. Take the next from the end of the list back, and move it into the table above.
@@ -182,6 +184,11 @@ Rumination Field off the forest (Tom's map of 19 November). Its maps are two mat
   units (`RAISED`, with cliff faces down from its edges), so its path east meets Route 20's path west; Route 20 and
   Floccesy Ranch where they are. Two tiles of Route 19's high ground at that seam are blocked (`BLOCKED`).
 
+Tom's world edits (`world_edits.json`, on top of all this) rebuild Route 2 north and east of the garden, in chunks
+(24, 17), (24, 18), (25, 17) and (25, 18), and move the forest's way in to (779, 561). `world_edits_fixes.json` gives
+chunks 24 to 26 of rows 16 to 18 to Route 2, so its events load there, and moves the forest's way in into Route 2's
+events (its warp 2; the forest's way back points at it). An event only works in a chunk of its own zone.
+
 Each matrix carries its chunks' zones (garden with Route 3), so walking from Route 19 into Route 20 changes zone without a fade: the new zone's events load and its init script runs (`Script_RouteEnter`, the
 25% chance of a scav). The changed chunks are copies (`efu_zone_1_*`, `efu_zone_2_*`).
 
@@ -218,19 +225,28 @@ before the left one (`BRIDGE_CUT`) and a Strength boulder before the right one (
 `EFU_BRIDGE_BLOCK_CHANCE` (70) percent of explorations, so without Cut or Strength the forest's west path may be the
 only way through.
 
-Burgh holds Rumination Field (`build_rumination`, `Script_Burgh`), the zone's boss. He fights as `LEADER_BURGH`, with
+Burgh holds Rumination Field (`build_rumination`, `Script_Burgh`), the zone's boss. The field is his hideout: a dark
+thunderstorm (weather 6) to the Shadow Triad's music, with three minions of his (`MINIONS`, Bug Trainers drawn as
+grunts, `TRAINER_TEAM_PLASMA_GRUNT_34` to `_36`, levels 19 to 21) who fight on sight, each hidden once beaten until the
+next exploration (`EFU_FLAG_MINION_FIRST`). The guide is caged in spider webs (`OBJ_CODE_148`) beside him. He fights as `LEADER_BURGH`, with
 six Bug types: his Challenge Mode team (`leader_burgh_2`, two levels up as Castelia's Gym gives it, 24 to 26) and
 Swadloon and Whirlipede. Beating him gives the Blank HM, sets `EFU_FLAG_BURGH_BEATEN` (he stays gone, and the gate's
 guide says the way on is open), and the game says the first zone is done. From then on a generic scavenger may hold
 the field in his place. The Blank HM is Gram 1 renamed, a key item drawn as HM01 is (`build_bag.py`'s `BLANK_HM`).
 
-The tinkerer stands at the back (north end) of Floccesy Ranch, at (40, 10) of `floccesy_ranch_2` (`TINKERER` in
-`build_raid.py`, `Script_Tinkerer`), drawn as the female scientist; she can't be recruited yet. Shown the Blank HM, she
+Floccesy Ranch is overrun: of its own people only its item balls are left, with its scavengers, and a mini-boss,
+Roughneck Garrick (`RANCH_BOSS`, `Script_RanchBoss`, `TRAINER_ROUGHNECK_FLETCHER` renamed, Herdier, Krokorok and
+Scraggy at 20 and 21), stands at (40, 10) where the story's people were. Beating him gives the Relic Band, the key to
+the hole in Route 2's south (a lock of the world editor's, whose sign says it has a slot for a small hoop), and
+he stays gone (`EFU_FLAG_RANCH_BOSS_BEATEN`).
+
+The tinkerer lives in the ranch house's lab (`route_6_2`, at (7, 3); `TINKERER` in `build_raid.py`, `Script_Tinkerer`),
+through the house's back door, drawn as the female scientist; she can't be recruited yet. Shown the Blank HM, she
 offers to make it Strength (HM04) or Cut (HM01), or not now. Then, until she has, she offers the bag upgrade for
 `EFU_BAG_UPGRADE_PRICE` ($3000), which sets `EFU_FLAG_BAG_UPGRADED`; after that she only chats.
 
-The guide waits on Route 3 near the gate (`GUIDE`, `Script_GuideMeet`). Meeting them sets `EFU_FLAG_GUIDE_MET`, and
-from then on they stand behind the east gate's counter (`Script_GateInit`). The gate's news board says how many
+The guide is caged in Rumination Field (`GUIDE`, `Script_GuideCage`, which the webs run too): until Burgh is beaten
+they beg for help through the webs; after, the webs are torn away, which sets `EFU_FLAG_GUIDE_MET`, and from then on they stand behind the east gate's counter (`Script_GateInit`). The gate's news board says how many
 explorations the player has set out on (`EFU_WORK_RAID_COUNT`, `GimmickGate_AddDateMessage`).
 
 ## Loot
@@ -353,7 +369,7 @@ confirm, and B closes either menu.
   Inside, her original script runs her with Withdraw, the only place Pokémon come back. The Day Care no longer grows
   its Pokémon by steps or makes eggs (`DayCare_Update`); instead each raid's return gives each one a level, up to
   `EFU_LEVEL_CAP` (22, the zone's highest wild level), and withdrawing charges the original's $100 a level plus $100.
-- **The gate's guide** is first met on Route 3, then waits behind the east gate's counter. They will take the player
+- **The gate's guide** is first freed from Burgh's hideout, then waits behind the east gate's counter. They will take the player
   to the farther zones; for now they say Route 3 is as far as anyone goes.
 
 The player's warehouse (`NACRENE_CITY_8`) is theirs alone. The title menu offers only Continue, New Game and Dev Test
