@@ -6,36 +6,6 @@
             "condition": 0,
             "direction": 4,
             "grid": {
-                "x": 80,
-                "y": 41,
-                "z": 0
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 81,
-                "y": 41,
-                "z": 0
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 82,
-                "y": 41,
-                "z": 0
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
                 "x": 81,
                 "y": 53,
                 "z": 0
@@ -122,36 +92,6 @@
             }
         },
         {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 47,
-                "y": 40,
-                "z": 0
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 48,
-                "y": 40,
-                "z": 0
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 49,
-                "y": 40,
-                "z": 0
-            }
-        },
-        {
             "script": 11028,
             "condition": 0,
             "direction": 4,
@@ -159,36 +99,6 @@
                 "x": 75,
                 "y": 50,
                 "z": 32
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 67,
-                "y": 37,
-                "z": 0
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 68,
-                "y": 37,
-                "z": 0
-            }
-        },
-        {
-            "script": 11002,
-            "condition": 0,
-            "direction": 4,
-            "grid": {
-                "x": 69,
-                "y": 37,
-                "z": 0
             }
         }
     ],

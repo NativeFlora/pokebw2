@@ -604,56 +604,10 @@
         },
         {
             "id": 121,
-            "model": "OBJ_CODE_108",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x091f",
-            "script": 10004,
-            "direction": "DIR_DOWN",
-            "params": [
-                0,
-                0,
-                0
-            ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 71,
-                "z": 55,
-                "y": 0
-            }
-        },
-        {
-            "id": 122,
-            "model": "OBJ_CODE_108",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x091f",
-            "script": 10004,
-            "direction": "DIR_DOWN",
-            "params": [
-                0,
-                0,
-                0
-            ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 72,
-                "z": 55,
-                "y": 0
-            }
-        },
-        {
-            "id": 123,
             "model": "OBJ_CODE_MODEL_3",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0920",
+            "flag": 0,
             "script": 10000,
             "direction": "DIR_DOWN",
             "params": [
@@ -667,17 +621,17 @@
             },
             "grid": {
                 "x": 75,
-                "z": 55,
+                "z": 56,
                 "y": 0
             }
         },
         {
-            "id": 124,
-            "model": "OBJ_CODE_MODEL_3",
+            "id": 122,
+            "model": "OBJ_CODE_108",
             "movement": "MOVE_CODE_NONE",
             "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": "EVENT_FLAG_0x0920",
-            "script": 10000,
+            "flag": 0,
+            "script": 10004,
             "direction": "DIR_DOWN",
             "params": [
                 0,
@@ -689,8 +643,31 @@
                 "height": 0
             },
             "grid": {
-                "x": 76,
-                "z": 55,
+                "x": 71,
+                "z": 56,
+                "y": 0
+            }
+        },
+        {
+            "id": 123,
+            "model": "OBJ_CODE_108",
+            "movement": "MOVE_CODE_NONE",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "flag": 0,
+            "script": 10004,
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 72,
+                "z": 56,
                 "y": 0
             }
         }
@@ -698,8 +675,8 @@
     "warps": [
         {
             "zone": "ZONE_ROUTE_3",
-            "warp": 5,
-            "unk4": 3,
+            "warp": 4,
+            "unk4": 4,
             "transition": 4,
             "grid": {
                 "x": 1384,

@@ -57,6 +57,38 @@
     ScriptEntry Script_RanchEnter
     ScriptEntry Script_Burgh
     ScriptEntry Script_Tinkerer
+    ScriptEntry Script_Lock_1
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
+    ScriptEntry Script_LockNone
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -165,6 +197,7 @@ Script_RaidDepart:
     FlagReset EFU_FLAG_RUMINATION_SCAV
 L_RuminationScavEnd:
     WorkSetConst EFU_WORK_SCAV_PENDING, 0
+    // The world editor's locks that lock again on each raid (gen_efu.py)
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
     .irp i, 0,1,2
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
@@ -4407,3 +4440,29 @@ L_LockerCompact_17:
     WorkSetConst 0x4177, 0
 L_LockerCompact_18:
     VMReturn
+
+// The world editor's locked doors (EFU_SCRIPT_LOCK_FIRST): each lock's sign, written by gen_efu.py from
+// tools/efu/world_locks.json
+Script_LockNone:
+    VMHalt
+
+Script_Lock_1:
+    FlagGet EFU_FLAG_LOCK_FIRST + 0, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_NE, L_Lock_1_End
+    ActorsPauseAll
+    WordSetItemNameEx 0, 588, 1, 0
+    ItemCheckAmount 588, 1, 0x8021
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_EQ, L_Lock_1_Shut
+    FlagSet EFU_FLAG_LOCK_FIRST + 0
+    SystemMsg Efu_Text_LockOpen, 2
+    VMJump L_Lock_1_Close
+L_Lock_1_Shut:
+    SystemMsg Efu_Text_LockKey, 2
+L_Lock_1_Close:
+    LastKeyWait
+    SystemMsgClose
+    ActorsUnpauseAll
+L_Lock_1_End:
+    VMHalt

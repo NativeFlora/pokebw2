@@ -1,0 +1,6 @@
+{
+    "$schema": "../map_model.schema.json",
+    "texture_set": "MAP_TEXTURE_SET_SHARED_DANSA01A_183",
+    "written": true,
+    "template": "MAP_MODEL_OVERWORLD_2_MAP04_20"
+}

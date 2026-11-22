@@ -1158,13 +1158,22 @@ static void RememberOutboundWarp(FieldInteractWk *wk, u32 warpId, VecFx32 *pos) 
     SetGameDataOutboundWarpRememberInfo(wk->gameData, &spawn);
 }
 
-// Escape from Unova: whether the warp is a door of the Day Care Lady's warehouse before she has joined
+// Escape from Unova: whether the warp is a locked door: one the world editor locked, or a door of the Day Care Lady's
+// warehouse before she has joined
 static BOOL Efu_IsShutDoor(FieldInteractWk *wk, u32 warpId) {
-    if (Field_GetPlayerStateZoneID(wk->field) != ZONE_NACRENE_CITY ||
-        (warpId != EFU_DAYCARE_WARP && warpId != EFU_DAYCARE_UPPER_WARP)) {
+    ZoneWarp *warp = GetZoneWarpByID(wk->eventData, warpId);
+    u32 flag;
+
+    if (!warp->isRail && warp->pos.grid.unk0a != 0) {
+        // A door the world editor locked, until its lock is opened (EFU_FLAG_LOCK_FIRST)
+        flag = EFU_FLAG_LOCK_FIRST + warp->pos.grid.unk0a - 1;
+    } else if (Field_GetPlayerStateZoneID(wk->field) == ZONE_NACRENE_CITY &&
+               (warpId == EFU_DAYCARE_WARP || warpId == EFU_DAYCARE_UPPER_WARP)) {
+        flag = EFU_FLAG_DAYCARE_JOINED;
+    } else {
         return FALSE;
     }
-    return !EventWork_FlagGet(GameData_GetEventWork(wk->gameData), EFU_FLAG_DAYCARE_JOINED);
+    return !EventWork_FlagGet(GameData_GetEventWork(wk->gameData), flag);
 }
 
 static u32 GetWarpForWalkIn(FieldInteractWk *wk, VecFx32 *pos) {

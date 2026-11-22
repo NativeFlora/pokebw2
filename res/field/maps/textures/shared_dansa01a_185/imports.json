@@ -44,6 +44,30 @@
         {
             "texture": "c12_air",
             "from": "MAP_TEXTURE_SET_ASPERTIA_CITY"
+        },
+        {
+            "texture": "d2_a0_grass",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_89"
+        },
+        {
+            "texture": "d2grass01ax",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_89"
+        },
+        {
+            "texture": "ki00a2",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_89"
+        },
+        {
+            "texture": "ki00b2",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_89"
+        },
+        {
+            "texture": "ki00c2",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_89"
+        },
+        {
+            "texture": "ki00d2",
+            "from": "MAP_TEXTURE_SET_SHARED_DANSA01A_89"
         }
     ]
 }

@@ -151,7 +151,11 @@
             "flag": 0,
             "script": 3511,
             "direction": "DIR_LEFT",
-            "params": [ 3, 0, 0 ],
+            "params": [
+                3,
+                0,
+                0
+            ],
             "area": {
                 "width": 0,
                 "height": 0
@@ -160,25 +164,6 @@
                 "x": 9,
                 "z": 17,
                 "y": 0
-            }
-        },
-        {
-            "id": 1,
-            "model": "OBJ_CODE_SCIENTIST_M_52",
-            "movement": "MOVE_CODE_NONE",
-            "type": "ACTOR_EVENT_TYPE_NONE",
-            "flag": 0,
-            "script": 3,
-            "direction": "DIR_LEFT",
-            "params": [ 0, 0, 0 ],
-            "area": {
-                "width": 0,
-                "height": 0
-            },
-            "grid": {
-                "x": 21,
-                "z": 15,
-                "y": 16384
             }
         }
     ],
@@ -212,7 +197,7 @@
             }
         },
         {
-            "zone": "ZONE_DESERT_RESORT_2",
+            "zone": "ZONE_ROUTE_2",
             "warp": 1,
             "unk4": 1,
             "transition": 2,

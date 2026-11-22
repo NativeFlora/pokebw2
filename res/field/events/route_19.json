@@ -2,36 +2,6 @@
     "$schema": "events.schema.json",
     "bg_events": [
         {
-            "script": 4,
-            "condition": 0,
-            "direction": 6,
-            "grid": {
-                "x": 85,
-                "y": 662,
-                "z": 32
-            }
-        },
-        {
-            "script": 6,
-            "condition": 0,
-            "direction": 6,
-            "grid": {
-                "x": 105,
-                "y": 655,
-                "z": 32
-            }
-        },
-        {
-            "script": 5,
-            "condition": 0,
-            "direction": 6,
-            "grid": {
-                "x": 119,
-                "y": 662,
-                "z": 32
-            }
-        },
-        {
             "script": 0,
             "condition": 4,
             "direction": 4,
@@ -330,7 +300,7 @@
             "transition": 4,
             "grid": {
                 "x": 1352,
-                "y": 32,
+                "y": 0,
                 "z": 10744,
                 "width": 3,
                 "height": 1,

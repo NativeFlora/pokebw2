@@ -63,3 +63,6 @@ Efu_Text_TinkerBagUpgraded = Your Bag can now carry three items!
 Efu_Text_TinkerBagPoor = You're short on money.\nCome back when you've got it.
 Efu_Text_TinkerBagNo = Suit yourself. I'll be here.
 Efu_Text_TinkerChat = If it's broken, I can fix it.\nIf it isn't, I can make it better.
+Efu_Text_LockKey = The door is locked.\nIt takes the {ff00:2}{0109:0}{ff00:0}.
+Efu_Text_LockOpen = You unlocked the door with\nthe {ff00:2}{0109:0}{ff00:0}.
+Efu_Text_LockUsed = You used up the {ff00:2}{0109:0}{ff00:0}\nto unlock the door.

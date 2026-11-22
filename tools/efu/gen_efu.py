@@ -172,6 +172,43 @@ childcare = re.search(r'^CHILDCARE_GENERIC_TRAINER = (\d+)', open(os.path.join(h
 tmpl = tmpl.replace('@CHILDCARE_GENERIC@', childcare.group(1))
 tmpl = tmpl.replace('@VOLCARONA@', str(num['SPECIES_VOLCARONA']))
 tmpl = tmpl.replace('@POKE_BALL@', str(items.index('ITEM_POKE_BALL')))
+# The world editor's locked doors (apply_world_edits.py writes world_locks.json): a sign script for each of the
+# EFU_LOCK_COUNT locks, in EFU_SCRIPT_LOCK_FIRST's order, and the flags of those that lock again on each raid
+efu_h = open(root + '/include/efu.h').read()
+LOCK_COUNT = int(re.search(r'#define EFU_LOCK_COUNT (\d+)', efu_h).group(1))
+assert re.search(r'#define EFU_SCRIPT_LOCK_FIRST \(EFU_SCRIPT_FIRST \+ 35\)', efu_h), 'the lock scripts follow Script_Tinkerer'
+locks_path = os.path.join(here, 'world_locks.json')
+locks = json.load(open(locks_path))['locks'] if os.path.exists(locks_path) else []
+assert len(locks) <= LOCK_COUNT, 'more locks than EFU_LOCK_COUNT'
+entries, lock_scripts, resets = [], ['Script_LockNone:\n    VMHalt\n'], []
+for n in range(1, LOCK_COUNT + 1):
+    lock = locks[n - 1] if n <= len(locks) else None
+    if not lock or lock.get('unused'):
+        entries.append('    ScriptEntry Script_LockNone\n')
+        continue
+    entries.append(f'    ScriptEntry Script_Lock_{n}\n')
+    flag = f'EFU_FLAG_LOCK_FIRST + {n - 1}'
+    if lock.get('relock'):
+        resets.append(f'    FlagReset {flag}\n')
+    body = [f'Script_Lock_{n}:\n    FlagGet {flag}, 0x8020\n    WorkCmpConst 0x8020, 0\n'
+            f'    VMJumpIf CMP_NE, L_Lock_{n}_End\n    ActorsPauseAll\n']
+    if lock.get('item'):
+        item = items.index(lock['item'])
+        body.append(f'    WordSetItemNameEx 0, {item}, 1, 0\n    ItemCheckAmount {item}, 1, 0x8021\n'
+                    f'    WorkCmpConst 0x8021, 0\n    VMJumpIf CMP_EQ, L_Lock_{n}_Shut\n    FlagSet {flag}\n')
+        if lock.get('consume'):
+            body.append(f'    ItemSub {item}, 1, 0x8021\n    SystemMsg Efu_Text_LockUsed, 2\n')
+        else:
+            body.append('    SystemMsg Efu_Text_LockOpen, 2\n')
+        body.append(f'    VMJump L_Lock_{n}_Close\nL_Lock_{n}_Shut:\n    SystemMsg Efu_Text_LockKey, 2\n')
+    else:
+        body.append('    SystemMsg Efu_Text_BoardedDoor, 2\n')
+    body.append(f'L_Lock_{n}_Close:\n    LastKeyWait\n    SystemMsgClose\n    ActorsUnpauseAll\n'
+                f'L_Lock_{n}_End:\n    VMHalt\n')
+    lock_scripts.append(''.join(body))
+tmpl = tmpl.replace('@LOCK_ENTRIES@\n', ''.join(entries))
+tmpl = tmpl.replace('@LOCK_RESET@\n', ''.join(resets))
+tmpl = tmpl.replace('@LOCKS@\n', '\n'.join(lock_scripts))
 open(root + '/res/field/scripts/efu.s', 'w').write(tmpl.replace('@STARTER_MENUS@\n', ''.join(s)))
 hand = open(os.path.join(here, 'efu.txt.in'), encoding='utf-8').read()
 open(root + '/res/text/script/efu.txt', 'w', encoding='utf-8').write(hand + '\n'.join(text) + '\n')
