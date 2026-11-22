@@ -15,9 +15,13 @@ can run again at any time. The editor (tools/efu/world_editor/) saves the file: 
   tiles (global, ends exclusive) cleared on the given layers (geometry.js's LAYERS: ground, props, collision, class):
   the ground's geometry goes, the ground material is laid flat at groundY and the tiles take the nearest walkable
   tile's heights; props go; collision clears; the class takes the nearest walkable tile's;
-- {"op": "copy", "from": {"matrix", "rect"}, "matrix", "to": [[x, z], ...], "layers"}: a rectangle of a matrix's tiles
-  copied, on the given layers, with its top left at each tile of `to`, all read before any is written (the editor's
-  move, paste and pattern brush);
+- {"op": "copy", "from": {"matrix", "rect"}, "matrix", "to": [[x, z], ...], "layers", "transform"?, "mask"?, "move"?,
+  "ground"?, "groundY"?}: a rectangle of a matrix's tiles copied, on the given layers, with its top left at each tile of
+  `to`, all read before any is written (the editor's move, paste, turn, flip and pattern brush). transform {rot,
+  flipX, flipZ} flips the copy (x, then z) and then turns it clockwise rot quarters, seen from above; props turn with
+  it and the terrain's planes take the table entries nearest the turned ones. mask (rows of '0'/'1' over the source)
+  leaves out the '0' tiles, on every layer: a transparent copy. move erases the copied tiles of the source first, as
+  an erase with the op's ground and groundY would;
 - {"op": "prop", "matrix", "x", "z", "action": "add" | "set" | "delete", "match"?, "value"?}: a field prop of a chunk,
   {resId, translation, rotation, scale} in the chunk's own units, found by its id, place and turn;
 - {"op": "event", "zone", "kind", "action": "add" | "set" | "delete", "match"?, "value"?}: a zone's NPC, warp,
@@ -421,7 +425,7 @@ def erase(model, rect, op):
     x0, z0, x1, z1 = units(rect)
     if 'ground' in layers:
         for m, polys in model.polys.items():
-            model.polys[m] = [part for p in polys for part in bz.outside(p, x0, z0, x1, z1)]
+            model.polys[m] = [part for p in polys for part in outside(p, x0, z0, x1, z1)]
         if op.get('ground'):
             ground_quad(model, op['ground'], x0, z0, x1, z1, float(op.get('groundY') or 0))
     if 'props' in layers:
@@ -447,49 +451,337 @@ def erase(model, rect, op):
             cell['tile_type'] = str(t & 0xffffffff)
 
 
-def copy_piece(model, src, rect, to, layers):
-    """copyLayers for one rectangle of a source chunk (already a copy) to tile `to` of this one."""
-    sx0, sz0, sx1, sz1 = units(rect)
-    dx, dz = (to[0] - rect[0]) * TILE, (to[1] - rect[1]) * TILE
-    x0, z0, x1, z1 = sx0 + dx, sz0 + dz, sx1 + dx, sz1 + dz
+# ---- Copies: region.js's steps --------------------------------------------------------------------------------------
+
+def flat_at(poly, axis):
+    v = poly[0][axis]
+    return v if all(abs(p[axis] - v) < 1e-9 for p in poly) else None
+
+
+def outside(poly, x0, z0, x1, z1):
+    """geometry.js's outside(): a polygon flat in x (or z) on a side of the column belongs to it on its near side."""
+    fx, fz = flat_at(poly, 0), flat_at(poly, 2)
+    if fx is not None and not (x0 <= fx < x1):
+        return [poly]
+    if fz is not None and not (z0 <= fz < z1):
+        return [poly]
+    xs = [v[0] for v in poly]
+    zs = [v[2] for v in poly]
+    if fx is None and fz is None and (max(xs) <= x0 or min(xs) >= x1 or max(zs) <= z0 or min(zs) >= z1):
+        return [poly]
+    if fx is not None and fz is not None:
+        return []
+    if fx is not None:
+        parts = [bz.clip_half(poly, 2, z0, True), bz.clip_half(poly, 2, z1, False)]
+    elif fz is not None:
+        parts = [bz.clip_half(poly, 0, x0, True), bz.clip_half(poly, 0, x1, False)]
+    else:
+        parts = [bz.clip_half(poly, 0, x0, True), bz.clip_half(poly, 0, x1, False)]
+        middle = bz.clip_half(bz.clip_half(poly, 0, x0, False), 0, x1, True)
+        if middle:
+            parts += [bz.clip_half(middle, 2, z0, True), bz.clip_half(middle, 2, z1, False)]
+    return [p for p in parts if p and bz.area(p) > 1e-3]
+
+
+def inside_flat(poly, x0, z0, x1, z1):
+    """geometry.js's inside()."""
+    fx, fz = flat_at(poly, 0), flat_at(poly, 2)
+    if fx is not None and not (x0 <= fx < x1):
+        return None
+    if fz is not None and not (z0 <= fz < z1):
+        return None
+    return inside(poly, x0, z0, x1, z1)
+
+
+def tf_dims(w, h, tf):
+    return (h, w) if tf and tf.get('rot', 0) % 2 else (w, h)
+
+
+def tf_point(x, z, w, h, tf):
+    if not tf:
+        return x, z
+    w, h = w * TILE, h * TILE
+    if tf.get('flipX'):
+        x = w - x
+    if tf.get('flipZ'):
+        z = h - z
+    for _ in range(tf.get('rot', 0) % 4):
+        x, z = h - z, x
+        w, h = h, w
+    return x, z
+
+
+def tf_tile(x, z, w, h, tf):
+    px, pz = tf_point(x * TILE + TILE / 2, z * TILE + TILE / 2, w, h, tf)
+    return math.floor(px / TILE), math.floor(pz / TILE)
+
+
+def tf_vector(x, z, tf):
+    if not tf:
+        return x, z
+    if tf.get('flipX'):
+        x = -x
+    if tf.get('flipZ'):
+        z = -z
+    for _ in range(tf.get('rot', 0) % 4):
+        x, z = -z, x
+    return x, z
+
+
+def tf_identity(tf):
+    return not tf or (not tf.get('flipX') and not tf.get('flipZ') and not tf.get('rot', 0) % 4)
+
+
+def tf_mirrored(tf):
+    return bool(tf) and bool(tf.get('flipX')) != bool(tf.get('flipZ'))
+
+
+def tf_yaw(rotation, tf):
+    if tf_identity(tf):
+        return rotation
+    a = 2 * math.atan2(rotation[1], rotation[3])
+    dx, dz = tf_vector(math.cos(a), -math.sin(a), tf)
+    b = math.atan2(-dz, dx)
+    return [0, math.sin(b / 2), 0, math.cos(b / 2)]
+
+
+def mask_rects(mask, w, h):
+    """region.js's maskRects(): the set tiles' rectangles, runs of a row merged down while the rows repeat."""
+    if not mask:
+        return [[0, 0, w, h]]
+    out, open_ = [], []
+    for z in range(h + 1):
+        runs = []
+        if z < h:
+            x = 0
+            while x < w:
+                if mask[z][x] != '1':
+                    x += 1
+                    continue
+                x0 = x
+                while x < w and mask[z][x] == '1':
+                    x += 1
+                runs.append((x0, x))
+        nxt = []
+        for r in runs:
+            o = next((q for q in open_ if q[0] == r[0] and q[2] == r[1]), None)
+            if o:
+                o[3] = z + 1
+                nxt.append(o)
+            else:
+                nxt.append([r[0], z, r[1], z + 1])
+        out += [o for o in open_ if not any(o is n for n in nxt)]
+        open_ = nxt
+    return sorted(out, key=lambda r: (r[1], r[0]))
+
+
+def transform_mask(mask, w, h, tf):
+    if not mask:
+        return None
+    w2, h2 = tf_dims(w, h, tf)
+    rows = [['0'] * w2 for _ in range(h2)]
+    for z in range(h):
+        for x in range(w):
+            if mask[z][x] == '1':
+                tx, tz = tf_tile(x, z, w, h, tf)
+                rows[tz][tx] = '1'
+    return [''.join(r) for r in rows]
+
+
+def intersect(a, b):
+    r = [max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3])]
+    return r if r[0] < r[2] and r[1] < r[3] else None
+
+
+def nearest_slope(n):
+    best, best_d = 0, None
+    for i in range(len(bz.SLOPES) // 3):
+        d = sum(abs(bz.SLOPES[3 * i + k] - n[k]) for k in range(3))
+        if best_d is None or d < best_d:
+            best, best_d = i, d
+        if d == 0:
+            break
+    return best
+
+
+def nearest_offset(v):
+    return min(range(len(bz.OFFSETS)), key=lambda k: (abs(bz.OFFSETS[k] - v), k))
+
+
+def js_round(v):
+    return math.floor(v + 0.5)
+
+
+def moved_plane(slope, offset, frm, to, tf):
+    s = bz.SLOPES
+    a, b, c = s[3 * slope], s[3 * slope + 1], s[3 * slope + 2]
+    if a == 0 and c == 0:
+        return slope, offset
+    y = -(bz.OFFSETS[offset] + a * frm[0] - c * frm[1]) / b
+    na, nc = tf_vector(a, -c, tf)
+    slope2 = nearest_slope([js_round(na), b, js_round(-nc)])
+    a2, b2, c2 = s[3 * slope2], s[3 * slope2 + 1], s[3 * slope2 + 2]
+    return slope2, nearest_offset(js_round(-(b2 * y + a2 * to[0] - c2 * to[1])))
+
+
+HALVES = [[(16 / 3, 16 / 3), (32 / 3, 32 / 3)], [(32 / 3, 16 / 3), (16 / 3, 32 / 3)]]
+
+
+def moved_cell(cell, split, frm, to, tf):
+    """region.js's cell(): a terrain cell [shape, slope, offset, tile_type, diagonal] and its split row [slope0, slope1,
+    offset0, offset1] moved from tile frm of a chunk to tile to of another, transformed."""
+    def center(t, p):
+        return (t[0] * TILE + p[0] - 256, t[1] * TILE + p[1] - 256)
+    out = list(cell)
+    if cell[0] == 0:
+        out[1], out[2] = moved_plane(cell[1], cell[2], center(frm, (8, 8)), center(to, (8, 8)), tf)
+        return out, None
+    if not split:
+        return out, None
+    d = cell[4]
+    ends = [(16, 0), (0, 16)] if d == 0 else [(0, 0), (16, 16)]
+    e = [tf_point(x, z, 1, 1, tf) for x, z in ends]
+    d2 = 0 if abs(e[0][0] + e[0][1] - 16) < 1e-6 and abs(e[1][0] + e[1][1] - 16) < 1e-6 else 1
+    planes = [(split[0], split[2]), (split[1], split[3])]
+    row = [0, 0, 0, 0, split[4]]
+    for h in range(2):
+        c = HALVES[d][h]
+        c2 = tf_point(c[0], c[1], 1, 1, tf)
+        s, o = moved_plane(planes[h][0], planes[h][1], center(frm, c), center(to, c2), tf)
+        slot = (0 if c2[0] + c2[1] < 16 else 1) if d2 == 0 else (0 if c2[0] > c2[1] else 1)
+        row[slot], row[slot + 2] = s, o
+    out[4] = d2
+    return out, row
+
+
+def cell_values(model, x, z):
+    r = model.at(x, z)
+    cell = [int(r[k]) for k in ('shape', 'slope', 'offset', 'tile_type', 'diagonal')]
+    split = None
+    if cell[0] != 0 and cell[2] < len(model.splits):
+        s = model.splits[cell[2]]
+        split = [int(s[k]) for k in ('slope0', 'slope1', 'offset0', 'offset1', 'unused')]
+    return cell, split
+
+
+def gather(snaps, r, layers, mask):
+    """The part of the snapshots under r, in units (and tiles) from r's corner."""
+    w, h = r[2] - r[0], r[3] - r[1]
+    runs = mask_rects(mask, w, h)
+    clip = {'w': w, 'h': h, 'pieces': [], 'props': [], 'cells': [None] * (w * h)}
+    for cx, cz, part, local in split_rect(r):
+        src = snaps.get((cx, cz))
+        if not src:
+            continue
+        ox, oz = (cx * 32 - r[0]) * TILE + 256, (cz * 32 - r[1]) * TILE + 256
+        rel = [part[0] - r[0], part[1] - r[1], part[2] - r[0], part[3] - r[1]]
+        rects = [q for q in (intersect(q, rel) for q in runs) if q]
+        if 'ground' in layers:
+            for sm, polys in sorted(src.polys.items()):
+                out = []
+                for q in rects:
+                    u = [q[0] * TILE - ox, q[1] * TILE - oz, q[2] * TILE - ox, q[3] * TILE - oz]
+                    for t in polys:
+                        p = inside_flat(t, *u)
+                        if p:
+                            out.append([(v[0] + ox, v[1], v[2] + oz) + tuple(v[3:]) for v in p])
+                if out:
+                    clip['pieces'].append((src.materials[sm], out))
+        if 'props' in layers:
+            for p in src.props:
+                x, z = p['translation'][0] + ox, p['translation'][2] + oz
+                if any(q[0] * TILE <= x < q[2] * TILE and q[1] * TILE <= z < q[3] * TILE for q in rects):
+                    clip['props'].append(dict(p, translation=[x, p['translation'][1], z]))
+        for q in rects:
+            for z in range(q[1], q[3]):
+                for x in range(q[0], q[2]):
+                    lx, lz = x + r[0] - cx * 32, z + r[1] - cz * 32
+                    cell, split = cell_values(src, lx, lz)
+                    clip['cells'][z * w + x] = {'cell': cell, 'split': split, 'tile': (lx, lz), 'tf': None}
+    return clip
+
+
+def transform_clip(clip, tf):
+    w, h = clip['w'], clip['h']
+    w2, h2 = tf_dims(w, h, tf)
+    flip = tf_mirrored(tf)
+    out = {'w': w2, 'h': h2, 'pieces': [], 'props': [], 'cells': [None] * (w2 * h2)}
+    for mat, polys in clip['pieces']:
+        moved = []
+        for p in polys:
+            q = []
+            for v in p:
+                x, z = tf_point(v[0], v[2], w, h, tf)
+                rest = tuple(v[3:])
+                if len(v) >= 11:
+                    nx, nz = tf_vector(v[8], v[10], tf)
+                    rest = tuple(v[3:8]) + (nx, v[9], nz) + tuple(v[11:])
+                q.append((x, v[1], z) + rest)
+            moved.append(q[::-1] if flip else q)
+        out['pieces'].append((mat, moved))
+    for p in clip['props']:
+        x, z = tf_point(p['translation'][0], p['translation'][2], w, h, tf)
+        out['props'].append(dict(p, translation=[x, p['translation'][1], z], rotation=tf_yaw(p['rotation'], tf)))
+    for i, c in enumerate(clip['cells']):
+        if c:
+            x, z = tf_tile(i % w, i // w, w, h, tf)
+            out['cells'][z * w2 + x] = dict(c, tf=tf)
+    return out
+
+
+def write_clip(model, cx, cz, part, clip, at, layers, mask):
+    ox, oz = (cx * 32 - at[0]) * TILE + 256, (cz * 32 - at[1]) * TILE + 256
+    rel = [part[0] - at[0], part[1] - at[1], part[2] - at[0], part[3] - at[1]]
+    rects = [q for q in (intersect(q, rel) for q in mask_rects(mask, clip['w'], clip['h'])) if q]
+
+    def units_of(q):
+        return [q[0] * TILE - ox, q[1] * TILE - oz, q[2] * TILE - ox, q[3] * TILE - oz]
     if 'ground' in layers:
-        for m, polys in model.polys.items():
-            model.polys[m] = [part for p in polys for part in bz.outside(p, x0, z0, x1, z1)]
-        for sm, polys in sorted(src.polys.items()):
-            name, material, uri = src.materials[sm]
+        for q in rects:
+            x0, z0, x1, z1 = units_of(q)
+            for m, polys in model.polys.items():
+                model.polys[m] = [part_ for p in polys for part_ in outside(p, x0, z0, x1, z1)]
+        x0, z0, x1, z1 = units_of(rel)
+        for (name, material, uri), polys in clip['pieces']:
             moved = []
             for p in polys:
-                q = inside(p, sx0, sz0, sx1, sz1)
+                q = inside_flat([(v[0] - ox, v[1], v[2] - oz) + tuple(v[3:]) for v in p], x0, z0, x1, z1)
                 if q:
-                    moved.append([(v[0] + dx, v[1], v[2] + dz) + tuple(v[3:]) for v in q])
+                    moved.append(q)
             if moved:
                 model.polys.setdefault(model.material(material, uri), []).extend(moved)
     if 'props' in layers:
-        model.props = [p for p in model.props
-                       if not (x0 <= p['translation'][0] < x1 and z0 <= p['translation'][2] < z1)]
-        for p in src.props:
-            x, y, z = p['translation']
-            if sx0 <= x < sx1 and sz0 <= z < sz1:
-                model.props.append(dict(p, translation=[x + dx, y, z + dz]))
-    for x in range(rect[0], rect[2]):
-        for z in range(rect[1], rect[3]):
-            tx, tz = to[0] + x - rect[0], to[1] + z - rect[1]
-            if not (0 <= tx < 32 and 0 <= tz < 32):
+        for q in rects:
+            x0, z0, x1, z1 = units_of(q)
+            model.props = [p for p in model.props
+                           if not (x0 <= p['translation'][0] < x1 and z0 <= p['translation'][2] < z1)]
+        x0, z0, x1, z1 = units_of(rel)
+        for p in clip['props']:
+            x, z = p['translation'][0] - ox, p['translation'][2] - oz
+            if x0 <= x < x1 and z0 <= z < z1:
+                model.props.append(dict(p, translation=[x, p['translation'][1], z]))
+    if not {'ground', 'collision', 'class'} & set(layers):
+        return
+    for z in range(rel[1], rel[3]):
+        for x in range(rel[0], rel[2]):
+            c = clip['cells'][z * clip['w'] + x]
+            if not c:
                 continue
-            s = src.at(x, z)
+            tx, tz = x + at[0] - cx * 32, z + at[1] - cz * 32
             d = model.at(tx, tz)
+            s = c['cell']
             t = int(d['tile_type'])
             if 'ground' in layers:
-                d.update({k: s[k] for k in ('shape', 'slope', 'offset', 'diagonal')})
-                if s['shape'] != '0' and int(s['offset']) < len(src.splits):
-                    split = dict(src.splits[int(s['offset'])])
-                    split['index'] = str(len(model.splits))
-                    model.splits.append(split)
-                    d['offset'] = split['index']
+                cell, split = moved_cell(s, c['split'], c['tile'], (tx, tz), c['tf'])
+                d.update({'shape': str(cell[0]), 'slope': str(cell[1]), 'offset': str(cell[2]), 'diagonal': str(cell[4])})
+                if s[0] != 0 and split:
+                    model.splits.append({'index': str(len(model.splits)), 'unused': str(split[4]), 'slope0': str(split[0]),
+                                         'slope1': str(split[1]), 'offset0': str(split[2]), 'offset1': str(split[3])})
+                    d['offset'] = str(len(model.splits) - 1)
             if 'collision' in layers:
-                t = (t & 0xffff) | (int(s['tile_type']) & FLAGS_MASK)
+                t = (t & 0xffff) | (s[3] & FLAGS_MASK)
             if 'class' in layers:
-                t = (t & FLAGS_MASK) | (int(s['tile_type']) & 0xffff)
+                t = (t & FLAGS_MASK) | (s[3] & 0xffff)
             d['tile_type'] = str(t & 0xffffffff)
 
 
@@ -652,27 +944,31 @@ def main():
             layers = op.get('layers') or LAYERS
             src_m = files.matrix(op['from']['matrix'])
             r = op['from']['rect']
+            w, h = r[2] - r[0], r[3] - r[1]
+            mask = op.get('mask')
             snaps = {}
             for cx, cz, _, _ in split_rect(r):
                 if 0 <= cz < len(src_m['maps']) and 0 <= cx < len(src_m['maps'][cz]) and src_m['maps'][cz][cx]:
                     snaps[(cx, cz)] = copy.deepcopy(model_at(op['from']['matrix'], cx, cz))
+            clip = gather(snaps, r, layers, mask)
+            if op.get('move'):
+                for q in mask_rects(mask, w, h):
+                    for cx, cz, _, local in split_rect([q[0] + r[0], q[1] + r[1], q[2] + r[0], q[3] + r[1]]):
+                        if not (0 <= cz < len(src_m['maps']) and 0 <= cx < len(src_m['maps'][cz])
+                                and src_m['maps'][cz][cx]):
+                            continue
+                        erase(model_at(op['from']['matrix'], cx, cz), local, op)
+                        dirty.add((op['from']['matrix'], cx, cz))
+            tf = op.get('transform')
+            out = transform_clip(clip, tf)
+            mask2 = transform_mask(mask, w, h, tf)
             dst_m = files.matrix(op['matrix'])
             for to in op['to']:
-                for cx, cz, part, local in split_rect(r):
-                    src = snaps.get((cx, cz))
-                    if not src:
+                for cx, cz, part, _ in split_rect([to[0], to[1], to[0] + out['w'], to[1] + out['h']]):
+                    if not (0 <= cz < len(dst_m['maps']) and 0 <= cx < len(dst_m['maps'][cz]) and dst_m['maps'][cz][cx]):
                         continue
-                    gx, gz = to[0] + part[0] - r[0], to[1] + part[1] - r[1]
-                    w, h = part[2] - part[0], part[3] - part[1]
-                    for dcx, dcz, dpart, dlocal in split_rect([gx, gz, gx + w, gz + h]):
-                        if not (0 <= dcz < len(dst_m['maps']) and 0 <= dcx < len(dst_m['maps'][dcz])
-                                and dst_m['maps'][dcz][dcx]):
-                            continue
-                        ox, oz = dpart[0] - gx, dpart[1] - gz
-                        srect = [local[0] + ox, local[1] + oz, local[0] + ox + dpart[2] - dpart[0],
-                                 local[1] + oz + dpart[3] - dpart[1]]
-                        copy_piece(model_at(op['matrix'], dcx, dcz), src, srect, dlocal[:2], layers)
-                        dirty.add((op['matrix'], dcx, dcz))
+                    write_clip(model_at(op['matrix'], cx, cz), cx, cz, part, out, to, layers, mask2)
+                    dirty.add((op['matrix'], cx, cz))
         else:
             sys.exit('unknown edit %r' % kind)
     for cell in sorted(dirty):
