@@ -1,6 +1,8 @@
 """Escape from Unova: every warp of the hack's zones (the base, the exploration zone and what their warps lead into),
 checked against its map's collision: the warp's tiles and the free tiles next to them, which must be in one walkable
-area with the zone's other warps, in a chunk the matrix gives the zone."""
+area with the zone's other warps, in a chunk the matrix gives the zone. A walk-in warp's direction (`unk4`, a WARP_DIR_*:
+1 up, 2 down, 3 left, 4 right) names the side the player walks in from and steps out to, so that side must have a free
+tile: the game only takes a walk-in warp when the player walks into it facing the other way."""
 import json, csv, os, sys
 from collections import deque
 R = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'res/field/')
@@ -41,6 +43,11 @@ while q:
         if inside or d < 2:
             q.append((w['zone'], d if inside else d + 1))
 
+# A warp's direction: the side the player walks in from (fieldmap_event.c's CheckWarpDirectionMatch), for the walk-in
+# transitions (WARP_TRANSITION_WALK_IN_2 and WARP_TRANSITION_WALK_IN)
+WARP_SIDES = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+WALK_IN_TRANSITIONS = {2, 4}
+
 def blocked(m, x, z):
     if x < 0 or z < 0 or z // 32 >= len(m['maps']) or x // 32 >= len(m['maps'][0]): return True
     model = m['maps'][z // 32][x // 32]
@@ -61,6 +68,7 @@ for zone, info in zones.items():
     if not warps: continue
     # Each warp's tiles and the free tiles around them
     rects, starts = [], []
+    wrong_side = set()
     for i, w in enumerate(warps):
         g = w['grid']
         x0, z0 = g['x'] // 16, g['z'] // 16
@@ -69,6 +77,10 @@ for zone, info in zones.items():
         free_near = [p for p in near if not blocked(m, *p)]
         free_on = [p for p in rect if not blocked(m, *p)]
         rects.append((i, w, rect, free_on, free_near))
+        side = WARP_SIDES.get(w['unk4']) if w['transition'] in WALK_IN_TRANSITIONS else None
+        if side and not any((x + side[0], zz + side[1]) not in rect and not blocked(m, x + side[0], zz + side[1])
+                            for x, zz in rect):
+            wrong_side.add(i)
     # Walkable areas: flood fill from each warp's free tiles
     comp = {}
     def fill(p, cid):
@@ -99,6 +111,8 @@ for zone, info in zones.items():
         own = {owner(m, *p) for p in rect}
         if m.get('zones') and own != {zone}: issues.append('chunk belongs to %s' % sorted(map(str, own)))
         if not on and not near: issues.append('walled in: no free tile on or next to it')
+        elif i in wrong_side:
+            issues.append('faces a wall: its direction %d says the player walks in from a side with no free tile' % w['unk4'])
         elif main not in cs and len(sizes) > 1:
             issues.append('cut off: its walkable area has %d tiles, the main one %d' % (max(sizes[c] for c in cs), sizes[main]))
         if issues:

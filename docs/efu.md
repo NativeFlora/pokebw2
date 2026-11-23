@@ -291,7 +291,11 @@ against it, and nothing sexual.
 
 `python3 check_warps.py` checks every warp of the base, the zone and the places their warps lead into against the
 maps' collision (both layers, so bridges count): each needs a free tile on or beside it, in the same walkable area
-as the zone's other warps, in a chunk the matrix gives its zone. Run it after moving warps or editing map collision.
+as the zone's other warps, in a chunk the matrix gives its zone. A walk-in warp (transition 2 or 4) also needs a free
+tile on the side its direction names (`unk4`: 1 up, 2 down, 3 left, 4 right), which is the side the player walks in
+from and steps out to: the game takes the warp only when the player walks into it facing the other way, so a wrong
+direction leaves the warp dead (Route 2's way into the forest, alpha 8.5). Run it after moving warps or editing map
+collision.
 Relic Castle's and Wellspring Cave's floors report as cut off, which is the original's stairs and sand pits.
 
 ## Loot

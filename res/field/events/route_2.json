@@ -644,7 +644,7 @@
         {
             "zone": "ZONE_PINWHEEL_FOREST_2",
             "warp": 0,
-            "unk4": 3,
+            "unk4": 4,
             "transition": 4,
             "grid": {
                 "x": 12472,
