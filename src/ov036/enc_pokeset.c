@@ -569,11 +569,18 @@ static u8 FieldEncount_PrepareActiveSlots(EncData *encData, EncountManager *mana
     return count;
 }
 
+// Escape from Unova: a random number that stays the same through an exploration and after a reload, from the
+// exploration's count and a key (a zone's wild slot, a grotto's deal)
+u32 Efu_ExplorationRandom(GameData *gameData, u32 key) {
+    u32 seed = *EventWork_GetWkPtr(GameData_GetEventWork(gameData), EFU_WORK_RAID_COUNT) * 0x10000 + key;
+
+    return (seed * 1103515245 + 12345) >> 16;
+}
+
 // Escape from Unova: each exploration swaps every wild slot's species for one of its wild group's of about its strength
-// (EFU_SWAP_CANDIDATES, build_raid.py), chosen by the exploration's count, the zone and the slot, so the zone stays the
-// same through an exploration and after a reload
+// (EFU_SWAP_CANDIDATES, build_raid.py), chosen by the zone and the slot, so the zone stays the same through an
+// exploration
 u16 Efu_WildSwap(GameData *gameData, u16 zoneId, u32 slot, u16 species) {
-    u32 seed;
     u32 i;
 
     for (i = 0; i < EFU_SWAP_SPECIES_COUNT; i++) {
@@ -584,9 +591,8 @@ u16 Efu_WildSwap(GameData *gameData, u16 zoneId, u32 slot, u16 species) {
     if (i == EFU_SWAP_SPECIES_COUNT) {
         return species;
     }
-    seed = *EventWork_GetWkPtr(GameData_GetEventWork(gameData), EFU_WORK_RAID_COUNT) * 0x10000 + zoneId * 64 + slot;
-    seed = seed * 1103515245 + 12345;
-    return EFU_SWAP_CANDIDATES[EFU_SWAP_FIRST[i] + (seed >> 16) % (EFU_SWAP_FIRST[i + 1] - EFU_SWAP_FIRST[i])];
+    return EFU_SWAP_CANDIDATES[EFU_SWAP_FIRST[i] + Efu_ExplorationRandom(gameData, zoneId * 64 + slot) %
+                                                       (EFU_SWAP_FIRST[i + 1] - EFU_SWAP_FIRST[i])];
 }
 
 static void FieldEncount_SetupFromData(const WildEncSlot *slot, WildPkmParam *param) {

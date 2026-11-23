@@ -5,6 +5,7 @@
 // GPL-3.0)
 // Additional helper and table names are our descriptive guesses.
 #include "types.h"
+#include "constants/arc.h"
 #include "constants/directions.h"
 #include "constants/items.h"
 #include "constants/move_codes.h"
@@ -14,6 +15,8 @@
 #include "constants/species.h"
 #include "efu.h"
 #include "efu_bag.h"
+#include "field/enc_pokeset.h"
+#include "field/encounter.h"
 #include "field/event_action_call.h"
 #include "field/event_actor_move.h"
 #include "field/event_data.h"
@@ -28,10 +31,12 @@
 #include "field/field_rail.h"
 #include "field/field_script.h"
 #include "field/field_task.h"
+#include "field/hidden_hollow.h"
 #include "field/player_state.h"
 #include "field/scrcmd_field_actor.h"
 #include "field/trainer_script.h"
 #include "field/zone.h"
+#include "gfl/arc.h"
 #include "gfl/heap.h"
 #include "gfl/sound.h"
 #include "nitro/fx.h"
@@ -1096,6 +1101,37 @@ BOOL Scrcmd_FieldActor_ActorFallDownToXZ(VM *vm, FieldScriptEnv *env) {
     return FALSE;
 }
 
+// Escape from Unova: a species of the wild Pokémon of a zone on this exploration (Efu_WildSwap), from its grass, by
+// pick among those it has, or SPECIES_NONE when it has none
+static u16 Efu_ZoneWildSpecies(GameData *gameData, u16 zoneId, u32 pick) {
+    ArcTool *arc = GFL_ArcSysCreateFileHandle(ARCID_ENCOUNTDATA, HEAPID_TAIL(HEAPID_FIELDMAP));
+    EncData encData;
+    u16 species[12 * 3];
+    u32 count = 0;
+    u32 i;
+    u32 j;
+
+    if (EncData_Load(&encData, arc, zoneId, GameData_GetSeason(gameData))) {
+        for (i = 0; i < 12 * 3; i++) {
+            if (encData.userData[i / 12] != 0 && encData.grass[i].species != SPECIES_NONE) {
+                u16 sp = Efu_WildSwap(gameData, zoneId, i, encData.grass[i].species);
+
+                // Each species once, so the pick isn't weighted toward the common slots
+                for (j = 0; j < count; j++) {
+                    if (species[j] == sp) {
+                        break;
+                    }
+                }
+                if (j == count) {
+                    species[count++] = sp;
+                }
+            }
+        }
+    }
+    GFL_ArcToolFree(arc);
+    return count == 0 ? SPECIES_NONE : species[pick % count];
+}
+
 // Escape from Unova: EfuSpecial, where the unused Nop was in the command table (0x15f), so ov012 keeps its size. With
 // EFU_SPECIAL_DROP, it puts an item ball holding the item on a tile, or with x EFU_GROUND_BESIDE_PLAYER on the first
 // free tile around the player, and sets result to whether it did (with no free tile, or every ground item's ID taken,
@@ -1176,6 +1212,18 @@ BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
 
             PokeDex_RegistPkm(pokedex, pkm);
             GFL_HeapFree(pkm);
+        }
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_GROTTO_TRADE) {
+        GameData *gameData = FieldScriptEnv_GetGameData(env);
+        u32 seed = Efu_ExplorationRandom(gameData, item * 64 + x);
+        u16 zoneId = GetHiddenHollowEntranceParam(item, HIDDEN_HOLLOW_ENTRANCE_ZONE);
+
+        if (x == EFU_GROTTO_TRADE_OFFER) {
+            *result = seed % EFU_TRADE_COUNT;
+        } else {
+            *result = Efu_ZoneWildSpecies(gameData, zoneId, seed);
         }
         return FALSE;
     }

@@ -1,10 +1,10 @@
 {
     "$schema": "trade.schema.json",
-    "nickname": "Fluffee",
-    "trainer_name": "Cotton",
-    "species": "SPECIES_COTTONEE",
+    "nickname": "Larvitar",
+    "trainer_name": "Vesna",
+    "species": "SPECIES_LARVITAR",
     "form": 0,
-    "level": 20,
+    "level": 15,
     "ivs": {
         "hp": 20,
         "attack": 20,
@@ -24,8 +24,8 @@
         "smart": 0,
         "tough": 0
     },
-    "held_item": "ITEM_POWER_WEIGHT",
-    "trainer_gender": "GENDER_MALE",
+    "held_item": "ITEM_NONE",
+    "trainer_gender": "GENDER_FEMALE",
     "unk54": 0,
     "region": 2,
     "wanted_species": "SPECIES_PETILIL",

@@ -60,19 +60,19 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Hey, hey, did you see that? Awesome!\nA lot of famous people from TV are here!{be01}"
+            "text": "Another runaway? Good. I'm short\non hands at the ranch.{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Athletes are all coooool.\nI want to be like them."
+            "text": "Tch... Lucky hit.\nDon't get used to it."
         },
         {
             "type": 15,
-            "text": "You're so cool! I hope to be like you\nsomeday. Here, have this!{be01}"
+            "text": "Another runaway? Good. I'm short\non hands at the ranch.{be01}"
         },
         {
             "type": 16,
-            "text": "Aghhhhh. Why didn't I bring a camera,\nor a notebook for an autograph?"
+            "text": "Tch... Lucky hit.\nDon't get used to it."
         }
     ]
 }

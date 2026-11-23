@@ -67,6 +67,12 @@
 // its door)
 #define EFU_SCRIPT_PAID_EXIT (EFU_SCRIPT_FIRST + 31)
 #define EFU_PAID_EXIT_PRICE 100
+// A mart's prices are this many times the original's (ShopUI in scrcmd_shop.c); selling pays half the original price
+#define EFU_MART_PRICE_FACTOR 3
+// The money lost on blacking out, in percent of what the player has: to a Trainer, and to a wild Pokémon
+// (CalcLossMoney in btl_main.c)
+#define EFU_LOSS_TRAINER_PERCENT 50
+#define EFU_LOSS_WILD_PERCENT 20
 // Floccesy Ranch's init script: its scavengers come out by chance (EFU_FLAG_RANCH_SCAV_FIRST)
 #define EFU_SCRIPT_RANCH_ENTER (EFU_SCRIPT_FIRST + 32)
 // Burgh, Rumination Field's boss: his battle, the Blank HM and the end of the zone's story (EFU_FLAG_BURGH_BEATEN)
@@ -89,6 +95,14 @@
 #define EFU_GUIDE_CAGE_NPC 2
 #define EFU_GUIDE_WEB_FIRST 6
 #define EFU_GUIDE_WEB_COUNT 3
+// The Hidden Grottoes' occupants (Script_GrottoEnter, run as the grotto loads, and the others for each kind)
+#define EFU_SCRIPT_GROTTO_ENTER (EFU_SCRIPT_FIRST + 69)
+#define EFU_SCRIPT_GROTTO_EVENTS (EFU_SCRIPT_FIRST + 70)
+#define EFU_SCRIPT_GROTTO_RESUME (EFU_SCRIPT_FIRST + 71)
+#define EFU_SCRIPT_GROTTO_DOCTOR (EFU_SCRIPT_FIRST + 72)
+#define EFU_SCRIPT_GROTTO_BROKER (EFU_SCRIPT_FIRST + 73)
+#define EFU_SCRIPT_GROTTO_TRADER (EFU_SCRIPT_FIRST + 74)
+#define EFU_SCRIPT_GROTTO_TOUGH (EFU_SCRIPT_FIRST + 75)
 #define EFU_SCRIPT_LAST (EFU_SCRIPT_FIRST + 99)
 
 // Saved event work values the original game never uses, so a save keeps them across builds (docs/efu.md). Only ever
@@ -133,6 +147,12 @@
 // The item being picked up, while the bag is open for it (L_Pickup, ItemMenu_EfuPickupDone): the item itself while it
 // is left on the ground, 0 once it is taken, or EFU_PICKUP_SWAPPED with the item left on the ground in its place
 #define EFU_WORK_PICKUP_ITEM 0x415c
+// What each of the zone's Hidden Grottoes holds on this exploration (EFU_GROTTO_*), one work value each from this one,
+// in the order of EFU_GROTTO_HOLLOWS: rolled on heading out (Script_RaidDepart)
+#define EFU_WORK_GROTTO_FIRST 0x4157
+// The hollow number of the grotto the player last went into, set by the narrow path's script (global_10795.s, patched by
+// build_raid.py) as they follow it: HiddenHollowGetParam can't tell it while a map loads, before the field exists
+#define EFU_WORK_GROTTO_HOLLOW 0x4156
 // (item IDs are under it, and scripts' constants must stay under 0x4000, where variables start)
 #define EFU_PICKUP_SWAPPED 0x1000
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
@@ -198,6 +218,55 @@
 // their hide flags), each gone once beaten
 #define EFU_FLAG_MINION_FIRST 0x94d
 #define EFU_MINION_COUNT 3
+// Set once the player has talked to the tinkerer in her lab: the clerk's hints move on from her (Script_Clerk)
+#define EFU_FLAG_TINKERER_MET 0x950
+// The zone's Hidden Grottoes, by their hollow numbers (hidden_hollow.c): Floccesy Ranch's, Pinwheel Forest's, Route 3's
+// two and Route 2's. Each exploration, each holds what it always did (EFU_GROTTO_PLAIN) or one of the hack's: a doctor
+// who heals the party once beaten, a broker who sells one rare item, a tough Pokémon evolved early, or a trader who
+// swaps a pseudo-legendary for a Pokémon of the grotto's route and EFU_GROTTO_TRADE_PRICE; each is gone once dealt with
+// (EFU_GROTTO_SPENT)
+#define EFU_GROTTO_COUNT 5
+#define EFU_GROTTO_PLAIN 0
+#define EFU_GROTTO_DOCTOR 1
+#define EFU_GROTTO_BROKER 2
+#define EFU_GROTTO_TOUGH 3
+#define EFU_GROTTO_TRADER 4
+#define EFU_GROTTO_SPENT 5
+#define EFU_GROTTO_TRADE_PRICE 5000
+// The grotto NPCs' hide flags: the doctor, the broker and the trader, then each grotto's tough Pokémon
+#define EFU_FLAG_GROTTO_DOCTOR 0x951
+#define EFU_FLAG_GROTTO_BROKER 0x952
+#define EFU_FLAG_GROTTO_TRADER 0x953
+#define EFU_FLAG_GROTTO_TOUGH_FIRST 0x954
+// The trades the trader makes (res/field/trades, by build_raid.py), from this trade number, one per pseudo-legendary
+#define EFU_TRADE_FIRST 24
+#define EFU_TRADE_COUNT 6
+// The grottoes' hollow numbers, in the order of EFU_WORK_GROTTO_FIRST
+#define EFU_GROTTO_HOLLOW_0 0
+#define EFU_GROTTO_HOLLOW_1 14
+#define EFU_GROTTO_HOLLOW_2 16
+#define EFU_GROTTO_HOLLOW_3 17
+#define EFU_GROTTO_HOLLOW_4 18
+// Each grotto's tough Pokémon, evolved well under the level it evolves at (its NPC in build_raid.py's GROTTO_TOUGH)
+#define EFU_GROTTO_TOUGH_SPECIES_0 SPECIES_BRAVIARY
+#define EFU_GROTTO_TOUGH_LEVEL_0 22
+#define EFU_GROTTO_TOUGH_SPECIES_1 SPECIES_LEAVANNY
+#define EFU_GROTTO_TOUGH_LEVEL_1 21
+#define EFU_GROTTO_TOUGH_SPECIES_2 SPECIES_ZEBSTRIKA
+#define EFU_GROTTO_TOUGH_LEVEL_2 21
+#define EFU_GROTTO_TOUGH_SPECIES_3 SPECIES_SCOLIPEDE
+#define EFU_GROTTO_TOUGH_LEVEL_3 21
+#define EFU_GROTTO_TOUGH_SPECIES_4 SPECIES_KROOKODILE
+#define EFU_GROTTO_TOUGH_LEVEL_4 22
+// The broker's goods: a Rare Candy, a PP Up, or one of six strong TMs at random
+#define EFU_GROTTO_CANDY_PRICE 3000
+#define EFU_GROTTO_PP_UP_PRICE 3000
+#define EFU_GROTTO_TM_PRICE 5000
+#define EFU_GROTTO_TM_1 ITEM_TM24
+#define EFU_GROTTO_TM_2 ITEM_TM26
+#define EFU_GROTTO_TM_3 ITEM_TM35
+#define EFU_GROTTO_TM_4 ITEM_TM53
+#define EFU_GROTTO_TM_5 ITEM_TM29
 // How many Pokémon a scavenger's team has on an exploration (Efu_ScavParty in field_encount.c)
 #define EFU_SCAV_TEAM_MIN 2
 #define EFU_SCAV_TEAM_MAX 5
@@ -225,6 +294,12 @@
 // they leave the area, their NPC hidden by its flag until they come out again, and the item lands where they stood
 // (beside the player when they can't be found), as EFU_SPECIAL_DROP's result says
 #define EFU_SPECIAL_SCAV_GONE 8
+// The grotto trader's deal (item: the grotto's hollow number): with x EFU_GROTTO_TRADE_WANT, a species of the wild
+// Pokémon of the grotto's route on this exploration; with EFU_GROTTO_TRADE_OFFER, which of the trades (from
+// EFU_TRADE_FIRST) they offer. Both stay the same through an exploration
+#define EFU_SPECIAL_GROTTO_TRADE 9
+#define EFU_GROTTO_TRADE_WANT 0
+#define EFU_GROTTO_TRADE_OFFER 1
 // Items on the ground: item ball actors made where an item was tossed or swapped, each holding its item in its user
 // parameter 0, with actor IDs from EFU_GROUND_ID_FIRST. They belong to the zone, and are gone once the player leaves it
 #define EFU_GROUND_BESIDE_PLAYER 0xffff

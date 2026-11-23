@@ -247,6 +247,8 @@ struct ItemMenuWork {
     BOOL efuParty;
     // The Pokémon picked with the keys while picking one (ItemMenu_StateEfuPickParty), or -1
     s32 efuPartyCursor;
+    // The Pokémon whose held item is up for sale (ItemMenu_EfuSellHeld), or -1
+    s32 efuSellSlot;
     // The item of the bag given to the Pokémon picked, or ITEM_NONE to take its held item
     u16 efuGiveItem;
     // The item being picked up from the ground, when a script opened the bag for it (EFU_WORK_PICKUP_ITEM), or

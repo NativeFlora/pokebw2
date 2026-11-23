@@ -49,70 +49,70 @@ OTHER_EVOLUTION_LEVEL = 36
 # on losing it, and if spoken to after. Their own lines were about the old Route 3 (the school kids' lessons on Triple
 # and Rotation Battles, a double-battle pair's cheering)
 SCAVS = {
-    'youngster_jimmy': (False, "This place was full of kids once.\nNow it's mine!{be01}", "Okay, okay! I'm going!",
-                        "Don't come back here. There's\nnothing left worth taking."),
-    'lass_shannon': (True, "Ooh, a straggler!\nWhat's in the bag?{be01}", "Ugh! Fine, keep your junk!",
-                     "Everything out here belongs to\nwhoever's still standing."),
-    'fisherman_bruce': (False, "I don't fish for food anymore.\nI fish for stragglers.{be01}", "The one that got away...",
-                        "Nobody's left to stop me taking\nwhatever I want. Except you, I guess."),
-    'fisherman_mack': (False, "You walked a long way from home.\nToo bad it ends here!{be01}",
-                       "You're tougher than you look.", "Keep your head down. There are\nworse than me on this route."),
-    'nursery_aide_autumn': (True, "This uniform was all I could find.\nThe Pokémon are all I have left!{be01}",
-                            "No... Not again...", "Go home, if you still have one."),
-    'preschooler_buster': (False, "Finders keepers!\nHand it over!{be01}", "Fine! Take it and go!",
-                           "I take anything that isn't\nnailed down. Then I take the nails."),
-    'preschooler_eva': (True, "Found you!\nYou can stop hiding now.{be01}", "You... You cheated!",
-                        "I've been out here for ages.\nNobody ever finds me."),
-    'preschooler_tyrone': (False, "Gotcha!\nEmpty your pockets!{be01}", "Whoops...",
-                           "I'll get you next time.\nI always do."),
-    'school_kid_edgar': (False, "Scavenging is simple math.\nYou have things. I want them.{be01}",
-                         "I must have carried a one\nsomewhere...", "The numbers only add up for\nthe strong out here."),
-    'school_kid_marsha': (True, "Running? I've had my eye on you\nfor a while now!{be01}", "I should have been faster...",
-                          "There's nothing left out here.\nJust us, and whatever you're carrying."),
+    'youngster_jimmy': (False, 'This place was full of kids once.\nNow the cages are full instead!{be01}', 'Okay! Okay! Take the keys!',
+                       "Don't come back here. There's\nnothing left worth selling."),
+    'lass_shannon': (True, 'Ooh, a straggler! Hand over the bag,\nor I take it off your corpse!{be01}', 'Ugh! Keep your junk, then!',
+                    "Out here, everything belongs to\nwhoever's still breathing."),
+    'fisherman_bruce': (False, "I don't fish for food anymore.\nI fish for stragglers to sell.{be01}", 'The one that got away...',
+                       'The slavers pay well for kids\nlike you. Remember that.'),
+    'fisherman_mack': (False, 'You walked a long way from home.\nShame it ends in a ditch!{be01}', "You're tougher than you look.",
+                      'Keep your head down. There are\nworse than me on this route.'),
+    'nursery_aide_autumn': (True, "I buried the last of the kids last\nweek. I won't bury my Pokémon!{be01}", 'No... Not again...',
+                           'Go home, if you still have one.'),
+    'preschooler_buster': (False, 'Finders keepers!\nLosers get left for the crows!{be01}', 'Fine! Take it and go!',
+                          "I take anything that isn't\nnailed down. Then I take the nails."),
+    'preschooler_eva': (True, 'Found you!\nYou can stop hiding now.{be01}', 'You... You cheated!',
+                       'I hid when the slavers came.\nNobody found me. Not even Mum.'),
+    'preschooler_tyrone': (False, 'Gotcha!\nEmpty your pockets, or else!{be01}', 'Whoops...',
+                          "The big kids make us do this.\nIf we come back empty, we don't eat."),
+    'school_kid_edgar': (False, 'Scavenging is simple math.\nYou have things. I want them.{be01}', 'I must have carried a one\nsomewhere...',
+                        'Out here, the strong add up.\nThe weak get subtracted.'),
+    'school_kid_marsha': (True, "Running? I've had my eye on you\nfor a while now!{be01}", 'I should have been faster...',
+                         'Slow ones get caught. Then they\nget sold. Keep running.'),
     # Route 20's
-    'youngster_petey': (False, "Fresh legs! Fresh pockets!\nLet's see what you've got!{be01}", "Okay, okay! I'm going!",
-                        "The forest past the old gate is\nfull of stuff. Full of trouble too."),
+    'youngster_petey': (False, 'Fresh legs! Fresh pockets!\nThe slavers will love you!{be01}', "Okay, okay! I'm going!",
+                       'The forest past the old gate is\nfull of stuff. Full of graves, too.'),
     'youngster_terrell': (False, "I've been watching the path.\nYou're the first in days!{be01}", "I should've kept watching.",
-                          "Don't go into the caves alone.\nI went in with friends."),
-    'lass_isabel': (True, "Pretty bag you've got.\nIt'd look better on me!{be01}", "Hmph! Keep it, then!",
-                    "Everything nice gets taken out\nhere. Sooner or later."),
-    'nursery_aide_kimya': (True, "I have mouths to feed.\nI'm sorry, I really am.{be01}", "Please... Just go.",
-                           "They're waiting for me back\nthere. I'll find something else."),
-    'pkmn_ranger_naoko': (True, "I used to protect this forest.\nNow it protects me!{be01}", "The forest let me down...",
-                          "Rangers don't get paid anymore.\nSo I pay myself."),
-    'pkmn_ranger_bret': (False, "This is my patch.\nYou're trespassing!{be01}", "You can pass. This time.",
-                         "Stay off the high ground.\nThat's where we watch from."),
-    'backers_may_mal': (True, "No more cheering! Only taking!\nHand over your stuff!{be01}", "Boo! Hiss!",
-                        "I used to cheer on Trainers.\nNow I cheer when they drop things."),
+                         "Don't go into the caves alone.\nI went in with friends. Once."),
+    'lass_isabel': (True, "Pretty bag you've got.\nIt'll look better on me!{be01}", 'Hmph! Keep it, then!',
+                   'Everything nice gets taken out\nhere. Sooner or later.'),
+    'nursery_aide_kimya': (True, "I have mouths to feed.\nI'm sorry, I really am.{be01}", 'Please... Just go.',
+                          "They're waiting for me back\nthere. I'll find something else."),
+    'pkmn_ranger_naoko': (True, 'I used to protect this forest.\nNow I sell whatever walks into it!{be01}', 'The forest let me down...',
+                         "Rangers don't get paid anymore.\nSo I pay myself."),
+    'pkmn_ranger_bret': (False, 'This is my patch. Trespassers\npay the toll, or pay in blood!{be01}', 'You can pass. This time.',
+                        "Stay off the high ground.\nThat's where we watch from."),
+    'backers_may_mal': (True, 'No more cheering! Only taking!\nHand over your stuff!{be01}', 'Boo! Hiss!',
+                       'We cheered for Trainers once.\nNow we cheer when they fall.'),
     # The target's (TARGET_SCAVS)
-    'youngster_nicholas': (False, "Every Pokémon in this grass is mine.\nAnd so is whatever you're carrying!{be01}",
-                           "Take the grass, then. I'm off.", "There's nothing left in here but\nbugs and bad luck."),
-    'pkmn_ranger_dwayne': (False, "Burgh's gone, so this field is mine.\nTurn around, or hand it all over!{be01}",
-                           "Fine! It's yours. For now.", "Someone's always waiting to take\nwhat's left. Today it's you."),
-    'veteran_sinan': (False, "I've outlasted everyone in these\nwoods. I'll outlast you too!{be01}", "Hah... Not bad.",
-                      "The forest keeps what it takes.\nRemember that."),
+    'youngster_nicholas': (False, "Every Pokémon in this grass is mine.\nAnd so is whatever you're carrying!{be01}", "Take the grass, then. I'm off.",
+                          "There's nothing left in here but\nbugs and bones."),
+    'pkmn_ranger_dwayne': (False, "Burgh's gone, so this field is mine.\nTurn around, or hand it all over!{be01}", "Fine! It's yours. For now.",
+                          "Someone's always waiting to take\nwhat's left. Today it's you."),
+    'veteran_sinan': (False, "I've buried everyone else in these\nwoods. I'll bury you too!{be01}", 'Hah... Not bad.',
+                     'The forest keeps what it takes.\nRemember that.'),
     'pkmn_ranger_hillary': (True, "This forest is my larder now.\nAnd you're in it!{be01}", "I'll find easier prey.",
-                            "The deeper you go, the more\nyou find. And the more find you."),
-    'youngster_keita_2': (False, "I heard you coming a mile off.\nDrop the bag!{be01}", "Aw, man...",
-                          "There's good stuff under these\ntrees. I'm not telling you where."),
+                           'The deeper you go, the more\nyou find. And the more find you.'),
+    'youngster_keita_2': (False, 'I heard you coming a mile off.\nDrop the bag, or drop dead!{be01}', 'Aw, man...',
+                         "There's good stuff under these\ntrees. I'm not telling you where."),
     # Burgh's minions in Rumination Field (MINIONS)
-    'team_plasma_grunt_34': (False, "Burgh said nobody gets past.\nNobody means you!{be01}", "The boss won't like this...",
-                             "Go on, then. He's waiting for you.\nHis bugs are always hungry."),
-    'team_plasma_grunt_35': (True, "You hear that buzzing? That's the\nsound of you losing everything!{be01}",
-                             "Ugh, my bugs!", "Burgh keeps the good stuff deep in\nthe webs. Good luck getting it."),
-    'team_plasma_grunt_36': (False, "Another one for the webs!\nHold still!{be01}", "Wait, wait! I give up!",
-                             "That guide in the webs? Burgh's\nsaving them for later."),
+    'team_plasma_grunt_34': (False, 'Burgh said nobody gets past.\nNobody means you!{be01}', "The boss won't like this...",
+                            "Go on, then. He's waiting for you.\nHis bugs are always hungry."),
+    'team_plasma_grunt_35': (True, "You hear that buzzing? That's the\nsound of you losing everything!{be01}", 'Ugh, my bugs!',
+                            'Burgh keeps the good stuff deep in\nthe webs. Good luck getting it.'),
+    'team_plasma_grunt_36': (False, 'Another one for the webs!\nHold still!{be01}', 'Wait, wait! I give up!',
+                            "That guide in the webs? Burgh's\nselling them at the next market."),
     # Route 2's
-    'veteran_rayne': (False, "I've seen worse than you crawl\nout of that forest.{be01}", "Heh. Not bad, kid.",
-                      "The forest's way in is past the\ngarden. Go in light, come out heavy."),
-    'lass_henrietta': (True, "Nobody walks this road anymore.\nExcept people with stuff!{be01}", "Hmph! Lucky shot!",
-                       "The old gate south still works.\nFor a price."),
+    'veteran_rayne': (False, "I've seen worse than you crawl\nout of that forest.{be01}", 'Heh. Not bad, kid.',
+                     "The forest's way in is past the\ngarden. Go in light, come out heavy."),
+    'lass_henrietta': (True, 'Nobody walks this road anymore.\nNobody who lives, anyway!{be01}', 'Hmph! Lucky shot!',
+                      'The old gate south still works.\nFor a price.'),
     'lass_mali': (True, "You look like you've got\nsomething to share!{be01}", "Okay, okay, I'll share mine...",
-                  "I used to pick flowers here.\nNow I pick pockets."),
-    'youngster_mikey': (False, "This is my road!\nPay the toll!{be01}", "Toll waived... this time.",
-                        "Everybody heading home passes\nme. Everybody pays."),
-    'veteran_oriana': (True, "I've fought through three winters\nout here. You won't stop me!{be01}",
-                       "Maybe it's time to rest...", "Stay off the main path after\ndark. That's when we hunt."),
+                 'I used to pick flowers here.\nNow I pick pockets.'),
+    'youngster_mikey': (False, 'This is my road!\nPay the toll, or bleed for it!{be01}', 'Toll waived... this time.',
+                       'Everybody heading home passes\nme. Everybody pays.'),
+    'veteran_oriana': (True, "I've fought through three winters\nout here. You won't stop me!{be01}", "Maybe it's time to rest...",
+                      "Stay off the main path after\ndark. That's when the slavers hunt."),
 }
 # The scavs' Trainer class, whichever it was: Team Plasma's Grunts, renamed
 SCAV_CLASS = {False: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_M', True: 'TRAINER_CLASS_TEAM_PLASMA_GRUNT_F'}
@@ -583,6 +583,13 @@ RANCH_BOSS = {'model': 'OBJ_CODE_ROUGHNECK', 'movement': 'MOVE_CODE_FACE_DOWN', 
               'grid': {'x': 40, 'z': 10, 'y': RANCH_HEIGHT * 4096}}
 RANCH_BOSS_TRAINER = 'res/trainers/data/roughneck_fletcher.json'
 RANCH_BOSS_NAME = 'Garrick'
+# What he says in battle: TRMSG_LOSE when beaten; the rest are shown only to a Trainer met by sight, which he isn't
+RANCH_BOSS_MESSAGES = {
+    'TRMSG_START': "Another runaway? Good. I'm short\non hands at the ranch.{be01}",
+    'TRMSG_LOSE': "Tch... Lucky hit.\nDon't get used to it.",
+    15: "Another runaway? Good. I'm short\non hands at the ranch.{be01}",
+    16: "Tch... Lucky hit.\nDon't get used to it.",
+}
 RANCH_BOSS_TEAM = [('SPECIES_HERDIER', 20, ['MOVE_BITE', 'MOVE_TAKE_DOWN', 'MOVE_WORK_UP', 'MOVE_ODOR_SLEUTH']),
                    ('SPECIES_KROKOROK', 20, ['MOVE_BITE', 'MOVE_SAND_TOMB', 'MOVE_ASSURANCE', 'MOVE_MUD_SLAP']),
                    ('SPECIES_SCRAGGY', 21, ['MOVE_BRICK_BREAK', 'MOVE_HEADBUTT', 'MOVE_FAINT_ATTACK', 'MOVE_SWAGGER'])]
@@ -606,6 +613,8 @@ def build_ranch(pool):
     t = json.loads(orig(RANCH_BOSS_TRAINER))
     t['name'] = RANCH_BOSS_NAME
     t['reward'] = 'ITEM_NONE'
+    # His own words in place of the original Roughneck's, by message type (RANCH_BOSS_MESSAGES)
+    t['messages'] = [dict(m, text=RANCH_BOSS_MESSAGES.get(m['type'], m['text'])) for m in t['messages']]
     t['party'] = [dict(t['party'][0], species=sp, level=lv, moves=mv, item='ITEM_NONE', gender=0, ability=0)
                   for sp, lv, mv in RANCH_BOSS_TEAM]
     write(RANCH_BOSS_TRAINER, t)
@@ -892,6 +901,73 @@ def build_trainer_scripts():
         f.write(''.join(out))
 
 
+# The Hidden Grottoes' occupants (Script_GrottoEnter): the doctor, the broker, the trader and each grotto's tough
+# Pokémon, all where a grotto's own Pokémon or item stands, each shown by Script_GrottoEnter clearing its flag
+GROTTO_SPOT = {'x': 15, 'z': 12, 'y': 0}
+GROTTO_PEOPLE = [('OBJ_CODE_DOCTOR', 'GROTTO_DOCTOR', 'GROTTO_DOCTOR'), ('OBJ_CODE_GENTLEMAN', 'GROTTO_BROKER', 'GROTTO_BROKER'),
+                 ('OBJ_CODE_BACKPACKER_M', 'GROTTO_TRADER', 'GROTTO_TRADER')]
+# The tough Pokémon's models, in the order of EFU_GROTTO_TOUGH_SPECIES_* (efu.h)
+GROTTO_TOUGH = ['OBJ_CODE_POKEMON_BRAVIARY', 'OBJ_CODE_POKEMON_LEAVANNY', 'OBJ_CODE_POKEMON_ZEBSTRIKA',
+                'OBJ_CODE_POKEMON_SCOLIPEDE', 'OBJ_CODE_POKEMON_KROOKODILE']
+# The grotto doctor, a Trainer the player must beat to be healed (Script_GrottoDoctor)
+GROTTO_DOCTOR_TRAINER = 'res/trainers/data/doctor_jules.json'
+# The grotto's doctor fights softer than the scavs, at 60% and 55% of the level cap (Duosion as the level takes it)
+GROTTO_DOCTOR_TEAM = [('SPECIES_AUDINO', round(LEVEL_CAP * 0.6)), ('SPECIES_DUOSION', round(LEVEL_CAP * 0.55))]
+GROTTO_DOCTOR_MESSAGES = {
+    'TRMSG_START': "Let's see if you're worth patching up.{be01}",
+    'TRMSG_LOSE': "All right, all right!\nYou've made your point.",
+    15: "Let's see if you're worth patching up.{be01}",
+    16: "All right, all right!\nYou've made your point.",
+}
+# The trader's pseudo-legendaries: the trades from EFU_TRADE_FIRST (24 to 29, whose towns the hack never reaches), each
+# made one of them at level 15, by the trader's name
+GROTTO_TRADES = ['petilil', 'cottonee', 'gigalith', 'tangrowth', 'rotom', 'ambipom']
+GROTTO_TRADE_SPECIES = ['SPECIES_DRATINI', 'SPECIES_LARVITAR', 'SPECIES_BAGON', 'SPECIES_BELDUM', 'SPECIES_GIBLE',
+                        'SPECIES_DEINO']
+GROTTO_TRADER_NAME = 'Vesna'
+
+
+def build_grottos():
+    flag = int(re.search(r'#define EFU_FLAG_GROTTO_TOUGH_FIRST (0x[0-9a-f]+)', efu_h).group(1), 16)
+    path = 'res/field/events/hidden_grotto.json'
+    e = json.loads(orig(path))
+    base = {'movement': 'MOVE_CODE_FACE_DOWN', 'type': 'ACTOR_EVENT_TYPE_NONE', 'direction': 'DIR_DOWN',
+            'params': [0, 0, 0], 'area': {'width': 0, 'height': 0}, 'grid': GROTTO_SPOT}
+    e['npcs'] = [dict(base, id=1 + i, model=model, flag=efu_flag(f), script=efu_script(sc))
+                 for i, (model, f, sc) in enumerate(GROTTO_PEOPLE)]
+    e['npcs'] += [dict(base, id=1 + len(GROTTO_PEOPLE) + i, model=model, flag='EVENT_FLAG_0x%04x' % (flag + i),
+                       script=efu_script('GROTTO_TOUGH')) for i, model in enumerate(GROTTO_TOUGH)]
+    # Its map scripts: the hack's occupants as it loads, then the grotto's own as the original made them
+    e['init_scripts'] = [{'type': 2, 'script': efu_script('GROTTO_ENTER')},
+                         {'type': 4, 'script': efu_script('GROTTO_EVENTS')},
+                         {'type': 3, 'script': efu_script('GROTTO_RESUME')}]
+    write(path, e)
+    t = json.loads(orig(GROTTO_DOCTOR_TRAINER))
+    t['name'] = 'Hale'
+    t['messages'] = [dict(m, text=GROTTO_DOCTOR_MESSAGES.get(m['type'], m['text'])) for m in t['messages']]
+    t['party'] = [dict(t['party'][0], species=at_level(sp, lv), level=lv) for sp, lv in GROTTO_DOCTOR_TEAM]
+    write(GROTTO_DOCTOR_TRAINER, t)
+    # The narrow path's script keeps the grotto's hollow number (EFU_WORK_GROTTO_HOLLOW) for Script_GrottoEnter
+    path = 'res/field/scripts/global_10795.s'
+    text = orig(path)
+    warp = '    HiddenHollowCallWarpIn 0x8020\n'
+    assert text.count(warp) == 1
+    hollow = int(re.search(r'#define EFU_WORK_GROTTO_HOLLOW (0x[0-9a-f]+)', efu_h).group(1), 16)
+    with open(os.path.join(root, path), 'w', newline='\n') as f:
+        f.write(text.replace(warp, '    // Escape from Unova: the grotto followed, for its map script (build_raid.py)\n'
+                             f'    WorkSet 0x{hollow:x}, 0x8020\n' + warp))
+    for name, sp in zip(GROTTO_TRADES, GROTTO_TRADE_SPECIES):
+        path = f'res/field/trades/{name}.json'
+        t = json.loads(orig(path))
+        t.update(nickname=species_name(sp), trainer_name=GROTTO_TRADER_NAME, species=sp, form=0, level=15,
+                 held_item='ITEM_NONE', ability_slot=0, trainer_gender='GENDER_FEMALE')
+        write(path, t)
+
+
+def species_name(sp):
+    return sp[len('SPECIES_'):].title()
+
+
 if __name__ == '__main__':
     build_encounters('route_3', WILD_LEVELS)
     for place, levels in PLACE_LEVELS.items():
@@ -908,5 +984,6 @@ if __name__ == '__main__':
     loot.save()
     build_trainers(sorted(set(scavs)))
     build_minion_teams()
+    build_grottos()
     build_trainer_scripts()
     build_wild_swap()

@@ -12,7 +12,192 @@
             }
         }
     ],
-    "npcs": [],
+    "npcs": [
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 1,
+            "model": "OBJ_CODE_DOCTOR",
+            "flag": "EVENT_FLAG_0x0951",
+            "script": 11072
+        },
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 2,
+            "model": "OBJ_CODE_GENTLEMAN",
+            "flag": "EVENT_FLAG_0x0952",
+            "script": 11073
+        },
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 3,
+            "model": "OBJ_CODE_BACKPACKER_M",
+            "flag": "EVENT_FLAG_0x0953",
+            "script": 11074
+        },
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 4,
+            "model": "OBJ_CODE_POKEMON_BRAVIARY",
+            "flag": "EVENT_FLAG_0x0954",
+            "script": 11075
+        },
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 5,
+            "model": "OBJ_CODE_POKEMON_LEAVANNY",
+            "flag": "EVENT_FLAG_0x0955",
+            "script": 11075
+        },
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 6,
+            "model": "OBJ_CODE_POKEMON_ZEBSTRIKA",
+            "flag": "EVENT_FLAG_0x0956",
+            "script": 11075
+        },
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 7,
+            "model": "OBJ_CODE_POKEMON_SCOLIPEDE",
+            "flag": "EVENT_FLAG_0x0957",
+            "script": 11075
+        },
+        {
+            "movement": "MOVE_CODE_FACE_DOWN",
+            "type": "ACTOR_EVENT_TYPE_NONE",
+            "direction": "DIR_DOWN",
+            "params": [
+                0,
+                0,
+                0
+            ],
+            "area": {
+                "width": 0,
+                "height": 0
+            },
+            "grid": {
+                "x": 15,
+                "z": 12,
+                "y": 0
+            },
+            "id": 8,
+            "model": "OBJ_CODE_POKEMON_KROOKODILE",
+            "flag": "EVENT_FLAG_0x0958",
+            "script": 11075
+        }
+    ],
     "warps": [],
     "triggers": [
         {
@@ -46,12 +231,16 @@
     ],
     "init_scripts": [
         {
+            "type": 2,
+            "script": 11069
+        },
+        {
             "type": 4,
-            "script": 4
+            "script": 11070
         },
         {
             "type": 3,
-            "script": 7
+            "script": 11071
         }
     ]
 }

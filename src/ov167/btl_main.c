@@ -1,5 +1,6 @@
 // Function names from swan (https://github.com/ds-pokemon-hacking/swan, GPL-3.0)
 
+#include "efu.h"
 #include "types.h"
 #include "battle/battle_overlay.h"
 #include "battle/btl_adapter.h"
@@ -2458,10 +2459,11 @@ u32 CalcLossMoney(BtlMainModule *mainModule) {
     if (!mainModule->lossMoneyCalculated) {
         if (mainModule->setup->battleType <= BTL_TYPE_TRAINER) {
             cash = getCash(getTrainerCardDataBlkAddress(mainModule->setup->gameData));
-            loss = BtlCalc_GetLostMoney(mainModule->setup->badgeCount,
-                                        GetClientParty(&mainModule->pokeCons[1], mainModule->playerClientId));
-            if (loss > cash) {
-                loss = cash;
+            // Escape from Unova: a share of the player's money, more to a Trainer than in the wild
+            if (mainModule->setup->battleType == BTL_TYPE_TRAINER) {
+                loss = cash * EFU_LOSS_TRAINER_PERCENT / 100;
+            } else {
+                loss = cash * EFU_LOSS_WILD_PERCENT / 100;
             }
             mainModule->lossMoney = loss;
         }

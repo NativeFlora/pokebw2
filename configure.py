@@ -855,7 +855,13 @@ def add_version(n: Writer, version: str, dsd: Path, bugfix: bool, shift: int, mo
 
     rom_config = build_dir / "build" / "rom_config.yaml"
     n.build([rom_config], "rom_config", [arm9_o], variables={"config": str(arm9_config)})
-    n.build([rom], "rom_build", [rom_config], implicit=[files_ok, *archives])
+    # A modded build whose ARM9 main changes past the original's secure area (overlay signatures, the compressed size)
+    # needs the DS ARM7 BIOS to encrypt it and compute the DSi config's values again: orig/bios7.bin, the player's own
+    # dump, never committed
+    bios = Path("orig/bios7.bin")
+    bios_args = f"--arm7-bios {bios}" if modded and bios.exists() else ""
+    n.build([rom], "rom_build", [rom_config], implicit=[files_ok, *archives, *([bios] if bios_args else [])],
+            variables={"bios_args": bios_args})
 
     modules_ok = stamp_dir / "modules.ok"
     n.build([modules_ok], "check_modules", [rom_config], variables={"config": str(arm9_config)})
@@ -1000,7 +1006,7 @@ def main():
     # needs a backup suffix after -i, which GNU sed also takes
     n.rule("rom_config", "$dsd rom config --elf $in --config $config && sed -i.bak "
            "'s|^files_dir: .*|files_dir: ../files|' $out && rm $out.bak", "Configuring ROM for $config")
-    n.rule("rom_build", "$dsd rom build --config $in --rom $out", "Building $out")
+    n.rule("rom_build", "$dsd rom build --config $in --rom $out $bios_args", "Building $out")
     n.rule("check_modules", "$dsd check modules --config-path $config --fail && touch $out", "Checking modules")
     n.rule("sha1", "sha1sum --quiet -c $in && touch $out", "Checking $rom")
     # The context stays UTF-8, for decomp.me

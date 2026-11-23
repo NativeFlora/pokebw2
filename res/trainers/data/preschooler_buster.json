@@ -29,7 +29,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Finders keepers!\nHand it over!{be01}"
+            "text": "Finders keepers!\nLosers get left for the crows!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

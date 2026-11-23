@@ -55,7 +55,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Nobody walks this road anymore.\nExcept people with stuff!{be01}"
+            "text": "Nobody walks this road anymore.\nNobody who lives, anyway!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

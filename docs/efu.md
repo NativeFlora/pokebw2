@@ -16,6 +16,10 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   and no more. Put new logic in another overlay or in script and data files, which aren't in the overlays. The party
   wipe is script command 0x2db (`Scrcmd_Efu_PokePartyClear` in ov036), which took over `UnityTowerSetFloor`'s row
   (Unity Tower can't be reached) so the table didn't grow.
+- **The DS ARM7 BIOS ends the lottery below.** With the player's own ARM7 BIOS dump at `orig/bios7.bin` (16 KB,
+  ignored by git, never in the ROM or the patch), `configure.py --modded` passes it to `dsd rom build`, which encrypts
+  the secure area and computes the DSi config's values again, so any change to main's first 0x4000 bytes builds. Tom
+  supplied it on 23 November. Without it, the rest of this section holds.
 - **Every signed overlay changes main.** Main holds each signed overlay's HMAC (`overlay_signatures` in its
   config), which `dsd rom build` writes into it before compressing it, and the compressed size goes in the build info
   inside the secure area. So any change to a signed overlay's bytes (ov035, ov036, ov162, ov167 and the rest) can
@@ -26,9 +30,12 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
   there re-rolls all their signatures and passes about one time in five, while a same-size respelling only re-rolls
   ov036's own and almost never passes (alpha 8 failed 36 such rolls before a size change passed). Files outside
   the overlays (scripts, text, event data) never affect it. ov035 has stayed at its v1 size (11520 bytes); ov036 is
-  356352 bytes now (the original's 352672), ov162 (the title menu) 19680 (the original's 19648), and ov167 (battle)
+  about 359000 bytes now (the original's 352672), ov162 (the title menu) 19680 (the original's 19648), and ov167 (battle)
   grew for fleeing.
 - Only files marked complete in `config/w2_us/**/delinks.txt` are built from source; edit those.
+- In `efu.s.in`, a `.irp` can't paste its `\i` onto a constant's name (`EFU_GROTTO_HOLLOW_\i`): the C preprocessor
+  runs first and leaves the name undefined, and the assembler takes it as 0 without an error. Write such lists out;
+  `EFU_FLAG_X + \i` is fine.
 
 ## Where things are
 
@@ -97,6 +104,8 @@ Taken so far:
 | `EVENT_WORK_0x4169` (`EFU_WORK_SCAV_PENDING`) | 1 when a scav is to come out on the route at the next step (`Script_RouteEnter`); 0 after, and on heading out. Version 4. |
 | `EVENT_WORK_0x415e` (`EFU_WORK_DEV_TEST`) | 1 on a game started from the title menu's Dev Test: its first Pokémon is a level 100 Volcarona. |
 | `EVENT_WORK_0x415c` (`EFU_WORK_PICKUP_ITEM`) | The item being picked up while the bag is open for it (`L_Pickup`), then what became of it; 0 after. |
+| `EVENT_WORK_0x4156` (`EFU_WORK_GROTTO_HOLLOW`) | The hollow number of the grotto the player last went into, set as they follow the narrow path (`global_10795.s`, patched by `build_grottos`): `HiddenHollowGetParam` reads the field, which doesn't exist yet when the grotto's map script hides and shows its occupants. |
+| `EVENT_WORK_0x4157` to `0x415b` (`EFU_WORK_GROTTO_FIRST`) | What each of the zone's five Hidden Grottoes holds on this exploration (`EFU_GROTTO_*`), rolled on heading out. |
 | `EVENT_WORK_0x415d` (`EFU_WORK_IDLE_FRAMES`) | Frames the player has stood still on a raid, up to `EFU_SCAV_IDLE_FRAMES` (16), when the scavengers take a look as if the player had stepped; 0 after, and at each step. |
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
 | `EVENT_FLAG_0x0a80` to `0x0a8f`, `0x0a49` to `0x0a4e` | Retired: the routes' scavs' hide flags before they came out at spots (versions 3 and 4). Not to be reused. |
@@ -114,6 +123,8 @@ Taken so far:
 | `EVENT_FLAG_0x092c` to `0x094b` (`EFU_FLAG_LOCK_FIRST`, `EFU_LOCK_COUNT`) | The world editor's locks, by their number in `tools/efu/world_locks.json`: set once a locked door is opened with its key, cleared on heading out for a lock that locks again each raid. A lock's number is never reused. |
 | `EVENT_FLAG_0x094c` (`EFU_FLAG_RANCH_BOSS_BEATEN`) | Floccesy Ranch's mini-boss has been beaten and has given the Relic Band (his hide flag). Kept across explorations. |
 | `EVENT_FLAG_0x094d` to `0x094f` (`EFU_FLAG_MINION_FIRST`, `EFU_MINION_COUNT`) | Burgh's three minions' hide flags in Rumination Field, set when each is beaten, cleared with their Trainer flags on heading out. |
+| `EVENT_FLAG_0x0950` (`EFU_FLAG_TINKERER_MET`) | The player has talked to the tinkerer: the clerk's hints move on to the guide. |
+| `EVENT_FLAG_0x0951` to `0x0958` (`EFU_FLAG_GROTTO_DOCTOR`, `_BROKER`, `_TRADER`, `EFU_FLAG_GROTTO_TOUGH_FIRST`) | The hide flags of the grotto's doctor, broker and trader and of each grotto's tough Pokémon, set and cleared by `Script_GrottoEnter` as a grotto loads. |
 | `EVENT_FLAG_0x091e` (`EFU_FLAG_CHILDCARE_GENERIC`) | The hide flag of the generic scavenger who takes Billy's place once the quest is done: out by chance as the target's (75% on the first entry, 25% after); set on heading out and when they are beaten. |
 | `EVENT_WORK_0x41a8` (`EFU_WORK_TOSSED_ITEM`) | The item the bag tossed last, until `Script_Toss` puts it on the ground; 0 after. |
 | `EVENT_FLAG_0x0a94` (`EFU_FLAG_JOY_JOINED`) | Nurse Joy has joined the base (and her forest NPC's hide flag). |
@@ -139,16 +150,16 @@ Taken so far:
 The original item balls of the zone, its caves and its target keep their own flags (the original's meaning, set when
 the ball is taken), and heading out rolls them again too.
 
-Free event flags (nothing refers to them) include 0x0950 to 0x095f; take them upward from 0x0950. (0x0aa0 and up are daily flags, which the game clears each day.)
+Free event flags (nothing refers to them) include 0x0959 to 0x095f; take them upward from 0x0959. (0x0aa0 and up are daily flags, which the game clears each day.)
 
-Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d, 0x4143,
-0x4156 to 0x415b. Take the next from the end of the list back, and move it into the table above.
+Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d,
+0x4143. Take the next from the end of the list back, and move it into the table above.
 
 ## Raids and saving
 
 - The east gate (`ZONE_NACRENE_GATE`) has two triggers. Column 14, by Route 3's door, is live while home
-  (`EFU_WORK_RAID` 0): it asks to head out, refuses without a Pokémon that can fight, and on yes sets the raid and
-  saves. Column 2, by Nacrene's door, is live while out (`EFU_WORK_RAID` 1): it clears the raid and saves.
+  (`EFU_WORK_RAID` 0): it asks to head out, and on yes sets the raid and
+  saves (the party is never empty: every loss gives a new Pokémon). Column 2, by Nacrene's door, is live while out (`EFU_WORK_RAID` 1): it clears the raid and saves.
   Heading out also counts the raid (the season moves on) and gives the running shoes, for saves from version 1.
 - Heading out also rolls the exploration's hour (`EFU_WORK_RAID_HOUR`) and whether it has downfall
   (`EFU_FLAG_DOWNFALL`, 30%). The field's light, its day period and the battles' backgrounds read the hour through
@@ -162,8 +173,12 @@ Free event work values (no script, source file or event data refers to them): 0x
   Only the base's PC gives Pokémon back.
 - Continuing a save with the raid set (the game was switched off before coming back) runs `Script_RaidLost`: it empties the party, says so, clears the raid, gives a new Pokémon, saves and sends
   the player home.
-- Blacking out sends the player home (`FieldMapControl_LoadBlackoutZone`), and `Script_Blackout` fades in, clears the
-  raid, empties the party, gives a new Pokémon and saves.
+- Blacking out costs money in the battle: half of it to a Trainer (`EFU_LOSS_TRAINER_PERCENT`), a fifth to a wild
+  Pokémon (`EFU_LOSS_WILD_PERCENT`; `CalcLossMoney` in `src/ov167/btl_main.c`), with the hack's lines in the battle
+  messages (`res/text/system/0017.txt` and `0019.txt`: running for your life, dropping what you carried). It sends the
+  player home (`FieldMapControl_LoadBlackoutZone`), and `Script_Blackout` fades in, clears the raid, drops what the
+  bag carried that a Pokémon can hold (`L_BagLost`; Key Items and TMs stay), empties the party, gives a new Pokémon
+  and saves. Losing the raid by switching off (`Script_RaidLost`) drops the bag's items too.
 - The new Pokémon, on a new game and after every loss, is a random one from the starter list at level
   `EFU_LOST_SOUL_LEVEL` (5; `L_LostSoul`, generated by `gen_efu.py`), "as lost as you are".
 
@@ -249,6 +264,36 @@ The guide is caged in Rumination Field (`GUIDE`, `Script_GuideCage`, which the w
 they beg for help through the webs; after, the webs are torn away, which sets `EFU_FLAG_GUIDE_MET`, and from then on they stand behind the east gate's counter (`Script_GateInit`). The gate's news board says how many
 explorations the player has set out on (`EFU_WORK_RAID_COUNT`, `GimmickGate_AddDateMessage`).
 
+## The clerk's hints and the Hidden Grottoes
+
+The clerk (`Script_Clerk`) says what to do next before the shop opens: the first not yet done of meeting the nurse
+in the forest (`EFU_FLAG_JOY_JOINED`), meeting the tinkerer (`EFU_FLAG_TINKERER_MET`), freeing the guide
+(`EFU_FLAG_GUIDE_MET`), the Day Care Lady (`EFU_FLAG_DAYCARE_JOINED`) and Route 2's locked hole (the first lock's flag),
+or that it's quiet.
+
+The zone's five Hidden Grottoes (Floccesy Ranch's, Pinwheel Forest's, Route 3's two and Route 2's, by their hollow
+numbers `EFU_GROTTO_HOLLOW_*`) each roll on heading out (`L_GrottoRoll`): 40% what the grotto always held, 15% each a
+doctor (Doctor Hale, `TRAINER_DOCTOR_JULES` renamed, with an Audino and a Solosis at 60% and 55% of the level cap,
+softer than the scavs, who heals the party once beaten), a broker (one sale: a Rare
+Candy or a PP Up for $3000, or a random strong TM for $5000), a tough Pokémon evolved early (`EFU_GROTTO_TOUGH_*`:
+Braviary, Leavanny, Zebstrika, Scolipede or Krookodile at 21 or 22, one per grotto), or a trader who gives a level 15
+pseudo-legendary (field trades 24 to 29, `build_grottos`) for a Pokémon of a species from the grotto's route's wild
+Pokémon on this exploration (`EFU_SPECIAL_GROTTO_TRADE`) and $5000. Each is gone once dealt with
+(`EFU_GROTTO_SPENT`). The grotto zone's map scripts are the hack's (`Script_GrottoEnter`, `Script_GrottoEvents`,
+`Script_GrottoResume`), which make the grotto's own Pokémon or item only when it holds what it always did. Route 2's
+grotto entrance moved with Tom's Route 2, so its way out does too (`HIDDEN_HOLLOW_ENTRANCES` in
+`src/ov012/hidden_hollow.c`).
+
+The text of the hack, its Trainers and the original lines its places still show can be exported to a spreadsheet to
+edit: `python3 export_text.py OUT.xlsx`. The hack's voice is grim (Tom, 23 November): slavers, tolls, the dead and
+the sold, with the few kind people (the nurse, the clerk, the Day Care Lady, the guide, the tinkerer) standing out
+against it, and nothing sexual.
+
+`python3 check_warps.py` checks every warp of the base, the zone and the places their warps lead into against the
+maps' collision (both layers, so bridges count): each needs a free tile on or beside it, in the same walkable area
+as the zone's other warps, in a chunk the matrix gives its zone. Run it after moving warps or editing map collision.
+Relic Castle's and Wellspring Cave's floors report as cut off, which is the original's stairs and sand pits.
+
 ## Loot
 
 Every item ball of the zone, its caves and its target runs a loot script of its place (route, cave or target,
@@ -302,7 +347,8 @@ screen has its HP and sex, its held item's icon and name; the lower screen is th
 keys after Give in an item's menu (`ItemMenu_StateEfuPickParty`, its plate lit) gives it that item, swapping for the
 one it holds; picking one after Start in a pocket of holdable items, or A in the empty Items pocket, takes its item if
 the bag has room (`ItemMenu_EfuPartyAction`). Eggs
-and mail are left alone. Arceus's and Genesect's forms follow the item as in the party screen.
+and mail are left alone. Selling in a shop shows the party too, and picking a Pokémon there the same way sells its
+held item as an item of the bag sells (`ItemMenu_EfuSellHeld`, `efuSellSlot`). Arceus's and Genesect's forms follow the item as in the party screen.
 
 ## Items on the ground
 
@@ -352,7 +398,8 @@ confirm, and B closes either menu.
   them, walks over and tells what happened (`Script_ClerkCall`, a trigger inside the door that
   `EFU_WORK_CLERK_CALLED` turns off), then moves to the Poké Mart counter, which then buys anything at the usual half
   price and sells `MART` (`build_base.py`; Poké and Great Balls, Potions, Super Potions, Revives, Full Heals, Repels
-  and Escape Ropes) at the normal prices. It is Nacrene's old mail counter's list (`EFU_MART_SHOP_ID`), run by
+  and Escape Ropes) at three times the normal prices (`EFU_MART_PRICE_FACTOR`, in `ShopUI` of
+  `src/ov036/scrcmd_shop.c`; selling still pays half the original price). It is Nacrene's old mail counter's list (`EFU_MART_SHOP_ID`), run by
   the original clerk's script (global 10110).
 - **The Day Care Lady** is in Route 3's Day Care, whose door is never shut. There she takes Pokémon in but gives
   none back (`Script_DayCareJoin` runs her original script, global 2201, with `EFU_FLAG_DAYCARE_DEPOSIT_ONLY` set,

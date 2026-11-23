@@ -303,6 +303,7 @@ static void ItemMenu_EfuPartyAction(ItemMenuWork *work, s32 slot);
 static void ItemMenu_EfuStartPickParty(ItemMenuWork *work, u16 item);
 static void ItemMenu_StateEfuPickParty(ItemMenuWork *work);
 static void ItemMenu_EfuPickupToBag(ItemMenuWork *work, u16 item);
+static void Efu_SetHeldItem(PartyPkm *pkm, u16 item);
 
 const GameProcFunctions BAG_PROC_FUNCTIONS = { ItemMenuProc_Init, ItemMenuProc_Main, ItemMenuProc_Exit };
 
@@ -1379,7 +1380,8 @@ static void ItemMenu_StateSell(ItemMenuWork *work) {
     work->quantity = 1;
     ItemMenuDisp_ShowMoney(work);
     ItemMenuDisp_SetButtonsActive(work, FALSE);
-    if (ItemMenu_GetSlot(work, ItemMenu_GetCursorIndex(work))->count == 1) {
+    // Escape from Unova: a Pokémon's held item sells alone
+    if (work->efuSellSlot >= 0 || ItemMenu_GetSlot(work, ItemMenu_GetCursorIndex(work))->count == 1) {
         ItemMenu_SetState(work, ItemMenu_StateSellAsk);
         return;
     }
@@ -1441,7 +1443,12 @@ static void ItemMenu_StateSellConfirm(ItemMenuWork *work) {
         switch (pos) {
         case ITEMMENU_CONFIRM_YES:
             price = ItemMenu_GetSellPrice(work->item, work->quantity, work->heapId);
-            ItemMenu_SubItem(work, work->quantity);
+            // Escape from Unova: a held item comes off its Pokémon
+            if (work->efuSellSlot >= 0) {
+                Efu_SetHeldItem(PokeParty_GetPkm(GameData_GetParty(work->gameData), work->efuSellSlot), ITEM_NONE);
+            } else {
+                ItemMenu_SubItem(work, work->quantity);
+            }
             addCashToTotal(getTrainerCardDataBlkAddress(work->gameData), price);
             GFL_SndSEPlay(SEQ_SE_SYS_22);
             ItemMenuDisp_DrawMoney(work);
@@ -1474,6 +1481,11 @@ static void ItemMenu_StateSellWaitMessage(ItemMenuWork *work) {
 
 // Goes back to the list after selling
 static void ItemMenu_StateSellEnd(ItemMenuWork *work) {
+    // Escape from Unova: a Pokémon's held item was up for sale
+    if (work->efuSellSlot >= 0) {
+        work->efuSellSlot = -1;
+        ItemMenuDisp_EfuUpdateParty(work);
+    }
     GFL_BGSysClearScr(3);
     work->drawnScroll = ITEMMENU_DRAWN_SCROLL_INVALID;
     ItemMenu_UpdateList(work);
@@ -2369,8 +2381,9 @@ static BOOL ItemMenuProc_Init(GameProc *proc, u32 *state, void *param, void *dat
     work->printQueue = PrintQueue_Create(0x1000, work->heapId);
     work->keyCursor = KeyCursor_Create(15, TRUE, TRUE, work->heapId);
     work->font = GFL_FontCreate(ARCID_FONT, 0, 0, FALSE, work->heapId);
-    // Escape from Unova: the field bag shows the party
-    work->efuParty = work->mode == BAG_MODE_NORMAL;
+    // Escape from Unova: the field bag shows the party, and so does selling, which sells held items too
+    work->efuParty = work->mode == BAG_MODE_NORMAL || work->mode == BAG_MODE_SELL;
+    work->efuSellSlot = -1;
     ItemMenuDisp_Init(work);
     ItemMenuDisp_CreateWindows(work);
     ItemMenuDisp_LoadListRes(work);
@@ -3155,6 +3168,23 @@ static void ItemMenu_EfuEndPickParty(ItemMenuWork *work) {
     ItemMenu_ReturnToList(work);
 }
 
+// Escape from Unova: selling, the held item of the Pokémon picked goes up for sale as an item of the bag would. Eggs'
+// and mail stay
+static void ItemMenu_EfuSellHeld(ItemMenuWork *work, s32 slot) {
+    PartyPkm *pkm = PokeParty_GetPkm(GameData_GetParty(work->gameData), slot);
+    u16 heldItem = PokeParty_GetParam(pkm, PKM_PARAM_ITEM, NULL);
+
+    ItemMenu_EfuEndPickParty(work);
+    if (heldItem == ITEM_NONE || PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL) || PML_ItemIsMail(heldItem)) {
+        GFL_SndSEPlay(SEQ_SE_BEEP);
+        return;
+    }
+    GFL_SndSEPlay(SEQ_SE_DECIDE1);
+    work->efuSellSlot = slot;
+    work->item = heldItem;
+    ItemMenu_SetState(work, ItemMenu_StateSell);
+}
+
 static void ItemMenu_StateEfuPickParty(ItemMenuWork *work) {
     s32 count = PokeParty_GetPkmCount(GameData_GetParty(work->gameData));
     s32 cursor = work->efuPartyCursor;
@@ -3179,6 +3209,10 @@ static void ItemMenu_StateEfuPickParty(ItemMenuWork *work) {
         }
     } else {
         if (GCTX_HIDGetPressedKeys() & PAD_BUTTON_A) {
+            if (work->mode == BAG_MODE_SELL) {
+                ItemMenu_EfuSellHeld(work, cursor);
+                return;
+            }
             ItemMenu_EfuPartyAction(work, cursor);
             ItemMenu_EfuEndPickParty(work);
             return;

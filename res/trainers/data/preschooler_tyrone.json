@@ -53,7 +53,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Gotcha!\nEmpty your pockets!{be01}"
+            "text": "Gotcha!\nEmpty your pockets, or else!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
@@ -61,7 +61,7 @@
         },
         {
             "type": 2,
-            "text": "I'll get you next time.\nI always do."
+            "text": "The big kids make us do this.\nIf we come back empty, we don't eat."
         }
     ]
 }

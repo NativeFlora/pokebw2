@@ -1,10 +1,10 @@
 {
     "$schema": "trade.schema.json",
-    "nickname": "Gigalith",
-    "trainer_name": "Manny",
-    "species": "SPECIES_GIGALITH",
+    "nickname": "Bagon",
+    "trainer_name": "Vesna",
+    "species": "SPECIES_BAGON",
     "form": 0,
-    "level": 35,
+    "level": 15,
     "ivs": {
         "hp": 20,
         "attack": 31,
@@ -24,8 +24,8 @@
         "smart": 0,
         "tough": 0
     },
-    "held_item": "ITEM_LEPPA_BERRY",
-    "trainer_gender": "GENDER_MALE",
+    "held_item": "ITEM_NONE",
+    "trainer_gender": "GENDER_FEMALE",
     "unk54": 0,
     "region": 2,
     "wanted_species": "SPECIES_EMOLGA",

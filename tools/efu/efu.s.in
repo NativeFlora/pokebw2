@@ -60,6 +60,13 @@
 @LOCK_ENTRIES@
     ScriptEntry Script_RanchBoss
     ScriptEntry Script_GuideCage
+    ScriptEntry Script_GrottoEnter
+    ScriptEntry Script_GrottoEvents
+    ScriptEntry Script_GrottoResume
+    ScriptEntry Script_GrottoDoctor
+    ScriptEntry Script_GrottoBroker
+    ScriptEntry Script_GrottoTrader
+    ScriptEntry Script_GrottoTough
     ScriptEntriesEnd
 
 // Runs before the first fade-in of a new game
@@ -134,9 +141,6 @@ L_BedNo:
 // switching the game off before coming back loses the raid (Script_RaidLost)
 Script_RaidDepart:
     ActorsPauseAll
-    PokePartyGetCount 0x8010, 2
-    WorkCmpConst 0x8010, 0
-    VMJumpIf CMP_EQ, L_RaidNoTeam
     SystemMsg Efu_Text_RaidDepart, 2
     YesNoWin 0x8011
     WorkCmpConst 0x8011, 1
@@ -177,6 +181,12 @@ L_RuminationScavEnd:
     TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_34
     TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_35
     TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_36
+    // What each Hidden Grotto holds this time (EFU_WORK_GROTTO_FIRST), and the grotto doctor ready to fight again
+    .irp i, 0,1,2,3,4
+    VMCall L_GrottoRoll
+    WorkSet EFU_WORK_GROTTO_FIRST + \i, 0x8021
+    .endr
+    TrainerFlagReset TRAINER_DOCTOR_JULES
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
     .irp i, 0,1,2
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
@@ -207,9 +217,6 @@ L_RuminationScavEnd:
     ActorsUnpauseAll
     VMHalt
 
-L_RaidNoTeam:
-    SystemMsg Efu_Text_RaidNoTeam, 2
-    LastKeyWait
 L_RaidStay:
     SystemMsgClose
     ActorCmdExec 255, Movement_StepBackWest
@@ -228,6 +235,17 @@ L_Downfall:
     VMReturn
 
 // The end of a raid, however it went: the real clock and no downfall
+// Losing an exploration: whatever the bag carried that a Pokémon can hold is dropped (Key Items and TMs stay). The
+// team, and what it held, is gone with it
+L_BagLost:
+    EfuSpecial EFU_SPECIAL_BAG_ITEM, 0, 0, 0, 0x8030
+    WorkCmpConst 0x8030, 0
+    VMJumpIf CMP_EQ, L_BagLostDone
+    ItemSub 0x8030, 1, 0x8031
+    VMJump L_BagLost
+L_BagLostDone:
+    VMReturn
+
 L_RaidOver:
     WorkSetConst EFU_WORK_RAID, 0
     WorkSetConst EFU_WORK_RAID_HOUR, 0
@@ -288,6 +306,7 @@ Script_RaidReturn:
 Script_RaidLost:
     ActorsPauseAll
     VMCall L_RaidOver
+    VMCall L_BagLost
     EfuPokePartyClear
     SystemMsg Efu_Text_RaidLost, 2
     LastKeyWait
@@ -304,6 +323,7 @@ Script_RaidLost:
 Script_Blackout:
     ActorsPauseAll
     VMCall L_RaidOver
+    VMCall L_BagLost
     EfuPokePartyClear
     // The battle lost left the screen black (event_battle_lose.c), and the field shows nothing until it fades in
     FadeInBlackQ
@@ -337,26 +357,6 @@ L_LostSoulGot:
     LastKeyWait
     VMReturn
 
-@STARTER_MENUS@
-// 0x8020 is the species, or 0 (Back) or more than any species (B)
-L_ConfirmStarter:
-    WorkCmpConst 0x8020, 0
-    VMJumpIf CMP_EQ, L_ChooseStarter
-    WorkCmpConst 0x8020, 650
-    VMJumpIf CMP_GE, L_ChooseStarter
-    WorkSet 0x8025, 0x8020
-    WordSetPokeSpecies 1, 0x8025
-    SystemMsg Efu_Text_ThisOne, 2
-    YesNoWin 0x8010
-    WorkCmpConst 0x8010, 1
-    VMJumpIf CMP_EQ, L_ChooseStarter
-    PokePartyAdd 0x8010, 0x8025, 0, 5
-    FlagSet EVENT_FLAG_0x0961
-    MEPlay SEQ_ME_POKEGET
-    SystemMsg Efu_Text_StayedWithYou, 2
-    MEWait
-    LastKeyWait
-    VMReturn
     .balign 4, 0
 
 // Picking up loot: what the ball holds is rolled from its place's tiers (gen_efu.py's LOOT_PLACES and LOOT_TIERS), then
@@ -692,6 +692,42 @@ Script_Clerk:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
+    // A hint at what to do next, the first not yet done: the nurse, the tinkerer, the guide, the Day Care Lady, the
+    // hole on Route 2; then the shop
+    FlagGet EFU_FLAG_JOY_JOINED, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_ClerkHintNurse
+    FlagGet EFU_FLAG_TINKERER_MET, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_ClerkHintTinkerer
+    FlagGet EFU_FLAG_GUIDE_MET, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_ClerkHintGuide
+    FlagGet EFU_FLAG_DAYCARE_JOINED, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_ClerkHintDayCare
+    FlagGet EFU_FLAG_LOCK_FIRST + 0, 0x8020
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_EQ, L_ClerkHintHole
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintNone, 0, 0
+    VMJump L_ClerkShop
+L_ClerkHintNurse:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintNurse, 0, 0
+    VMJump L_ClerkShop
+L_ClerkHintTinkerer:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintTinkerer, 0, 0
+    VMJump L_ClerkShop
+L_ClerkHintGuide:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintGuide, 0, 0
+    VMJump L_ClerkShop
+L_ClerkHintDayCare:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintDayCare, 0, 0
+    VMJump L_ClerkShop
+L_ClerkHintHole:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintHole, 0, 0
+L_ClerkShop:
+    LastKeyWait
+    MsgWinCloseAll
     VMStackPush 0x8000
     VMStackPush 0x8001
     WorkSet 0x8000, EFU_MART_SHOP_ID
@@ -974,6 +1010,7 @@ Script_Tinkerer:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
+    FlagSet EFU_FLAG_TINKERER_MET
     ItemCheckAmount EFU_ITEM_BLANK_HM, 1, 0x8020
     WorkCmpConst 0x8020, 0
     VMJumpIf CMP_EQ, L_TinkerBag
@@ -1242,3 +1279,360 @@ L_LockerClose:
 // The world editor's locked doors (EFU_SCRIPT_LOCK_FIRST): each lock's sign, written by gen_efu.py from
 // tools/efu/world_locks.json
 @LOCKS@
+
+// One Hidden Grotto's roll for an exploration, into 0x8021: what it always held (40%), or a doctor, a broker, a tough
+// Pokémon or a trader (15% each)
+L_GrottoRoll:
+    Random 0x8020, 100
+    WorkSetConst 0x8021, EFU_GROTTO_PLAIN
+    WorkCmpConst 0x8020, 40
+    VMJumpIf CMP_LT, L_GrottoRollDone
+    WorkSetConst 0x8021, EFU_GROTTO_DOCTOR
+    WorkCmpConst 0x8020, 55
+    VMJumpIf CMP_LT, L_GrottoRollDone
+    WorkSetConst 0x8021, EFU_GROTTO_BROKER
+    WorkCmpConst 0x8020, 70
+    VMJumpIf CMP_LT, L_GrottoRollDone
+    WorkSetConst 0x8021, EFU_GROTTO_TOUGH
+    WorkCmpConst 0x8020, 85
+    VMJumpIf CMP_LT, L_GrottoRollDone
+    WorkSetConst 0x8021, EFU_GROTTO_TRADER
+L_GrottoRollDone:
+    VMReturn
+
+// The grotto the player is in: 0x8022 its hollow number, 0x8020 its place among the zone's grottoes (EFU_GROTTO_COUNT
+// for another), 0x8021 what it holds this exploration (EFU_GROTTO_PLAIN for another)
+L_GrottoKind:
+    WorkSet 0x8022, EFU_WORK_GROTTO_HOLLOW
+    WorkSetConst 0x8020, EFU_GROTTO_COUNT
+    WorkSetConst 0x8021, EFU_GROTTO_PLAIN
+    // Written out, here and below: the C preprocessor runs before .irp, so EFU_GROTTO_HOLLOW_\i would stay an
+    // undefined name that assembles as 0
+    WorkCmpConst 0x8022, EFU_GROTTO_HOLLOW_0
+    VMJumpIf CMP_EQ, L_GrottoKind0
+    WorkCmpConst 0x8022, EFU_GROTTO_HOLLOW_1
+    VMJumpIf CMP_EQ, L_GrottoKind1
+    WorkCmpConst 0x8022, EFU_GROTTO_HOLLOW_2
+    VMJumpIf CMP_EQ, L_GrottoKind2
+    WorkCmpConst 0x8022, EFU_GROTTO_HOLLOW_3
+    VMJumpIf CMP_EQ, L_GrottoKind3
+    WorkCmpConst 0x8022, EFU_GROTTO_HOLLOW_4
+    VMJumpIf CMP_EQ, L_GrottoKind4
+    VMReturn
+    .irp i, 0,1,2,3,4
+L_GrottoKind\i:
+    WorkSetConst 0x8020, \i
+    WorkSet 0x8021, EFU_WORK_GROTTO_FIRST + \i
+    VMReturn
+    .endr
+
+// Marks the grotto the player is in as dealt with for this exploration (after L_GrottoKind)
+L_GrottoSpent:
+    .irp i, 0,1,2,3,4
+    WorkCmpConst 0x8020, \i
+    VMJumpIf CMP_NE, L_GrottoSpentNot\i
+    WorkSetConst EFU_WORK_GROTTO_FIRST + \i, EFU_GROTTO_SPENT
+L_GrottoSpentNot\i:
+    .endr
+    VMReturn
+
+// As a grotto loads (the hidden_grotto zone's init script): every occupant of the hack's hidden, then the one this
+// grotto holds shown
+Script_GrottoEnter:
+    VMCall L_GrottoKind
+    FlagSet EFU_FLAG_GROTTO_DOCTOR
+    FlagSet EFU_FLAG_GROTTO_BROKER
+    FlagSet EFU_FLAG_GROTTO_TRADER
+    .irp i, 0,1,2,3,4
+    FlagSet EFU_FLAG_GROTTO_TOUGH_FIRST + \i
+    .endr
+    WorkCmpConst 0x8021, EFU_GROTTO_DOCTOR
+    VMJumpIf CMP_NE, L_GrottoEnterBroker
+    FlagReset EFU_FLAG_GROTTO_DOCTOR
+L_GrottoEnterBroker:
+    WorkCmpConst 0x8021, EFU_GROTTO_BROKER
+    VMJumpIf CMP_NE, L_GrottoEnterTrader
+    FlagReset EFU_FLAG_GROTTO_BROKER
+L_GrottoEnterTrader:
+    WorkCmpConst 0x8021, EFU_GROTTO_TRADER
+    VMJumpIf CMP_NE, L_GrottoEnterTough
+    FlagReset EFU_FLAG_GROTTO_TRADER
+L_GrottoEnterTough:
+    WorkCmpConst 0x8021, EFU_GROTTO_TOUGH
+    VMJumpIf CMP_NE, L_GrottoEnterDone
+    .irp i, 0,1,2,3,4
+    WorkCmpConst 0x8020, \i
+    VMJumpIf CMP_NE, L_GrottoEnterToughNot\i
+    FlagReset EFU_FLAG_GROTTO_TOUGH_FIRST + \i
+L_GrottoEnterToughNot\i:
+    .endr
+L_GrottoEnterDone:
+    VMHalt
+
+// The grotto's own Pokémon or item, as the original's map scripts make them (hidden_grotto.s's 4 and 7), only when it
+// holds what it always did
+Script_GrottoEvents:
+    VMCall L_GrottoKind
+    WorkCmpConst 0x8021, EFU_GROTTO_PLAIN
+    VMJumpIf CMP_NE, L_GrottoEventsDone
+    HiddenHollowCreateEvents
+    VMCall L_GrottoPlace
+L_GrottoEventsDone:
+    VMHalt
+
+Script_GrottoResume:
+    VMCall L_GrottoKind
+    WorkCmpConst 0x8021, EFU_GROTTO_PLAIN
+    VMJumpIf CMP_NE, L_GrottoEventsDone
+    VMCall L_GrottoPlace
+    VMHalt
+
+L_GrottoPlace:
+    WorkSetConst 0x8028, 0
+    HiddenHollowGetParam 6, 0x8028
+    WorkCmpConst 0x8028, 1
+    VMJumpIf CMP_EQ, L_GrottoPlaceDone
+    ObjInitPointGPos 0, 15, 0, 12
+L_GrottoPlaceDone:
+    WorkSetConst 0x8028, 0
+    VMReturn
+
+// The grotto's NPC leaves, its flag set, and the grotto is spent for this exploration
+L_GrottoLeave:
+    VMCall L_GrottoKind
+    VMCall L_GrottoSpent
+    FadeEx 3, 0, 16, 2
+    FadeExWait
+    ActorDelete 0x8011
+    FadeEx 3, 16, 0, 2
+    FadeExWait
+    VMReturn
+
+// The grotto doctor: heals the party once beaten (TRAINER_DOCTOR_JULES)
+Script_GrottoDoctor:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoDoctorIntro, 0x8011, 2, 0
+    ActorMsgClose
+    CallTrainerBattle TRAINER_DOCTOR_JULES, 0, 0
+    TrainerBattleIsVictory 0x8010
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_GrottoDoctorLost
+    CallTrainerBattleEnd
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoDoctorHeal, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    PokePartyRecoverAll
+    MEPlay SEQ_ME_ASA
+    MEWait
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoDoctorDone, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    FlagSet EFU_FLAG_GROTTO_DOCTOR
+    VMCall L_GrottoLeave
+    ActorsUnpauseAll
+    VMHalt
+
+L_GrottoDoctorLost:
+    CallTrainerLose
+    VMHalt
+
+// The grotto broker: one sale of a rare item, then gone
+Script_GrottoBroker:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    MoneyWinDisp 31, 1
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoBrokerIntro, 0, 0
+    ListMenuAnchorTopRight 31, 13, 0, 1, 0x8021
+    ListMenuAdd Efu_Text_GrottoBrokerCandy, 65535, 0
+    ListMenuAdd Efu_Text_GrottoBrokerPPUp, 65535, 1
+    ListMenuAdd Efu_Text_GrottoBrokerTM, 65535, 2
+    ListMenuAdd Efu_Text_GrottoBrokerNo, 65535, 3
+    ListMenuShow
+    WorkCmpConst 0x8021, 3
+    VMJumpIf CMP_GE, L_GrottoBrokerNo
+    WorkSetConst 0x800c, ITEM_RARE_CANDY
+    WorkSetConst 0x8022, EFU_GROTTO_CANDY_PRICE
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_NE, L_GrottoBrokerNotPPUp
+    WorkSetConst 0x800c, ITEM_PP_UP
+    WorkSetConst 0x8022, EFU_GROTTO_PP_UP_PRICE
+L_GrottoBrokerNotPPUp:
+    WorkCmpConst 0x8021, 2
+    VMJumpIf CMP_NE, L_GrottoBrokerPicked
+    WorkSetConst 0x8022, EFU_GROTTO_TM_PRICE
+    Random 0x8023, 6
+    WorkSetConst 0x800c, ITEM_TM13
+    WorkCmpConst 0x8023, 1
+    VMJumpIf CMP_NE, L_GrottoBrokerTmNot1
+    WorkSetConst 0x800c, EFU_GROTTO_TM_1
+L_GrottoBrokerTmNot1:
+    WorkCmpConst 0x8023, 2
+    VMJumpIf CMP_NE, L_GrottoBrokerTmNot2
+    WorkSetConst 0x800c, EFU_GROTTO_TM_2
+L_GrottoBrokerTmNot2:
+    WorkCmpConst 0x8023, 3
+    VMJumpIf CMP_NE, L_GrottoBrokerTmNot3
+    WorkSetConst 0x800c, EFU_GROTTO_TM_3
+L_GrottoBrokerTmNot3:
+    WorkCmpConst 0x8023, 4
+    VMJumpIf CMP_NE, L_GrottoBrokerTmNot4
+    WorkSetConst 0x800c, EFU_GROTTO_TM_4
+L_GrottoBrokerTmNot4:
+    WorkCmpConst 0x8023, 5
+    VMJumpIf CMP_NE, L_GrottoBrokerTmNot5
+    WorkSetConst 0x800c, EFU_GROTTO_TM_5
+L_GrottoBrokerTmNot5:
+L_GrottoBrokerPicked:
+    MoneyCheck 0x8023, 0x8022
+    WorkCmpConst 0x8023, 0
+    VMJumpIf CMP_EQ, L_GrottoBrokerPoor
+    ItemCheckSpace 0x800c, 1, 0x8023
+    WorkCmpConst 0x8023, 0
+    VMJumpIf CMP_EQ, L_GrottoBrokerFull
+    MoneySub 0x8022
+    MoneyWinUpdate
+    SEPlay SEQ_SE_SYS_08
+    ItemAdd 0x800c, 1, 0x8023
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoBrokerSold, 0, 0
+    LastKeyWait
+    MsgWinCloseAll
+    WordSetItemNameEx 0, 0x800c, 1, 0
+    MEPlay SEQ_ME_ITEM
+    SystemMsg Efu_Text_GrottoReceived, 2
+    MEWait
+    LastKeyWait
+    SystemMsgClose
+    MoneyWinClose
+    FlagSet EFU_FLAG_GROTTO_BROKER
+    VMCall L_GrottoLeave
+    ActorsUnpauseAll
+    VMHalt
+
+L_GrottoBrokerPoor:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoBrokerPoor, 0, 0
+    VMJump L_GrottoBrokerEnd
+L_GrottoBrokerFull:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoBrokerFull, 0, 0
+    VMJump L_GrottoBrokerEnd
+L_GrottoBrokerNo:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoBrokerBye, 0, 0
+L_GrottoBrokerEnd:
+    LastKeyWait
+    MsgWinCloseAll
+    MoneyWinClose
+    ActorsUnpauseAll
+    VMHalt
+
+// The grotto trader: a pseudo-legendary (one of the trades from EFU_TRADE_FIRST) for a Pokémon of the species they
+// want, one of the grotto's route's wild Pokémon on this exploration, and EFU_GROTTO_TRADE_PRICE
+Script_GrottoTrader:
+    ActorsPauseAll
+    SEPlay SEQ_SE_MESSAGE
+    ActorSetEyeToEye
+    VMCall L_GrottoKind
+    EfuSpecial EFU_SPECIAL_GROTTO_TRADE, 0x8022, EFU_GROTTO_TRADE_WANT, 0, 0x8024
+    EfuSpecial EFU_SPECIAL_GROTTO_TRADE, 0x8022, EFU_GROTTO_TRADE_OFFER, 0, 0x8025
+    WorkAdd 0x8025, EFU_TRADE_FIRST
+    FieldTradeGetSpecies 0x8026, 0x8025
+    WordSetPokeSpecies 0, 0x8026
+    WordSetPokeSpecies 1, 0x8024
+    // The money window takes the word set's numbers for itself, so the price goes in after it
+    MoneyWinDisp 31, 1
+    WorkSetConst 0x8027, EFU_GROTTO_TRADE_PRICE
+    WordSetNumber 2, 0x8027, 4
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderOffer, 0, 0
+    YesNoWin 0x8010
+    WorkCmpConst 0x8010, 1
+    VMJumpIf CMP_EQ, L_GrottoTraderNo
+    MoneyCheck 0x8010, 0x8027
+    WorkCmpConst 0x8010, 0
+    VMJumpIf CMP_EQ, L_GrottoTraderPoor
+    MsgWinCloseAll
+    CallPokeSelect 0, 0x8021, 0x8020, 0
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_GrottoTraderNo
+    PokePartyGetSpecies 0x8010, 0x8020
+    WorkCmpWork 0x8010, 0x8024
+    VMJumpIf CMP_NE, L_GrottoTraderWrong
+    MoneySub 0x8027
+    MoneyWinUpdate
+    MoneyWinClose
+    FieldTradeStart 0x8025, 0x8020
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderDone, 0, 0
+    LastKeyWait
+    MsgWinCloseAll
+    FlagSet EFU_FLAG_GROTTO_TRADER
+    VMCall L_GrottoLeave
+    ActorsUnpauseAll
+    VMHalt
+
+L_GrottoTraderWrong:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderWrong, 0, 0
+    VMJump L_GrottoTraderEnd
+L_GrottoTraderPoor:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_NotEnoughMoney, 0, 0
+    VMJump L_GrottoTraderEnd
+L_GrottoTraderNo:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderBye, 0, 0
+L_GrottoTraderEnd:
+    LastKeyWait
+    MsgWinCloseAll
+    MoneyWinClose
+    ActorsUnpauseAll
+    VMHalt
+
+// A grotto's tough Pokémon, evolved early (EFU_GROTTO_TOUGH_*), its NPC that grotto's: a wild battle; beaten or caught,
+// it is gone for this exploration
+Script_GrottoTough:
+    ActorsPauseAll
+    VMCall L_GrottoKind
+    WorkCmpConst 0x8020, 0
+    VMJumpIf CMP_NE, L_GrottoToughNot0
+    WorkSetConst 0x8024, EFU_GROTTO_TOUGH_SPECIES_0
+    WorkSetConst 0x8025, EFU_GROTTO_TOUGH_LEVEL_0
+L_GrottoToughNot0:
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_NE, L_GrottoToughNot1
+    WorkSetConst 0x8024, EFU_GROTTO_TOUGH_SPECIES_1
+    WorkSetConst 0x8025, EFU_GROTTO_TOUGH_LEVEL_1
+L_GrottoToughNot1:
+    WorkCmpConst 0x8020, 2
+    VMJumpIf CMP_NE, L_GrottoToughNot2
+    WorkSetConst 0x8024, EFU_GROTTO_TOUGH_SPECIES_2
+    WorkSetConst 0x8025, EFU_GROTTO_TOUGH_LEVEL_2
+L_GrottoToughNot2:
+    WorkCmpConst 0x8020, 3
+    VMJumpIf CMP_NE, L_GrottoToughNot3
+    WorkSetConst 0x8024, EFU_GROTTO_TOUGH_SPECIES_3
+    WorkSetConst 0x8025, EFU_GROTTO_TOUGH_LEVEL_3
+L_GrottoToughNot3:
+    WorkCmpConst 0x8020, 4
+    VMJumpIf CMP_NE, L_GrottoToughNot4
+    WorkSetConst 0x8024, EFU_GROTTO_TOUGH_SPECIES_4
+    WorkSetConst 0x8025, EFU_GROTTO_TOUGH_LEVEL_4
+L_GrottoToughNot4:
+    WordSetPokeSpecies 0, 0x8024
+    PokeVoicePlay 0x8024, 0
+    SystemMsg Efu_Text_GrottoTough, 2
+    LastKeyWait
+    SystemMsgClose
+    CallWildBattle 0x8024, 0x8025, 0
+    WildBattleIsVictory 0x8010
+    WorkCmpConst 0x8010, 1
+    VMJumpIf CMP_NE, L_GrottoToughLost
+    ActorDelete 0x8011
+    CallWildBattleEnd
+    VMCall L_GrottoKind
+    VMCall L_GrottoSpent
+    .irp i, 0,1,2,3,4
+    FlagSet EFU_FLAG_GROTTO_TOUGH_FIRST + \i
+    .endr
+    ActorsUnpauseAll
+    VMHalt
+
+L_GrottoToughLost:
+    CallWildLose
+    VMHalt

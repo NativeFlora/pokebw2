@@ -47,7 +47,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "This uniform was all I could find.\nThe Pokémon are all I have left!{be01}"
+            "text": "I buried the last of the kids last\nweek. I won't bury my Pokémon!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

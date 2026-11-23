@@ -63,7 +63,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Fresh legs! Fresh pockets!\nLet's see what you've got!{be01}"
+            "text": "Fresh legs! Fresh pockets!\nThe slavers will love you!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
@@ -71,7 +71,7 @@
         },
         {
             "type": 2,
-            "text": "The forest past the old gate is\nfull of stuff. Full of trouble too."
+            "text": "The forest past the old gate is\nfull of stuff. Full of graves, too."
         }
     ]
 }

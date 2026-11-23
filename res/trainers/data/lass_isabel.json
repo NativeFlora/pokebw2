@@ -31,7 +31,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Pretty bag you've got.\nIt'd look better on me!{be01}"
+            "text": "Pretty bag you've got.\nIt'll look better on me!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

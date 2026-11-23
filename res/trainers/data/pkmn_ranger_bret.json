@@ -49,7 +49,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "This is my patch.\nYou're trespassing!{be01}"
+            "text": "This is my patch. Trespassers\npay the toll, or pay in blood!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

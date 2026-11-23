@@ -57,7 +57,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "I used to protect this forest.\nNow it protects me!{be01}"
+            "text": "I used to protect this forest.\nNow I sell whatever walks into it!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

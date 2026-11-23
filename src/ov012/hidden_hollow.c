@@ -54,7 +54,8 @@ static const HiddenHollowEntrance HIDDEN_HOLLOW_ENTRANCES[20] = {
     {ZONE_PINWHEEL_FOREST, 628, 5, 619},
     {ZONE_ROUTE_3, 728, 0, 582},
     {ZONE_ROUTE_3, 703, 0, 576},
-    {ZONE_ROUTE_2, 751, 0, 634},
+    // Escape from Unova: below its entrance's new place on the rebuilt Route 2 (world_edits.json), once (751, 0, 634)
+    {ZONE_ROUTE_2, 779, 0, 580},
     {ZONE_ROUTE_18, 620, 0, 741},
 };
 

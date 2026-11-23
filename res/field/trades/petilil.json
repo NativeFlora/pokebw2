@@ -1,10 +1,10 @@
 {
     "$schema": "trade.schema.json",
-    "nickname": "Petulia",
-    "trainer_name": "Calla",
-    "species": "SPECIES_PETILIL",
+    "nickname": "Dratini",
+    "trainer_name": "Vesna",
+    "species": "SPECIES_DRATINI",
     "form": 0,
-    "level": 20,
+    "level": 15,
     "ivs": {
         "hp": 20,
         "attack": 20,
@@ -13,7 +13,7 @@
         "special_attack": 31,
         "special_defense": 20
     },
-    "ability_slot": 1,
+    "ability_slot": 0,
     "nature": "NATURE_TIMID",
     "sex": "GENDER_FEMALE",
     "trainer_id": 65217,
@@ -24,7 +24,7 @@
         "smart": 0,
         "tough": 0
     },
-    "held_item": "ITEM_POWER_ANKLET",
+    "held_item": "ITEM_NONE",
     "trainer_gender": "GENDER_FEMALE",
     "unk54": 0,
     "region": 2,

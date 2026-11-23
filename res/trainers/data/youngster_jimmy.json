@@ -55,15 +55,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "This place was full of kids once.\nNow it's mine!{be01}"
+            "text": "This place was full of kids once.\nNow the cages are full instead!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Okay, okay! I'm going!"
+            "text": "Okay! Okay! Take the keys!"
         },
         {
             "type": 2,
-            "text": "Don't come back here. There's\nnothing left worth taking."
+            "text": "Don't come back here. There's\nnothing left worth selling."
         }
     ]
 }

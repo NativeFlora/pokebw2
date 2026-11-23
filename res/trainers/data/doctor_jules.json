@@ -1,18 +1,33 @@
 {
     "$schema": "trainer.schema.json",
-    "name": "Jules",
+    "name": "Hale",
     "class": "TRAINER_CLASS_DOCTOR",
     "battle_style": "BTL_STYLE_SINGLE",
-    "items": [ "ITEM_FULL_HEAL", "ITEM_MAX_POTION" ],
-    "ai_flags": [ "AI_FLAG_BASIC", "AI_FLAG_EVAL_ATTACK", "AI_FLAG_EXPERT" ],
+    "items": [
+        "ITEM_FULL_HEAL",
+        "ITEM_MAX_POTION"
+    ],
+    "ai_flags": [
+        "AI_FLAG_BASIC",
+        "AI_FLAG_EVAL_ATTACK",
+        "AI_FLAG_EXPERT"
+    ],
     "heals": false,
     "money": 15,
     "reward": "ITEM_MAX_REVIVE",
     "party": [
         {
-            "species": "SPECIES_CHANSEY",
+            "species": "SPECIES_AUDINO",
             "form": 0,
-            "level": 62,
+            "level": 13,
+            "difficulty": 0,
+            "gender": 0,
+            "ability": 0
+        },
+        {
+            "species": "SPECIES_SOLOSIS",
+            "form": 0,
+            "level": 12,
             "difficulty": 0,
             "gender": 0,
             "ability": 0
@@ -21,19 +36,19 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Doctor! Is there a Doctor\nin the audience?{be01}\nYes, I am a Doctor.\nLet's get into a battle.{be01}"
+            "text": "Let's see if you're worth patching up.{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Oh! My Pokémon is all worn out!"
+            "text": "All right, all right!\nYou've made your point."
         },
         {
             "type": 15,
-            "text": "When Pokémon lose energy, Max Revive!{be01}"
+            "text": "Let's see if you're worth patching up.{be01}"
         },
         {
             "type": 16,
-            "text": "When I am watching a game,\nI just keep worrying about{be00}\nwhether an athlete will be injured."
+            "text": "All right, all right!\nYou've made your point."
         }
     ]
 }

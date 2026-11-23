@@ -39,15 +39,15 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "Ooh, a straggler!\nWhat's in the bag?{be01}"
+            "text": "Ooh, a straggler! Hand over the bag,\nor I take it off your corpse!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
-            "text": "Ugh! Fine, keep your junk!"
+            "text": "Ugh! Keep your junk, then!"
         },
         {
             "type": 2,
-            "text": "Everything out here belongs to\nwhoever's still standing."
+            "text": "Out here, everything belongs to\nwhoever's still breathing."
         }
     ]
 }

@@ -31,7 +31,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "I don't fish for food anymore.\nI fish for stragglers.{be01}"
+            "text": "I don't fish for food anymore.\nI fish for stragglers to sell.{be01}"
         },
         {
             "type": "TRMSG_LOSE",
@@ -39,7 +39,7 @@
         },
         {
             "type": 2,
-            "text": "Nobody's left to stop me taking\nwhatever I want. Except you, I guess."
+            "text": "The slavers pay well for kids\nlike you. Remember that."
         }
     ]
 }

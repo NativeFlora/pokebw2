@@ -101,6 +101,8 @@ enum {
 void CreateEncountManager(EncountManager *manager, GameData *gameData, int encType, u32 mode, u16 weather);
 u32 FieldEncount_CalcEncountRate(EncountManager *manager, GameData *gameData, u32 rate);
 int FieldEncount_GenWilds(EncData *encData, EncountManager *manager, u16 zoneId, WildPkmParam *params);
+// Escape from Unova: a random number that stays the same through an exploration, for a key
+u32 Efu_ExplorationRandom(GameData *gameData, u32 key);
 // Escape from Unova: the species a wild slot holds on this exploration, by its slot counting every table's one after
 // another (EncData's grass on)
 u16 Efu_WildSwap(GameData *gameData, u16 zoneId, u32 slot, u16 species);

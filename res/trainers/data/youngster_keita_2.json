@@ -39,7 +39,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "I heard you coming a mile off.\nDrop the bag!{be01}"
+            "text": "I heard you coming a mile off.\nDrop the bag, or drop dead!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

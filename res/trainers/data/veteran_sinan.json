@@ -102,7 +102,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "I've outlasted everyone in these\nwoods. I'll outlast you too!{be01}"
+            "text": "I've buried everyone else in these\nwoods. I'll bury you too!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

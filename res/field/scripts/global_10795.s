@@ -37,6 +37,8 @@ L_0058:
     VMJumpIf CMP_STACK, L_0089
     JoinAvenueRecordActivity 27
     SEPlay SEQ_SE_KAIDAN
+    // Escape from Unova: the grotto followed, for its map script (build_raid.py)
+    WorkSet 0x4156, 0x8020
     HiddenHollowCallWarpIn 0x8020
 
 L_0089:

@@ -1,10 +1,10 @@
 {
     "$schema": "trade.schema.json",
-    "nickname": "Bucky",
-    "trainer_name": "Lillian",
-    "species": "SPECIES_ROTOM",
+    "nickname": "Gible",
+    "trainer_name": "Vesna",
+    "species": "SPECIES_GIBLE",
     "form": 0,
-    "level": 60,
+    "level": 15,
     "ivs": {
         "hp": 20,
         "attack": 20,
@@ -24,7 +24,7 @@
         "smart": 0,
         "tough": 0
     },
-    "held_item": "ITEM_MAX_ELIXIR",
+    "held_item": "ITEM_NONE",
     "trainer_gender": "GENDER_FEMALE",
     "unk54": 0,
     "region": 2,

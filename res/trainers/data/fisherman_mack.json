@@ -47,7 +47,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "You walked a long way from home.\nToo bad it ends here!{be01}"
+            "text": "You walked a long way from home.\nShame it ends in a ditch!{be01}"
         },
         {
             "type": "TRMSG_LOSE",

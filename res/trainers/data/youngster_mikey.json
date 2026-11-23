@@ -31,7 +31,7 @@
     "messages": [
         {
             "type": "TRMSG_START",
-            "text": "This is my road!\nPay the toll!{be01}"
+            "text": "This is my road!\nPay the toll, or bleed for it!{be01}"
         },
         {
             "type": "TRMSG_LOSE",
