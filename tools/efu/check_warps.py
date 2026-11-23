@@ -30,6 +30,11 @@ def zone_info(zone):
     m = jload(R + 'matrices/' + mname + '.json')
     return z, ev, mname, m
 
+# Every zone with a chunk in the hack's matrices starts too (Route 20 and the ranch join by walking, not by warps)
+for mn in sorted(EFU_MATRICES):
+    for row in (jload(R + 'matrices/' + mn + '.json') or {}).get('zones') or []:
+        START += [zz for zz in row if zz and zz not in START]
+
 # The zones: the starts, then whatever their warps lead into, staying within EFU matrices plus one step out
 zones, q = {}, deque((s, 0) for s in START)
 while q:
@@ -47,6 +52,8 @@ while q:
 # transitions (WARP_TRANSITION_WALK_IN_2 and WARP_TRANSITION_WALK_IN)
 WARP_SIDES = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
 WALK_IN_TRANSITIONS = {2, 4}
+# The paid and free ways home end at the east gate's Route 3 door, which leads back to Route 3 alone
+ONE_WAY_DESTINATIONS = {'ZONE_NACRENE_GATE'}
 
 def blocked(m, x, z):
     if x < 0 or z < 0 or z // 32 >= len(m['maps']) or x // 32 >= len(m['maps'][0]): return True
@@ -55,6 +62,17 @@ def blocked(m, x, z):
     t = tiles(model)
     if t is None: return True
     return bool(t[(x % 32, z % 32)])
+
+# The ground layer alone: a walk-in warp's side must be free there, where the player arrives and walks (the second
+# layer is a bridge's, and some maps' second layers are free where the ground is trees)
+def free_on_ground(m, x, z):
+    if blocked(m, x, z): return False
+    model = m['maps'][z // 32][x // 32]
+    d = R + 'maps/models/' + model[10:].lower() + '/terrain_0.csv'
+    if d not in gcache:
+        gcache[d] = {(int(r['x']), int(r['z'])): int(r['tile_type']) for r in csv.DictReader(open(d))}
+    return not gcache[d][(x % 32, z % 32)] & 0x10000
+gcache = {}
 
 def owner(m, x, z):
     zs = m.get('zones')
@@ -78,7 +96,7 @@ for zone, info in zones.items():
         free_on = [p for p in rect if not blocked(m, *p)]
         rects.append((i, w, rect, free_on, free_near))
         side = WARP_SIDES.get(w['unk4']) if w['transition'] in WALK_IN_TRANSITIONS else None
-        if side and not any((x + side[0], zz + side[1]) not in rect and not blocked(m, x + side[0], zz + side[1])
+        if side and not any((x + side[0], zz + side[1]) not in rect and free_on_ground(m, x + side[0], zz + side[1])
                             for x, zz in rect):
             wrong_side.add(i)
     # Walkable areas: flood fill from each warp's free tiles
@@ -115,6 +133,12 @@ for zone, info in zones.items():
             issues.append('faces a wall: its direction %d says the player walks in from a side with no free tile' % w['unk4'])
         elif main not in cs and len(sizes) > 1:
             issues.append('cut off: its walkable area has %d tiles, the main one %d' % (max(sizes[c] for c in cs), sizes[main]))
+        dest = zones.get(w['zone'])
+        back = dest[1].get('warps', []) if dest else None
+        if back is not None:
+            if w['warp'] >= len(back): issues.append('its destination, warp %d, does not exist' % w['warp'])
+            elif back[w['warp']]['zone'] != zone and w['zone'] not in ONE_WAY_DESTINATIONS:
+                issues.append('arrives at warp %d, which leads to %s, not back here' % (w['warp'], back[w['warp']]['zone'][5:]))
         if issues:
             problems += 1
             print('%-28s warp %d -> %s %d at %s (%dx%d): %s' % (zone[5:], i, w['zone'][5:], w['warp'], rect[0],

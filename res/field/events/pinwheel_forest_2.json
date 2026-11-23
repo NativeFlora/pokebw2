@@ -676,7 +676,7 @@
         {
             "zone": "ZONE_ROUTE_2",
             "warp": 2,
-            "unk4": 4,
+            "unk4": 3,
             "transition": 4,
             "grid": {
                 "x": 1384,

@@ -629,7 +629,7 @@
         },
         {
             "zone": "ZONE_RELIC_CASTLE",
-            "warp": 1,
+            "warp": 2,
             "unk4": 1,
             "transition": 4,
             "grid": {

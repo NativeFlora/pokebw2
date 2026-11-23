@@ -294,9 +294,13 @@ maps' collision (both layers, so bridges count): each needs a free tile on or be
 as the zone's other warps, in a chunk the matrix gives its zone. A walk-in warp (transition 2 or 4) also needs a free
 tile on the side its direction names (`unk4`: 1 up, 2 down, 3 left, 4 right), which is the side the player walks in
 from and steps out to: the game takes the warp only when the player walks into it facing the other way, so a wrong
-direction leaves the warp dead (Route 2's way into the forest, alpha 8.5). Run it after moving warps or editing map
-collision.
-Relic Castle's and Wellspring Cave's floors report as cut off, which is the original's stairs and sand pits.
+direction leaves the warp dead (Route 2's way into the forest, alpha 8.5) or walks the arriving player into a wall
+(the forest's way back, alpha 8.6). That side is judged on the ground layer alone, since some maps' second layer is
+free where the ground is trees. Each warp must also arrive at a warp that leads back to it, except the ways home to
+the east gate (`ONE_WAY_DESTINATIONS`). Every zone with a chunk in the hack's matrices is checked. Run it after moving
+warps or editing map collision.
+Relic Castle's and Wellspring Cave's floors and the Cave of Being's ledge on Route 20 report as cut off, as in the
+original maps.
 
 ## Loot
 

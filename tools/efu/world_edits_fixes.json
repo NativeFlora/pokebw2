@@ -239,7 +239,7 @@
    "value": {
     "zone": "ZONE_ROUTE_2",
     "warp": 2,
-    "unk4": 4,
+    "unk4": 3,
     "transition": 4,
     "grid": {
      "x": 1384,
@@ -247,6 +247,40 @@
      "z": 1176,
      "width": 1,
      "height": 5,
+     "unk0a": 0
+    }
+   }
+  },
+  {
+   "op": "event",
+   "zone": "ZONE_ROUTE_2",
+   "kind": "warps",
+   "action": "set",
+   "match": {
+    "zone": "ZONE_RELIC_CASTLE",
+    "warp": 1,
+    "unk4": 1,
+    "transition": 4,
+    "grid": {
+     "x": 12456,
+     "y": 0,
+     "z": 9608,
+     "width": 2,
+     "height": 1,
+     "unk0a": 0
+    }
+   },
+   "value": {
+    "zone": "ZONE_RELIC_CASTLE",
+    "warp": 2,
+    "unk4": 1,
+    "transition": 4,
+    "grid": {
+     "x": 12456,
+     "y": 0,
+     "z": 9608,
+     "width": 2,
+     "height": 1,
      "unk0a": 0
     }
    }
