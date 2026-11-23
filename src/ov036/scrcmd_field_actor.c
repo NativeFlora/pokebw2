@@ -5,10 +5,12 @@
 // GPL-3.0)
 // Additional helper and table names are our descriptive guesses.
 #include "types.h"
+#include "constants/abilities.h"
 #include "constants/arc.h"
 #include "constants/directions.h"
 #include "constants/items.h"
 #include "constants/move_codes.h"
+#include "constants/moves.h"
 #include "constants/obj_codes.h"
 #include "constants/pokemon.h"
 #include "constants/sound.h"
@@ -1103,7 +1105,7 @@ BOOL Scrcmd_FieldActor_ActorFallDownToXZ(VM *vm, FieldScriptEnv *env) {
 
 // Escape from Unova: a species of the wild Pokémon of a zone on this exploration (Efu_WildSwap), from its grass, by
 // pick among those it has, or SPECIES_NONE when it has none
-static u16 Efu_ZoneWildSpecies(GameData *gameData, u16 zoneId, u32 pick) {
+u16 Efu_ZoneWildSpecies(GameData *gameData, u16 zoneId, u32 pick) {
     ArcTool *arc = GFL_ArcSysCreateFileHandle(ARCID_ENCOUNTDATA, HEAPID_TAIL(HEAPID_FIELDMAP));
     EncData encData;
     u16 species[12 * 3];
@@ -1212,6 +1214,38 @@ BOOL Scrcmd_Efu_Special(VM *vm, FieldScriptEnv *env) {
 
             PokeDex_RegistPkm(pokedex, pkm);
             GFL_HeapFree(pkm);
+        }
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_DEV_TEST) {
+        PokeParty *party = GameData_GetParty(FieldScriptEnv_GetGameData(env));
+
+        for (i = 0; i < PokeParty_GetPkmCount(party); i++) {
+            PartyPkm *pkm = PokeParty_GetPkm(party, i);
+            u32 species = PokeParty_GetParam(pkm, PKM_PARAM_SPECIES, NULL);
+
+            if (species == SPECIES_DITTO) {
+                PokeParty_SetParam(pkm, PKM_PARAM_ABILITY, ABILITY_IMPOSTER);
+                PokeParty_SetParam(pkm, PKM_PARAM_HIDDEN_ABILITY, TRUE);
+            } else if (species == SPECIES_SAMUROTT) {
+                PokeParty_SetMove(pkm, MOVE_CUT, 0);
+                PokeParty_SetMove(pkm, MOVE_STRENGTH, 1);
+                PokeParty_SetMove(pkm, MOVE_SURF, 2);
+                PokeParty_SetMove(pkm, MOVE_WATERFALL, 3);
+            }
+        }
+        return FALSE;
+    }
+    if (op == EFU_SPECIAL_POKE_LEVEL) {
+        PokeParty *party = GameData_GetParty(FieldScriptEnv_GetGameData(env));
+
+        *result = 0;
+        if (item < PokeParty_GetPkmCount(party)) {
+            PartyPkm *pkm = PokeParty_GetPkm(party, item);
+
+            if (!PokeParty_GetParam(pkm, PKM_PARAM_IS_EGG, NULL)) {
+                *result = PokeParty_GetParam(pkm, PKM_PARAM_LEVEL, NULL);
+            }
         }
         return FALSE;
     }

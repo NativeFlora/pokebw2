@@ -412,8 +412,9 @@ static u16 Efu_WildSlotSpecies(EncountSystem *system, u32 slot) {
 
 // Escape from Unova: a scavenger's team, made again for each exploration from the wild Pokémon of the place they fight
 // in, its grass, water and fishing alike: EFU_SCAV_TEAM_MIN to EFU_SCAV_TEAM_MAX of them, at the levels of the Trainer's
-// own team (build_raid.py). The exploration's count and the Trainer seed the choice, so a team stays the same through an
-// exploration. Billy keeps his own, and so does a scavenger where nothing wild lives
+// own team (build_raid.py). Where nothing wild lives (a building, a cave's quiet floor), the wild Pokémon of the place
+// outside it are drawn instead (the Escape Rope's zone). The exploration's count and the Trainer seed the choice, so a
+// team stays the same through an exploration. Billy keeps his own
 static void Efu_ScavParty(EncountSystem *system, BtlSetup *setup, u32 trainerId, HeapID heapId) {
     EventWork *eventWork = GameData_GetEventWork(system->gameData);
     PokeParty *party = BtlSetup_GetParty(setup, 1);
@@ -426,6 +427,7 @@ static void Efu_ScavParty(EncountSystem *system, BtlSetup *setup, u32 trainerId,
     u32 wild;
     u32 i;
     u32 j;
+    u16 outside;
 
     if (*EventWork_GetWkPtr(eventWork, EFU_WORK_RAID) == 0 || trainerId == EFU_TRAINER_BILLY ||
         (class != TRAINER_CLASS_TEAM_PLASMA_GRUNT_M && class != TRAINER_CLASS_TEAM_PLASMA_GRUNT_F)) {
@@ -438,9 +440,10 @@ static void Efu_ScavParty(EncountSystem *system, BtlSetup *setup, u32 trainerId,
         }
     }
     known = PokeParty_GetPkmCount(party);
-    if (wild == 0 || known == 0) {
+    if (known == 0) {
         return;
     }
+    outside = GameData_GetEscapeRopeZone(system->gameData)->zoneId;
     seed = *EventWork_GetWkPtr(eventWork, EFU_WORK_RAID_COUNT) * 0x10000 + trainerId;
     seed = seed * 1103515245 + 12345;
     count = EFU_SCAV_TEAM_MIN + (seed >> 16) % (EFU_SCAV_TEAM_MAX - EFU_SCAV_TEAM_MIN + 1);
@@ -449,6 +452,13 @@ static void Efu_ScavParty(EncountSystem *system, BtlSetup *setup, u32 trainerId,
 
         levels[i] = PokeParty_GetParam(PokeParty_GetPkm(party, i < known ? i : known - 1), PKM_PARAM_LEVEL, NULL);
         seed = seed * 1103515245 + 12345;
+        if (wild == 0) {
+            species[i] = Efu_ZoneWildSpecies(system->gameData, outside, seed >> 16);
+            if (species[i] == SPECIES_NONE) {
+                return;
+            }
+            continue;
+        }
         pick = (seed >> 16) % wild;
         for (j = 0; j < EFU_WILD_SLOTS; j++) {
             species[i] = Efu_WildSlotSpecies(system, j);

@@ -181,12 +181,8 @@ L_RuminationScavEnd:
     TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_34
     TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_35
     TrainerFlagReset TRAINER_TEAM_PLASMA_GRUNT_36
-    // What each Hidden Grotto holds this time (EFU_WORK_GROTTO_FIRST), and the grotto doctor ready to fight again
-    .irp i, 0,1,2,3,4
-    VMCall L_GrottoRoll
-    WorkSet EFU_WORK_GROTTO_FIRST + \i, 0x8021
-    .endr
-    TrainerFlagReset TRAINER_DOCTOR_JULES
+    // What each Hidden Grotto holds (EFU_WORK_GROTTO_FIRST), rolled again on the first exploration of each day
+    VMCall L_GrottoDaily
     // The side areas' scavs hide too, until the player comes in (Script_TargetEnter, Script_ChildcareEnter)
     .irp i, 0,1,2
     FlagSet EFU_FLAG_TARGET_SCAV_FIRST + \i
@@ -340,10 +336,19 @@ Script_Blackout:
 // With the party empty: a random Pokémon from the starter pool (tools/efu/starters.py), as lost as the player, joins
 @LOST_SOUL@
 // Dev Test's Pokémon: a level 100 Volcarona
+// Dev Test: four Pokémon at level 100, a Ditto with Imposter among them, and the four field moves (EFU_SPECIAL_DEV_TEST
+// sets the ability and teaches Cut, Strength, Surf and Waterfall to the Samurott)
 L_DevTestPokemon:
     WorkSetConst 0x8025, @VOLCARONA@
     WordSetPokeSpecies 1, 0x8025
     PokePartyAdd 0x8010, 0x8025, 0, 100
+    WorkSetConst 0x8026, SPECIES_SAMUROTT
+    PokePartyAdd 0x8010, 0x8026, 0, 100
+    WorkSetConst 0x8026, SPECIES_DITTO
+    PokePartyAdd 0x8010, 0x8026, 0, 100
+    WorkSetConst 0x8026, SPECIES_HAXORUS
+    PokePartyAdd 0x8010, 0x8026, 0, 100
+    EfuSpecial EFU_SPECIAL_DEV_TEST, 0, 0, 0, 0x8010
     VMJump L_LostSoulGot
 
 L_LostSoulFound:
@@ -506,6 +511,28 @@ Script_Nurse:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
+L_NurseMenu:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NurseGreet, 0x8011, 2, 0
+    ListMenuAnchorTopRight 31, 13, 0, 1, 0x8021
+    ListMenuAdd Efu_Text_NurseHeal, 65535, 0
+    ListMenuAdd Efu_Text_Talk, 65535, 1
+    ListMenuAdd Efu_Text_Leave, 65535, 2
+    ListMenuShow
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_EQ, L_NurseHeal
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_NE, L_NurseLeave
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NurseTalk, 0x8011, 2, 0
+    LastKeyWait
+    VMJump L_NurseMenu
+L_NurseLeave:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_NurseBye, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_NurseHeal:
     MoneyWinDisp 31, 1
     EfuSpecial EFU_SPECIAL_PARTY_LEVELS, 0, 0, 0, 0x8020
     WordSetNumber 0, 0x8020, 5
@@ -567,6 +594,28 @@ Script_JoyForest:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
+L_JoyMenu:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_JoyGreet, 0x8011, 2, 0
+    ListMenuAnchorTopRight 31, 13, 0, 1, 0x8021
+    ListMenuAdd Efu_Text_NurseHeal, 65535, 0
+    ListMenuAdd Efu_Text_Talk, 65535, 1
+    ListMenuAdd Efu_Text_Leave, 65535, 2
+    ListMenuShow
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_EQ, L_JoyHeal
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_NE, L_JoyLeave
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_JoyTalk, 0x8011, 2, 0
+    LastKeyWait
+    VMJump L_JoyMenu
+L_JoyLeave:
+    ActorMsg MSGFILE_SCRIPT, Efu_Text_JoyStay, 0x8011, 2, 0
+    LastKeyWait
+    ActorMsgClose
+    ActorsUnpauseAll
+    VMHalt
+
+L_JoyHeal:
     MoneyWinDisp 31, 1
     EfuSpecial EFU_SPECIAL_PARTY_LEVELS, 0, 0, 0, 0x8020
     WordSetNumber 0, 0x8020, 5
@@ -692,8 +741,26 @@ Script_Clerk:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
-    // A hint at what to do next, the first not yet done: the nurse, the tinkerer, the guide, the Day Care Lady, the
-    // hole on Route 2; then the shop
+L_ClerkMenu:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkGreet, 0, 0
+    ListMenuAnchorTopRight 31, 13, 0, 1, 0x8021
+    ListMenuAdd Efu_Text_ClerkShop, 65535, 0
+    ListMenuAdd Efu_Text_Talk, 65535, 1
+    ListMenuAdd Efu_Text_Leave, 65535, 2
+    ListMenuShow
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_EQ, L_ClerkShop
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_EQ, L_ClerkTalk
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkBye, 0, 0
+    LastKeyWait
+    MsgWinCloseAll
+    ActorsUnpauseAll
+    VMHalt
+
+    // Talk: a hint at what to do next, the first not yet done: the nurse, the tinkerer, the guide, the Day Care Lady,
+    // the hole on Route 2
+L_ClerkTalk:
     FlagGet EFU_FLAG_JOY_JOINED, 0x8020
     WorkCmpConst 0x8020, 0
     VMJumpIf CMP_EQ, L_ClerkHintNurse
@@ -710,23 +777,26 @@ Script_Clerk:
     WorkCmpConst 0x8020, 0
     VMJumpIf CMP_EQ, L_ClerkHintHole
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintNone, 0, 0
-    VMJump L_ClerkShop
+    VMJump L_ClerkTalked
 L_ClerkHintNurse:
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintNurse, 0, 0
-    VMJump L_ClerkShop
+    VMJump L_ClerkTalked
 L_ClerkHintTinkerer:
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintTinkerer, 0, 0
-    VMJump L_ClerkShop
+    VMJump L_ClerkTalked
 L_ClerkHintGuide:
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintGuide, 0, 0
-    VMJump L_ClerkShop
+    VMJump L_ClerkTalked
 L_ClerkHintDayCare:
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintDayCare, 0, 0
-    VMJump L_ClerkShop
+    VMJump L_ClerkTalked
 L_ClerkHintHole:
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_ClerkHintHole, 0, 0
-L_ClerkShop:
+L_ClerkTalked:
     LastKeyWait
+    VMJump L_ClerkMenu
+
+L_ClerkShop:
     MsgWinCloseAll
     VMStackPush 0x8000
     VMStackPush 0x8001
@@ -1011,6 +1081,28 @@ Script_Tinkerer:
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
     FlagSet EFU_FLAG_TINKERER_MET
+L_TinkerMenu:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerGreet, 0, 0
+    ListMenuAnchorTopRight 31, 13, 0, 1, 0x8021
+    ListMenuAdd Efu_Text_TinkerWork, 65535, 0
+    ListMenuAdd Efu_Text_Talk, 65535, 1
+    ListMenuAdd Efu_Text_Leave, 65535, 2
+    ListMenuShow
+    WorkCmpConst 0x8021, 0
+    VMJumpIf CMP_EQ, L_TinkerWork
+    WorkCmpConst 0x8021, 1
+    VMJumpIf CMP_NE, L_TinkerLeave
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerTalk, 0, 0
+    LastKeyWait
+    VMJump L_TinkerMenu
+L_TinkerLeave:
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_TinkerBagNo, 0, 0
+    LastKeyWait
+    MsgWinCloseAll
+    ActorsUnpauseAll
+    VMHalt
+
+L_TinkerWork:
     ItemCheckAmount EFU_ITEM_BLANK_HM, 1, 0x8020
     WorkCmpConst 0x8020, 0
     VMJumpIf CMP_EQ, L_TinkerBag
@@ -1282,30 +1374,50 @@ L_LockerClose:
 
 // One Hidden Grotto's roll for an exploration, into 0x8021: what it always held (40%), or a doctor, a broker, a tough
 // Pokémon or a trader (15% each)
+// The Hidden Grottoes once a day: the real date (month * 32 + day) against the one they were last rolled on
+// (EFU_WORK_GROTTO_DAY). A new day rolls each grotto again, and the grotto doctor is ready to fight again
+L_GrottoDaily:
+    RTCGetDate 0x8022, 0x8023
+    WorkMul 0x8022, 32
+    WorkAdd 0x8022, 0x8023
+    WorkCmpWork 0x8022, EFU_WORK_GROTTO_DAY
+    VMJumpIf CMP_EQ, L_GrottoDailyDone
+    WorkSet EFU_WORK_GROTTO_DAY, 0x8022
+    .irp i, 0,1,2,3,4
+    VMCall L_GrottoRoll
+    WorkSet EFU_WORK_GROTTO_FIRST + \i, 0x8021
+    .endr
+    TrainerFlagReset TRAINER_DOCTOR_JULES
+L_GrottoDailyDone:
+    VMReturn
+
+// One grotto: EFU_GROTTO_EMPTY_CHANCE percent nobody, EFU_GROTTO_TOUGH_CHANCE percent a tough Pokémon, and the rest
+// someone hiding from the scavengers: the doctor, the broker or the trader, a third each
 L_GrottoRoll:
     Random 0x8020, 100
-    WorkSetConst 0x8021, EFU_GROTTO_PLAIN
-    WorkCmpConst 0x8020, 40
-    VMJumpIf CMP_LT, L_GrottoRollDone
-    WorkSetConst 0x8021, EFU_GROTTO_DOCTOR
-    WorkCmpConst 0x8020, 55
-    VMJumpIf CMP_LT, L_GrottoRollDone
-    WorkSetConst 0x8021, EFU_GROTTO_BROKER
-    WorkCmpConst 0x8020, 70
+    WorkSetConst 0x8021, EFU_GROTTO_EMPTY
+    WorkCmpConst 0x8020, EFU_GROTTO_EMPTY_CHANCE
     VMJumpIf CMP_LT, L_GrottoRollDone
     WorkSetConst 0x8021, EFU_GROTTO_TOUGH
-    WorkCmpConst 0x8020, 85
+    WorkCmpConst 0x8020, EFU_GROTTO_EMPTY_CHANCE + EFU_GROTTO_TOUGH_CHANCE
+    VMJumpIf CMP_LT, L_GrottoRollDone
+    Random 0x8020, 3
+    WorkSetConst 0x8021, EFU_GROTTO_DOCTOR
+    WorkCmpConst 0x8020, 1
+    VMJumpIf CMP_LT, L_GrottoRollDone
+    WorkSetConst 0x8021, EFU_GROTTO_BROKER
+    WorkCmpConst 0x8020, 2
     VMJumpIf CMP_LT, L_GrottoRollDone
     WorkSetConst 0x8021, EFU_GROTTO_TRADER
 L_GrottoRollDone:
     VMReturn
 
 // The grotto the player is in: 0x8022 its hollow number, 0x8020 its place among the zone's grottoes (EFU_GROTTO_COUNT
-// for another), 0x8021 what it holds this exploration (EFU_GROTTO_PLAIN for another)
+// for another), 0x8021 what it holds today (EFU_GROTTO_EMPTY for another)
 L_GrottoKind:
     WorkSet 0x8022, EFU_WORK_GROTTO_HOLLOW
     WorkSetConst 0x8020, EFU_GROTTO_COUNT
-    WorkSetConst 0x8021, EFU_GROTTO_PLAIN
+    WorkSetConst 0x8021, EFU_GROTTO_EMPTY
     // Written out, here and below: the C preprocessor runs before .irp, so EFU_GROTTO_HOLLOW_\i would stay an
     // undefined name that assembles as 0
     WorkCmpConst 0x8022, EFU_GROTTO_HOLLOW_0
@@ -1369,33 +1481,13 @@ L_GrottoEnterToughNot\i:
 L_GrottoEnterDone:
     VMHalt
 
-// The grotto's own Pokémon or item, as the original's map scripts make them (hidden_grotto.s's 4 and 7), only when it
-// holds what it always did
+// The original's map scripts made the grotto's own Pokémon or item here (hidden_grotto.s's 4 and 7). The hack's
+// grottoes hold only what L_GrottoRoll drew, shown by Script_GrottoEnter, so an empty one stays empty
 Script_GrottoEvents:
-    VMCall L_GrottoKind
-    WorkCmpConst 0x8021, EFU_GROTTO_PLAIN
-    VMJumpIf CMP_NE, L_GrottoEventsDone
-    HiddenHollowCreateEvents
-    VMCall L_GrottoPlace
-L_GrottoEventsDone:
     VMHalt
 
 Script_GrottoResume:
-    VMCall L_GrottoKind
-    WorkCmpConst 0x8021, EFU_GROTTO_PLAIN
-    VMJumpIf CMP_NE, L_GrottoEventsDone
-    VMCall L_GrottoPlace
     VMHalt
-
-L_GrottoPlace:
-    WorkSetConst 0x8028, 0
-    HiddenHollowGetParam 6, 0x8028
-    WorkCmpConst 0x8028, 1
-    VMJumpIf CMP_EQ, L_GrottoPlaceDone
-    ObjInitPointGPos 0, 15, 0, 12
-L_GrottoPlaceDone:
-    WorkSetConst 0x8028, 0
-    VMReturn
 
 // The grotto's NPC leaves, its flag set, and the grotto is spent for this exploration
 L_GrottoLeave:
@@ -1526,40 +1618,30 @@ L_GrottoBrokerEnd:
     ActorsUnpauseAll
     VMHalt
 
-// The grotto trader: a pseudo-legendary (one of the trades from EFU_TRADE_FIRST) for a Pokémon of the species they
-// want, one of the grotto's route's wild Pokémon on this exploration, and EFU_GROTTO_TRADE_PRICE
+// The grotto trader: a pseudo-legendary (one of the trades from EFU_TRADE_FIRST) for a Pokémon strong enough to get
+// them out past the scavengers, of at least EFU_GROTTO_TRADE_LEVEL
 Script_GrottoTrader:
     ActorsPauseAll
     SEPlay SEQ_SE_MESSAGE
     ActorSetEyeToEye
     VMCall L_GrottoKind
-    EfuSpecial EFU_SPECIAL_GROTTO_TRADE, 0x8022, EFU_GROTTO_TRADE_WANT, 0, 0x8024
     EfuSpecial EFU_SPECIAL_GROTTO_TRADE, 0x8022, EFU_GROTTO_TRADE_OFFER, 0, 0x8025
     WorkAdd 0x8025, EFU_TRADE_FIRST
     FieldTradeGetSpecies 0x8026, 0x8025
     WordSetPokeSpecies 0, 0x8026
-    WordSetPokeSpecies 1, 0x8024
-    // The money window takes the word set's numbers for itself, so the price goes in after it
-    MoneyWinDisp 31, 1
-    WorkSetConst 0x8027, EFU_GROTTO_TRADE_PRICE
-    WordSetNumber 2, 0x8027, 4
+    WorkSetConst 0x8027, EFU_GROTTO_TRADE_LEVEL
+    WordSetNumber 1, 0x8027, 2
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderOffer, 0, 0
     YesNoWin 0x8010
     WorkCmpConst 0x8010, 1
     VMJumpIf CMP_EQ, L_GrottoTraderNo
-    MoneyCheck 0x8010, 0x8027
-    WorkCmpConst 0x8010, 0
-    VMJumpIf CMP_EQ, L_GrottoTraderPoor
     MsgWinCloseAll
     CallPokeSelect 0, 0x8021, 0x8020, 0
     WorkCmpConst 0x8021, 1
     VMJumpIf CMP_EQ, L_GrottoTraderNo
-    PokePartyGetSpecies 0x8010, 0x8020
-    WorkCmpWork 0x8010, 0x8024
-    VMJumpIf CMP_NE, L_GrottoTraderWrong
-    MoneySub 0x8027
-    MoneyWinUpdate
-    MoneyWinClose
+    EfuSpecial EFU_SPECIAL_POKE_LEVEL, 0x8020, 0, 0, 0x8010
+    WorkCmpConst 0x8010, EFU_GROTTO_TRADE_LEVEL
+    VMJumpIf CMP_LT, L_GrottoTraderWeak
     FieldTradeStart 0x8025, 0x8020
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderDone, 0, 0
     LastKeyWait
@@ -1569,18 +1651,15 @@ Script_GrottoTrader:
     ActorsUnpauseAll
     VMHalt
 
-L_GrottoTraderWrong:
-    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderWrong, 0, 0
-    VMJump L_GrottoTraderEnd
-L_GrottoTraderPoor:
-    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_NotEnoughMoney, 0, 0
+L_GrottoTraderWeak:
+    WordSetNumber 1, 0x8027, 2
+    ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderWeak, 0, 0
     VMJump L_GrottoTraderEnd
 L_GrottoTraderNo:
     ParentActorMsg MSGFILE_SCRIPT, Efu_Text_GrottoTraderBye, 0, 0
 L_GrottoTraderEnd:
     LastKeyWait
     MsgWinCloseAll
-    MoneyWinClose
     ActorsUnpauseAll
     VMHalt
 

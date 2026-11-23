@@ -153,6 +153,8 @@
 // The hollow number of the grotto the player last went into, set by the narrow path's script (global_10795.s, patched by
 // build_raid.py) as they follow it: HiddenHollowGetParam can't tell it while a map loads, before the field exists
 #define EFU_WORK_GROTTO_HOLLOW 0x4156
+// The real date the Hidden Grottoes were last rolled on, month * 32 + day (L_GrottoDaily)
+#define EFU_WORK_GROTTO_DAY 0x4143
 // (item IDs are under it, and scripts' constants must stay under 0x4000, where variables start)
 #define EFU_PICKUP_SWAPPED 0x1000
 // The Trainer actor's user parameters that keep its chase (they are 0 in the event data)
@@ -221,18 +223,20 @@
 // Set once the player has talked to the tinkerer in her lab: the clerk's hints move on from her (Script_Clerk)
 #define EFU_FLAG_TINKERER_MET 0x950
 // The zone's Hidden Grottoes, by their hollow numbers (hidden_hollow.c): Floccesy Ranch's, Pinwheel Forest's, Route 3's
-// two and Route 2's. Each exploration, each holds what it always did (EFU_GROTTO_PLAIN) or one of the hack's: a doctor
-// who heals the party once beaten, a broker who sells one rare item, a tough Pokémon evolved early, or a trader who
-// swaps a pseudo-legendary for a Pokémon of the grotto's route and EFU_GROTTO_TRADE_PRICE; each is gone once dealt with
-// (EFU_GROTTO_SPENT)
+// two and Route 2's. Rolled again once a day (EFU_WORK_GROTTO_DAY), each holds nobody (EFU_GROTTO_EMPTY_CHANCE
+// percent), a tough Pokémon evolved early (EFU_GROTTO_TOUGH_CHANCE percent) or someone hiding from the scavengers: a
+// doctor who heals the party once beaten, a broker who sells one rare item, or a trader who swaps a pseudo-legendary for
+// a Pokémon of at least EFU_GROTTO_TRADE_LEVEL; each is gone once dealt with, until the next day (EFU_GROTTO_SPENT)
 #define EFU_GROTTO_COUNT 5
-#define EFU_GROTTO_PLAIN 0
+#define EFU_GROTTO_EMPTY 0
 #define EFU_GROTTO_DOCTOR 1
 #define EFU_GROTTO_BROKER 2
 #define EFU_GROTTO_TOUGH 3
 #define EFU_GROTTO_TRADER 4
 #define EFU_GROTTO_SPENT 5
-#define EFU_GROTTO_TRADE_PRICE 5000
+#define EFU_GROTTO_EMPTY_CHANCE 60
+#define EFU_GROTTO_TOUGH_CHANCE 30
+#define EFU_GROTTO_TRADE_LEVEL EFU_LEVEL_CAP
 // The grotto NPCs' hide flags: the doctor, the broker and the trader, then each grotto's tough Pokémon
 #define EFU_FLAG_GROTTO_DOCTOR 0x951
 #define EFU_FLAG_GROTTO_BROKER 0x952
@@ -300,6 +304,11 @@
 #define EFU_SPECIAL_GROTTO_TRADE 9
 #define EFU_GROTTO_TRADE_WANT 0
 #define EFU_GROTTO_TRADE_OFFER 1
+// The level of the party's Pokémon in item's place, 0 for an egg or an empty slot
+#define EFU_SPECIAL_POKE_LEVEL 10
+// The Dev Test's team, after the script adds it: each Ditto gets its hidden ability, Imposter, and each Samurott the
+// field moves Cut, Strength, Surf and Waterfall
+#define EFU_SPECIAL_DEV_TEST 11
 // Items on the ground: item ball actors made where an item was tossed or swapped, each holding its item in its user
 // parameter 0, with actor IDs from EFU_GROUND_ID_FIRST. They belong to the zone, and are gone once the player leaves it
 #define EFU_GROUND_BESIDE_PLAYER 0xffff

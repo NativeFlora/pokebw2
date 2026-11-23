@@ -106,6 +106,8 @@ u32 Efu_ExplorationRandom(GameData *gameData, u32 key);
 // Escape from Unova: the species a wild slot holds on this exploration, by its slot counting every table's one after
 // another (EncData's grass on)
 u16 Efu_WildSwap(GameData *gameData, u16 zoneId, u32 slot, u16 species);
+// Escape from Unova: a species of a zone's wild Pokémon on this exploration, by pick (scrcmd_field_actor.c)
+u16 Efu_ZoneWildSpecies(GameData *gameData, u16 zoneId, u32 pick);
 RoamingPkm *FieldEncount_RndCheckRoaming(EncountManager *manager, u32 zoneId);
 // What FieldEncount_RndCheckNPoke returns when none of N's Pokémon appears
 #define N_POKE_NONE 0xff

@@ -102,10 +102,11 @@ Taken so far:
 | `EVENT_WORK_0x41ab` (`EFU_WORK_RAID_COUNT`) | Raids set out on, which picks the season (`EFU_SEASON`). Version 2; a version 1 save has 0, so winter. |
 | `EVENT_WORK_0x41aa` | Retired in version 4: the play time the exploration started at, for the scavs' old 10-minute clock. Not to be reused. |
 | `EVENT_WORK_0x4169` (`EFU_WORK_SCAV_PENDING`) | 1 when a scav is to come out on the route at the next step (`Script_RouteEnter`); 0 after, and on heading out. Version 4. |
-| `EVENT_WORK_0x415e` (`EFU_WORK_DEV_TEST`) | 1 on a game started from the title menu's Dev Test: its first Pokémon is a level 100 Volcarona. |
+| `EVENT_WORK_0x415e` (`EFU_WORK_DEV_TEST`) | 1 on a game started from the title menu's Dev Test: it starts with four level 100 Pokémon (`L_DevTestPokemon`). |
 | `EVENT_WORK_0x415c` (`EFU_WORK_PICKUP_ITEM`) | The item being picked up while the bag is open for it (`L_Pickup`), then what became of it; 0 after. |
 | `EVENT_WORK_0x4156` (`EFU_WORK_GROTTO_HOLLOW`) | The hollow number of the grotto the player last went into, set as they follow the narrow path (`global_10795.s`, patched by `build_grottos`): `HiddenHollowGetParam` reads the field, which doesn't exist yet when the grotto's map script hides and shows its occupants. |
-| `EVENT_WORK_0x4157` to `0x415b` (`EFU_WORK_GROTTO_FIRST`) | What each of the zone's five Hidden Grottoes holds on this exploration (`EFU_GROTTO_*`), rolled on heading out. |
+| `EVENT_WORK_0x4157` to `0x415b` (`EFU_WORK_GROTTO_FIRST`) | What each of the zone's five Hidden Grottoes holds today (`EFU_GROTTO_*`), rolled on heading out on a new day. |
+| `EVENT_WORK_0x4143` (`EFU_WORK_GROTTO_DAY`) | The real date the grottoes were last rolled on, month * 32 + day (`L_GrottoDaily`); 0 on an older save, which rolls them on its next exploration. |
 | `EVENT_WORK_0x415d` (`EFU_WORK_IDLE_FRAMES`) | Frames the player has stood still on a raid, up to `EFU_SCAV_IDLE_FRAMES` (16), when the scavengers take a look as if the player had stepped; 0 after, and at each step. |
 | `EVENT_WORK_0x41a9` (`EFU_WORK_SCAVS_OUT`) | Scavs that have come out on this exploration. Version 3. |
 | `EVENT_FLAG_0x0a80` to `0x0a8f`, `0x0a49` to `0x0a4e` | Retired: the routes' scavs' hide flags before they came out at spots (versions 3 and 4). Not to be reused. |
@@ -152,8 +153,7 @@ the ball is taken), and heading out rolls them again too.
 
 Free event flags (nothing refers to them) include 0x0959 to 0x095f; take them upward from 0x0959. (0x0aa0 and up are daily flags, which the game clears each day.)
 
-Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d,
-0x4143. Take the next from the end of the list back, and move it into the table above.
+Free event work values (no script, source file or event data refers to them): 0x410e, 0x410f, 0x4122, 0x413d. Take the next from the end of the list back, and move it into the table above.
 
 ## Raids and saving
 
@@ -266,21 +266,25 @@ explorations the player has set out on (`EFU_WORK_RAID_COUNT`, `GimmickGate_AddD
 
 ## The clerk's hints and the Hidden Grottoes
 
-The clerk (`Script_Clerk`) says what to do next before the shop opens: the first not yet done of meeting the nurse
+The people who sell a service ask what the player wants first, the service, Talk or Leave: the clerk
+(`Script_Clerk`, Buy and sell), the nurse (`Script_Nurse`) and the forest's nurse (`Script_JoyForest`), Heal, and the
+tinkerer (`Script_Tinkerer`), Business. Talk is what they know and who they are. The clerk's Talk says what to do next: the first not yet done of meeting the nurse
 in the forest (`EFU_FLAG_JOY_JOINED`), meeting the tinkerer (`EFU_FLAG_TINKERER_MET`), freeing the guide
 (`EFU_FLAG_GUIDE_MET`), the Day Care Lady (`EFU_FLAG_DAYCARE_JOINED`) and Route 2's locked hole (the first lock's flag),
 or that it's quiet.
 
 The zone's five Hidden Grottoes (Floccesy Ranch's, Pinwheel Forest's, Route 3's two and Route 2's, by their hollow
-numbers `EFU_GROTTO_HOLLOW_*`) each roll on heading out (`L_GrottoRoll`): 40% what the grotto always held, 15% each a
-doctor (Doctor Hale, `TRAINER_DOCTOR_JULES` renamed, with an Audino and a Solosis at 60% and 55% of the level cap,
-softer than the scavs, who heals the party once beaten), a broker (one sale: a Rare
-Candy or a PP Up for $3000, or a random strong TM for $5000), a tough Pokémon evolved early (`EFU_GROTTO_TOUGH_*`:
-Braviary, Leavanny, Zebstrika, Scolipede or Krookodile at 21 or 22, one per grotto), or a trader who gives a level 15
-pseudo-legendary (field trades 24 to 29, `build_grottos`) for a Pokémon of a species from the grotto's route's wild
-Pokémon on this exploration (`EFU_SPECIAL_GROTTO_TRADE`) and $5000. Each is gone once dealt with
-(`EFU_GROTTO_SPENT`). The grotto zone's map scripts are the hack's (`Script_GrottoEnter`, `Script_GrottoEvents`,
-`Script_GrottoResume`), which make the grotto's own Pokémon or item only when it holds what it always did. Route 2's
+numbers `EFU_GROTTO_HOLLOW_*`) roll again on the first exploration of each real day (`L_GrottoDaily`, by
+`EFU_WORK_GROTTO_DAY`), each by `L_GrottoRoll` (Tom, 23 November): 60% nobody (`EFU_GROTTO_EMPTY_CHANCE`), 30% a tough
+Pokémon evolved early (`EFU_GROTTO_TOUGH_CHANCE`, `EFU_GROTTO_TOUGH_*`: Braviary, Leavanny, Zebstrika, Scolipede or
+Krookodile at 21 or 22, one per grotto), and 10% someone hiding from the scavengers, a third each: a doctor (Doctor
+Hale, `TRAINER_DOCTOR_JULES` renamed, with an Audino and a Solosis at 60% and 55% of the level cap, softer than the
+scavs, who heals the party once beaten), a broker (one sale: a Rare Candy or a PP Up for $3000, or a random strong TM
+for $5000), or a trader who gives a level 15 pseudo-legendary (field trades 24 to 29, `build_grottos`) for any Pokémon
+of at least `EFU_GROTTO_TRADE_LEVEL`, the level cap, that can fight them out (`EFU_SPECIAL_POKE_LEVEL`). Each is gone
+once dealt with, until the next day (`EFU_GROTTO_SPENT`). The grotto zone's map scripts are the hack's
+(`Script_GrottoEnter`, `Script_GrottoEvents`, `Script_GrottoResume`), and the original's own Pokémon and items never
+come. Route 2's
 grotto entrance moved with Tom's Route 2, so its way out does too (`HIDDEN_HOLLOW_ENTRANCES` in
 `src/ov012/hidden_hollow.c`).
 
@@ -429,8 +433,10 @@ confirm, and B closes either menu.
 
 The player's warehouse (`NACRENE_CITY_8`) is theirs alone. The title menu offers only Continue, New Game and Dev Test
 (`StartMenu_InitItems`; Dev Test is the Mic Test's item, renamed), a new game for play testing that starts with a
-level 100 Volcarona instead of a random level 5 Pokémon (`NewGame_Init` sets `EFU_WORK_DEV_TEST`, which
-`Script_NewGameStart` reads). A Pokémon taken out of the PC (withdrawn, moved or swapped into the party) comes out with half
+level 100 Volcarona, Samurott, Ditto and Haxorus instead of a random level 5 Pokémon (`NewGame_Init` sets
+`EFU_WORK_DEV_TEST`, which `Script_NewGameStart` reads): the Ditto has Imposter and the Samurott knows Cut, Strength,
+Surf and Waterfall (`EFU_SPECIAL_DEV_TEST`). No field move needs a badge in this game: `CalcPlayerActionPossibilities`
+in `hm_event.c` checks only the place. A Pokémon taken out of the PC (withdrawn, moved or swapped into the party) comes out with half
 its HP and half of each move's PP, rounded up (`Efu_RecoverHalf` in `box2_main.c`).
 
 Each base NPC is hidden by its own flag, which the zone's init script (`Script_PokecenInit`, `Script_DayCareInit`, `Script_GateInit`) sets
@@ -469,8 +475,9 @@ its route's Trainers in turn (Route 19, with none, takes Route 20's). The Traine
 made single battles with two to six Pokémon from the zone's wild ones at 65 to 90% of its level cap (14 to 20),
 evolved to their levels, dressed as Team Plasma Grunts (the classes renamed Scavenger) and given new lines by
 `build_raid.py`. In battle, `Efu_ScavParty` (`src/ov036/field_encount.c`) replaces a scavenger's team with 2 to 5
-(`EFU_SCAV_TEAM_MIN`, `EFU_SCAV_TEAM_MAX`) Pokémon drawn from the wild slots of the zone they stand in, grass, dark
-grass, rustling grass, surfing and fishing alike, at the levels of the built team, seeded by the raid count and the Trainer, so
+(`EFU_SCAV_TEAM_MIN`, `EFU_SCAV_TEAM_MAX`) Pokémon drawn from the wild slots of the zone they stand in as this
+exploration swapped them (`Efu_WildSwap`), grass, dark grass, rustling grass, surfing and fishing alike (where nothing
+wild lives, as in a building, from the grass of the place outside, the Escape Rope's zone), at the levels of the built team, seeded by the raid count and the Trainer, so
 a scavenger keeps one team through an exploration and gets a new one on the next. Billy, the childcare centre's named
 scavenger, keeps his built team, drawn from the starters' pool (`starters.json`). Named scavengers come out only until
 they are beaten: after Billy, a generic scavenger (trainer 398) takes his place. Every spot's scav starts hidden: heading out sets their flags (`EFU_FLAG_SPOT_FIRST`). The garden's
