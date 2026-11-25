@@ -267,20 +267,15 @@ def build_encounters(name, levels):
     write(f'res/field/encounters/{name}.json', e)
 
 
-# Each exploration swaps every wild slot's species for one of its wild group's (wild_groups.json) whose base stat total is
-# within this of its own (Efu_WildSwap in enc_pokeset.c, from the table build_wild_swap writes)
-SWAP_BST_BAND = 60
-
-
-def base_stat_total(species):
-    path = os.path.join(root, 'res/pokemon', species[len('SPECIES_'):].lower(), 'data.json')
-    return sum(json.load(open(path))['base_stats'].values())
+# Each exploration swaps every wild slot's species for one of its wild group's (wild_groups.json) of the same tier, its
+# point in its evolution line by feel (Efu_WildSwap in enc_pokeset.c, from the table build_wild_swap writes)
 
 
 def build_wild_swap():
     """include/efu_wild_swap.h: for each species wild in the zone (as built), the species it may be swapped for, its
     own among them."""
-    groups = json.load(open(os.path.join(here, 'wild_groups.json')))['groups']
+    wild_groups = json.load(open(os.path.join(here, 'wild_groups.json')))
+    groups, tiers = wild_groups['groups'], wild_groups['tiers']
     group_of = {sp: g for g, members in groups.items() for sp in members}
     wild = set()
     for name in ['route_3'] + list(PLACE_LEVELS):
@@ -290,15 +285,14 @@ def build_wild_swap():
                    if l.startswith('SPECIES_')]
     species, first, candidates = [], [0], []
     for sp in sorted(wild, key=species_ids.index):
-        bst = base_stat_total(sp)
         options = [sp]
         if sp in group_of:
-            options = [o for o in groups[group_of[sp]] if abs(base_stat_total(o) - bst) <= SWAP_BST_BAND]
+            options = [o for o in groups[group_of[sp]] if tiers[o] == tiers[sp]]
         species.append(sp)
         candidates += options
         first.append(len(candidates))
     out = ['// Written by tools/efu/build_raid.py (build_wild_swap): the zone\'s wild species, sorted, and for each the\n',
-           f'// species an exploration may swap it for, one of its wild group\'s within {SWAP_BST_BAND} of its base stat total\n',
+           '// species an exploration may swap it for, one of its wild group\'s of the same tier\n',
            '#ifndef EFU_WILD_SWAP_H\n#define EFU_WILD_SWAP_H\n\n#include "constants/species.h"\n\n',
            f'#define EFU_SWAP_SPECIES_COUNT {len(species)}\n\n',
            'static const u16 EFU_SWAP_SPECIES[EFU_SWAP_SPECIES_COUNT] = {\n']

@@ -61,7 +61,7 @@ builds with `python3 configure.py --modded w2_us && ninja` (only White 2, US).
 | The base's people: Nurse Joy, the clerk and the Day Care Lady, and the gate's guide | `build_interiors` in `tools/efu/build_base.py`, `Script_Nurse` and below in `tools/efu/efu.s.in`, the mart's prices in `src/ov036/scrcmd_shop.c` |
 | The loot tables and the scripts that roll them | `LOOT` in `tools/efu/gen_efu.py`, `Script_Loot*` in `tools/efu/efu.s.in` |
 | The closed warehouses' shut doors, and the Day Care Lady's, which goes once she has joined | `CLOSED_WAREHOUSES` in `tools/efu/build_coast.py`, `Efu_IsOpenedDoor` in `src/ov036/field_buildmodel.c`, `Efu_IsShutDoor` in `src/ov036/fieldmap_event.c`, the door signs in `tools/efu/build_base.py` |
-| Wild Pokémon that count as equivalent, by egg group | `tools/efu/wild_groups.py` → `tools/efu/wild_groups.json` |
+| Wild Pokémon that count as equivalent, by habitat and tier | `tools/efu/wild_groups.py` → `tools/efu/wild_groups.json` |
 | The scavs' pursuit | `EventTrainerEye_EfuPursue` and `EventTrainerEye_EfuIdle` in `src/ov036/event_trainer_eye.c`, called each step, or each frame the player stands still, from `src/ov036/fieldmap_event.c` |
 | The scavs' teams | `Efu_ScavParty` in `src/ov036/field_encount.c` |
 | The world editor (a paint program's tools on the ground, props, collision, tile classes and events; doors and their locks), its saved edits and their applying | `tools/efu/world_editor/` (its `README.md`), `tools/efu/world_edits.json` (Tom's, kept as the editor saves it), `tools/efu/world_edits_fixes.json` (the hack's own ops, applied after Tom's), `tools/efu/apply_world_edits.py` |
@@ -454,17 +454,20 @@ shows its entry (`event_battle_return.c`).
 
 ## Wild groups
 
-`tools/efu/wild_groups.json` (written by `wild_groups.py` from the species' data) sorts every Pokémon that can be met
-in the wild into groups that count as equivalent, by first egg group: 13 groups, 601 species. Those the egg groups
-leave out are placed by hand: a baby goes with its evolution (Pichu with Pikachu, in Field), Nidorina and Nidoqueen
-with Nidoran F (Monster), Ditto with the shapeless Pokémon (Amorphous) and Unown with the living objects (Mineral).
-The 48 legendary and mythical Pokémon (Undiscovered with no evolution, and Manaphy and Phione) are in none, since none
-can be caught in the wild.
+`tools/efu/wild_groups.json` (written by `wild_groups.py`) sorts every Pokémon that can be met in the wild into 34
+groups by where it lives and the part it plays (`GROUPS`: route birds, route rodents, route cats and dogs, pasture,
+cave dwellers, desert, open sea, and so on; 601 species), each evolution line whole, babies included. The starters
+share the Partners group with Pansage, Pansear and Panpour. The 48 legendary and mythical Pokémon are in none, since
+none can be caught in the wild.
 
-Each exploration swaps every wild slot's species for one of its group's whose base stat total is within
-`SWAP_BST_BAND` (60) of its own, its own among them (`Efu_WildSwap` in `src/ov036/enc_pokeset.c`, from the table
-`build_raid.py`'s `build_wild_swap` writes to `include/efu_wild_swap.h`). The choice is seeded by the exploration's
-count, the zone and the slot, so nothing new is saved and a zone's Pokémon stay the same through an exploration and
+Each species also has a tier, its point in its line by feel: 1 for a first stage, 2 for a middle one, 3 for a final
+one. A Pokémon that doesn't evolve, or the end of a two-stage line, is 2 or 3 by strength (3 from a base stat total of
+470), and `FEEL` overrides that where a Pokémon feels stronger or weaker than its place (Scyther is 3, Pikachu and
+Clefairy are 1 though a baby comes before them, Wigglytuff and Azumarill are 2).
+
+Each exploration swaps every wild slot's species for one of its group's of the same tier, its own among them
+(`Efu_WildSwap` in `src/ov036/enc_pokeset.c`, from the table `build_raid.py`'s `build_wild_swap` writes to
+`include/efu_wild_swap.h`). The choice is seeded by the exploration's count, the zone and the slot, so nothing new is saved and a zone's Pokémon stay the same through an exploration and
 after a reload. The scavengers' teams draw from the swapped slots too.
 
 ## The scavs
