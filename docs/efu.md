@@ -454,16 +454,18 @@ shows its entry (`event_battle_return.c`).
 
 ## Wild groups
 
-`tools/efu/wild_groups.json` (written by `wild_groups.py`) sorts every Pokémon that can be met in the wild into 34
+`tools/efu/wild_groups.json` (written by `wild_groups.py`) sorts every Pokémon that can be met in the wild into 32
 groups by where it lives and the part it plays (`GROUPS`: route birds, route rodents, route cats and dogs, pasture,
-cave dwellers, desert, open sea, and so on; 601 species), each evolution line whole, babies included. The starters
-share the Partners group with Pansage, Pansear and Panpour. The 48 legendary and mythical Pokémon are in none, since
-none can be caught in the wild.
+cave dwellers, desert, open sea, and so on; 525 species), each evolution line whole, babies included, and each
+starter where its type and look fit (Mudkip in the pond and swamp, Turtwig with the forest plants). Wild Pokémon are
+met in the forms levelling reaches: the 76 reached any other way (a stone, a trade, friendship, a held item, a move or
+a place, `LEVEL_METHODS`) are in none, except a baby's evolution, the line's first form before the baby came (Pikachu,
+Chansey, Snorlax). Nor are the 48 legendary and mythical Pokémon, since none can be caught in the wild.
 
 Each species also has a tier, its point in its line by feel: 1 for a first stage, 2 for a middle one, 3 for a final
 one. A Pokémon that doesn't evolve, or the end of a two-stage line, is 2 or 3 by strength (3 from a base stat total of
 470), and `FEEL` overrides that where a Pokémon feels stronger or weaker than its place (Scyther is 3, Pikachu and
-Clefairy are 1 though a baby comes before them, Wigglytuff and Azumarill are 2).
+Clefairy are 1 though a baby comes before them, Azumarill is 2).
 
 Each exploration swaps every wild slot's species for one of its group's of the same tier, its own among them
 (`Efu_WildSwap` in `src/ov036/enc_pokeset.c`, from the table `build_raid.py`'s `build_wild_swap` writes to

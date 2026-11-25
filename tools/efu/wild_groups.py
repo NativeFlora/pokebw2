@@ -1,12 +1,13 @@
 """Escape from Unova: writes tools/efu/wild_groups.json, the groups of wild Pokémon that count as equivalent.
 
-Each species that can be met in the wild goes in one of 34 groups by where it lives and the part it plays (route
-birds, route rodents, cave dwellers, open sea...), a whole evolution line together, babies included. Each also gets a
-tier, its point in its line by feel: 1 for the first stage, 2 for a middle one, 3 for a final one. A Pokémon that
-doesn't evolve, or the end of a two-stage line, is 2 or 3 by strength (3 from a base stat total of 470), with FEEL
-overriding where the numbers don't match how strong it feels. An exploration swaps a wild Pokémon only for one of
-the same group and tier (build_raid.py's build_wild_swap). Legendary and mythical Pokémon are in no group, since none
-can be caught in the wild.
+Each species that can be met in the wild goes in one of 32 groups by where it lives and the part it plays (route
+birds, route rodents, cave dwellers, open sea...; a starter where its type and look fit), a whole evolution line
+together, babies included. Each also gets a tier, its point in its line by feel: 1 for the first stage, 2 for a
+middle one, 3 for a final one. A Pokémon that doesn't evolve, or the end of a two-stage line, is 2 or 3 by strength
+(3 from a base stat total of 470), with FEEL overriding where the numbers don't match how strong it feels. An
+exploration swaps a wild Pokémon only for one of the same group and tier (build_raid.py's build_wild_swap). Forms
+that simple levelling doesn't reach (LEVEL_METHODS) are in no group, nor are legendary and mythical Pokémon, since
+none can be caught in the wild.
 """
 import json, os
 
@@ -18,23 +19,21 @@ GROUPS = {
     'route_birds': 'pidgey spearow hoothoot taillow starly pidove',
     'uncommon_birds': 'farfetchd doduo murkrow swablu chatot rufflet vullaby skarmory',
     'route_rodents': 'rattata sentret zigzagoon bidoof patrat minccino buneary',
-    'route_cats_dogs': 'meowth glameow skitty purrloin lillipup poochyena shinx electrike',
+    'route_cats_dogs': 'meowth glameow skitty purrloin lillipup poochyena shinx electrike eevee smeargle',
     'pasture': 'mareep tauros miltank stantler deerling blitzle ponyta girafarig bouffalant kangaskhan lickitung',
-    'forest_beasts': 'teddiursa aipom slakoth munchlax',
+    'forest_beasts': 'teddiursa aipom slakoth munchlax spinda kecleon',
     'grassland_predators': 'ekans nidoran_f nidoran_m seviper zangoose',
     'fairies': 'cleffa igglybuff togepi snubbull audino happiny',
-    'rare_curiosities': 'eevee ditto smeargle castform spinda kecleon',
     'route_bugs': 'caterpie weedle wurmple kricketot burmy spinarak sewaddle venipede',
     'flying_insects': 'ledyba yanma combee volbeat illumise venonat nincada',
     'beetles': 'scyther pinsir heracross pineco shuckle karrablast shelmet durant',
-    'meadow_flowers': 'oddish bellsprout hoppip sunkern budew cherubi cottonee petilil',
-    'forest_plants': 'seedot shroomish paras tangela exeggcute tropius carnivine foongus ferroseed',
-    'partners': 'bulbasaur charmander squirtle chikorita cyndaquil totodile treecko torchic mudkip turtwig chimchar piplup snivy tepig oshawott pansage pansear panpour',
-    'volcanic': 'vulpix growlithe slugma numel torkoal houndour magby darumaka heatmor',
+    'meadow_flowers': 'oddish bellsprout hoppip sunkern budew cherubi cottonee petilil bulbasaur chikorita',
+    'forest_plants': 'seedot shroomish paras tangela exeggcute tropius carnivine foongus ferroseed treecko turtwig snivy pansage',
+    'volcanic': 'vulpix growlithe slugma numel torkoal houndour magby darumaka heatmor charmander cyndaquil torchic chimchar tepig pansear',
     'electric_critters': 'pichu plusle minun pachirisu emolga joltik tynamo',
-    'machines': 'magnemite voltorb porygon klink rotom elekid',
+    'machines': 'magnemite voltorb porygon klink rotom elekid castform',
     'city_alley': 'grimer koffing trubbish gulpin stunky zorua pawniard absol',
-    'cave_dwellers': 'zubat woobat whismur sableye mawile dunsparce gligar',
+    'cave_dwellers': 'zubat woobat whismur sableye mawile dunsparce gligar ditto',
     'living_rock': 'geodude onix roggenrola nosepass aron bonsly lunatone solrock',
     'burrowers': 'sandshrew diglett drilbur cubone rhyhorn phanpy',
     'desert': 'trapinch hippopotas sandile cacnea maractus larvesta dwebble skorupi',
@@ -43,9 +42,9 @@ GROUPS = {
     'psychics': 'abra drowzee ralts spoink wynaut chingling mime_jr munna gothita solosis natu smoochum',
     'fighters': 'mankey machop tyrogue makuhita meditite riolu croagunk timburr throh sawk mienfoo scraggy',
     'snow_ice': 'swinub snorunt sneasel delibird snover vanillite cubchoo cryogonal spheal seel',
-    'pond_swamp': 'poliwag psyduck wooper azurill lotad surskit tympole buizel stunfisk',
+    'pond_swamp': 'poliwag psyduck wooper azurill lotad surskit tympole buizel stunfisk squirtle totodile mudkip panpour',
     'river_fish': 'goldeen magikarp barboach corphish feebas basculin',
-    'beach_shore': 'krabby shellder staryu corsola clamperl shellos slowpoke wingull ducklett',
+    'beach_shore': 'krabby shellder staryu corsola clamperl shellos slowpoke wingull ducklett piplup oshawott',
     'open_sea': 'tentacool horsea chinchou qwilfish remoraid carvanha wailmer mantyke finneon luvdisc frillish alomomola relicanth lapras',
     'fossils': 'omanyte kabuto aerodactyl lileep anorith cranidos shieldon tirtouga archen',
     'apex': 'dratini bagon gible axew deino druddigon larvitar beldum',
@@ -56,7 +55,7 @@ FEEL = {
     # The first form players know, though a baby comes before it
     'pikachu': 1, 'clefairy': 1, 'jigglypuff': 1, 'marill': 1,
     # Ends of lines that stay modest
-    'wigglytuff': 2, 'azumarill': 2, 'stunfisk': 2,
+    'azumarill': 2, 'stunfisk': 2,
     # Ends of lines that hit hard
     'hitmonlee': 3, 'hitmonchan': 3, 'hitmontop': 3, 'mr_mime': 3, 'jynx': 3, 'throh': 3, 'sawk': 3, 'absol': 3,
     'skarmory': 3, 'breloom': 3, 'sharpedo': 3,
@@ -65,6 +64,12 @@ FEEL = {
     'sneasel': 2, 'onix': 2, 'nosepass': 2,
 }
 FINAL_BST = 470
+# The evolutions that simple levelling reaches. A form reached any other way (a stone, a trade, friendship, a held
+# item, a move, a place) is never met in the wild, except a baby's evolution, which was the line's first form before
+# the baby came: Pikachu from Pichu, Chansey from Happiny, Snorlax from Munchlax
+LEVEL_METHODS = {'EVO_METHOD_LEVEL', 'EVO_METHOD_LEVEL_ATK_GT_DEF', 'EVO_METHOD_LEVEL_ATK_EQ_DEF',
+                 'EVO_METHOD_LEVEL_ATK_LT_DEF', 'EVO_METHOD_LEVEL_MALE', 'EVO_METHOD_LEVEL_FEMALE',
+                 'EVO_METHOD_LEVEL_PERSONALITY_HIGH', 'EVO_METHOD_LEVEL_PERSONALITY_LOW', 'EVO_METHOD_SHEDINJA'}
 
 
 def species_list():
@@ -117,12 +122,19 @@ def main():
         if tier is None:
             tier = 3 if sum(data[species]['base_stats'].values()) >= FINAL_BST else 2
         tiers[species] = tier
+    for species in data:
+        if species in before:
+            prior = data[before[species]]
+            method = next(e['method'] for e in prior['evolutions'] if e['species'] == species)
+            if method not in LEVEL_METHODS and prior['egg_groups'][0] != 'EGG_GROUP_UNDISCOVERED':
+                groups[line_of[first_of(species)]].remove(species)
+                del tiers[species]
     out = {'$comment': 'Written by wild_groups.py: wild Pokémon that count as equivalent, by habitat, and each '
                        'one\'s tier (1 first stage, 2 middle, 3 final) (docs/efu.md)',
            'groups': groups, 'tiers': tiers}
     with open(os.path.join(here, 'wild_groups.json'), 'w') as f:
         f.write(json.dumps(out, indent=4, ensure_ascii=False) + '\n')
-    print(len(groups), 'groups,', len(tiers), 'species')
+    print(len(groups), 'groups,', len(tiers), 'species,', len(data) - len(tiers), 'not reached by levelling')
 
 
 if __name__ == '__main__':
